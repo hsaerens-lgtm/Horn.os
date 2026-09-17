@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { CSS3DRenderer, CSS3DObject } from "three/addons/renderers/CSS3DRenderer.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
-import { wood, floorboards, plaster, plasticGrain, poster } from "./textures.js";
+import { plasticGrain, poster } from "./textures.js";
 
 // Screen: 1024x768 CSS px mapped onto a 0.48 m x 0.36 m opening in the CRT bezel.
 const SCREEN_W = 0.48;
@@ -43,20 +43,37 @@ export function createScene({ container, osRoot, onEnter, onExit }) {
   pmrem.dispose();
 
   // ---------- Materials ----------
+  // Photo-based PBR sets from Poly Haven (CC0). Each set is three 512px JPGs:
+  // diffuse, OpenGL normal, and an ARM map whose green channel is roughness —
+  // which is exactly the channel MeshStandardMaterial reads for roughnessMap.
+  const texLoader = new THREE.TextureLoader();
+  const loadPBR = (name, repeat) => {
+    const load = (suffix, isColor) => {
+      const t = texLoader.load(`assets/textures/${name}_${suffix}.jpg`);
+      t.wrapS = t.wrapT = THREE.RepeatWrapping;
+      t.repeat.set(repeat[0], repeat[1]);
+      t.anisotropy = 8;
+      if (isColor) t.colorSpace = THREE.SRGBColorSpace;
+      return t;
+    };
+    return { map: load("diff", true), normalMap: load("nor_gl", false), roughnessMap: load("arm", false) };
+  };
+
   const tex = {
-    desk: wood({ base: "#6a4527", seed: 7, repeat: [2, 1] }),
-    deskDark: wood({ base: "#3e2816", seed: 13, repeat: [1, 1] }),
-    floor: floorboards({ repeat: [6, 6] }),
-    wall: plaster({ repeat: [5, 2] }),
+    desk: loadPBR("american_walnut_veneer", [1.6, 0.8]),
+    deskEdge: loadPBR("american_walnut_veneer", [4, 0.4]),
+    floor: loadPBR("dark_wooden_planks", [3, 3]),
+    wall: loadPBR("grey_plaster_02", [4, 1.8]),
     plastic: plasticGrain(),
     poster: poster(),
   };
   const N = (x, y = x) => new THREE.Vector2(x, y);
   const mat = {
-    floor: new THREE.MeshStandardMaterial({ ...tex.floor, normalScale: N(0.6), envMapIntensity: 0.5 }),
-    wall: new THREE.MeshStandardMaterial({ ...tex.wall, normalScale: N(0.35), envMapIntensity: 0.4 }),
-    wood: new THREE.MeshStandardMaterial({ ...tex.desk, normalScale: N(0.35), envMapIntensity: 0.9 }),
-    woodDark: new THREE.MeshStandardMaterial({ ...tex.deskDark, normalScale: N(0.3), envMapIntensity: 0.6 }),
+    floor: new THREE.MeshStandardMaterial({ ...tex.floor, color: 0x6a6a72, normalScale: N(0.8), envMapIntensity: 0.5 }),
+    // The plaster scan is a light grey; tinted down so the room still reads as night.
+    wall: new THREE.MeshStandardMaterial({ ...tex.wall, color: 0x4a4a5c, normalScale: N(0.5), envMapIntensity: 0.4 }),
+    wood: new THREE.MeshStandardMaterial({ ...tex.desk, color: 0xc08a5a, normalScale: N(0.5), envMapIntensity: 0.9 }),
+    woodDark: new THREE.MeshStandardMaterial({ ...tex.deskEdge, color: 0x6b4a30, normalScale: N(0.4), envMapIntensity: 0.6 }),
     beige: new THREE.MeshStandardMaterial({ color: 0xcfc3a9, ...tex.plastic, normalScale: N(0.22), envMapIntensity: 1.0 }),
     beigeDark: new THREE.MeshStandardMaterial({ color: 0xb3a88f, ...tex.plastic, normalScale: N(0.22), envMapIntensity: 0.8 }),
     dark: new THREE.MeshStandardMaterial({ color: 0x24242a, roughness: 0.5, envMapIntensity: 0.8 }),

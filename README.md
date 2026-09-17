@@ -28,9 +28,10 @@ css/os.css        retro OS styling + page UI
 js/content.js     all CV text — edit this to update the résumé
 js/os.js          boot sequence, desktop icons, window manager, taskbar
 js/scene.js       3D room, camera states, screen projection
-js/textures.js    procedural wood/floor/plaster/plastic maps (albedo + normal + roughness)
+js/textures.js    procedural plastic grain and the wall print
 js/main.js        bootstrap: 3D mode or full-screen fallback
 assets/           Horn_Saerens_CV_2026.pdf
+assets/textures/  PBR texture sets (diffuse + normal + ARM), 512px JPG
 serve.py          local dev server with no-cache headers
 ```
 
@@ -45,3 +46,19 @@ as a project page at **<https://hsaerens-lgtm.github.io/Horn.os/>**.
 
 All paths in the site are relative, so it works from that subpath without changes.
 The `.nojekyll` file tells Pages to serve the files exactly as they are.
+
+## Credits
+
+Room surfaces use PBR texture scans from [Poly Haven](https://polyhaven.com/),
+released under [CC0](https://polyhaven.com/license) (public domain — no attribution
+required; credited here anyway):
+
+| Surface | Asset |
+|---|---|
+| Desk | [American Walnut Veneer](https://polyhaven.com/a/american_walnut_veneer) |
+| Floor | [Dark Wooden Planks](https://polyhaven.com/a/dark_wooden_planks) |
+| Wall | [Grey Plaster 02](https://polyhaven.com/a/grey_plaster_02) |
+
+Each set was downscaled to 512px and re-encoded (482 KB total, down from 5.4 MB at
+1K). The CRT plastic grain, the framed print and the desktop icons are generated in
+code — no third-party UI assets are redistributed here.
