@@ -10,14 +10,15 @@ No build step, no framework: plain ES modules served as static files.
 
 ## Run locally
 
-Any static server works, for example:
-
 ```bash
-python -m http.server 4321
+python serve.py 4330
 ```
 
-then open <http://localhost:4321>. Add `?fallback=1` to preview the desktop
-without the 3D scene (this is also what phones and non-WebGL browsers get).
+then open <http://localhost:4330>. `serve.py` is a plain static server that sends
+no-cache headers, so edited ES modules are actually re-fetched on reload.
+
+Add `?fallback=1` to preview the desktop without the 3D scene — this is also what
+phones and non-WebGL browsers get.
 
 ## Structure
 
@@ -27,8 +28,10 @@ css/os.css        retro OS styling + page UI
 js/content.js     all CV text — edit this to update the résumé
 js/os.js          boot sequence, desktop icons, window manager, taskbar
 js/scene.js       3D room, camera states, screen projection
+js/textures.js    procedural wood/floor/plaster/plastic maps (albedo + normal + roughness)
 js/main.js        bootstrap: 3D mode or full-screen fallback
 assets/           Horn_Saerens_CV_2026.pdf
+serve.py          local dev server with no-cache headers
 ```
 
 ## Deploy (GitHub Pages)

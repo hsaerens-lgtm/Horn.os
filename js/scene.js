@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { CSS3DRenderer, CSS3DObject } from "three/addons/renderers/CSS3DRenderer.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { wood, floorboards, plaster, plasticGrain, poster } from "./textures.js";
 
 // Screen: 1024x768 CSS px mapped onto a 0.48 m x 0.36 m opening in the CRT bezel.
@@ -33,6 +34,14 @@ export function createScene({ container, osRoot, onEnter, onExit }) {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(45, width() / height(), 0.05, 50);
 
+  // Image-based lighting: without it, plastic and metal read as flat shaded blocks.
+  // RoomEnvironment is generated in-engine, so this costs no download. Kept dim so
+  // the scene still reads as a room lit by one lamp at night.
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.5).texture;
+  scene.environmentIntensity = 0.22;
+  pmrem.dispose();
+
   // ---------- Materials ----------
   const tex = {
     desk: wood({ base: "#6a4527", seed: 7, repeat: [2, 1] }),
@@ -42,19 +51,20 @@ export function createScene({ container, osRoot, onEnter, onExit }) {
     plastic: plasticGrain(),
     poster: poster(),
   };
+  const N = (x, y = x) => new THREE.Vector2(x, y);
   const mat = {
-    floor: new THREE.MeshStandardMaterial({ map: tex.floor.map, bumpMap: tex.floor.bumpMap, bumpScale: 0.02, roughness: 0.85 }),
-    wall: new THREE.MeshStandardMaterial({ map: tex.wall.map, bumpMap: tex.wall.bumpMap, bumpScale: 0.01, roughness: 1 }),
-    wood: new THREE.MeshStandardMaterial({ map: tex.desk.map, bumpMap: tex.desk.bumpMap, bumpScale: 0.004, roughness: 0.55 }),
-    woodDark: new THREE.MeshStandardMaterial({ map: tex.deskDark.map, bumpMap: tex.deskDark.bumpMap, bumpScale: 0.003, roughness: 0.7 }),
-    beige: new THREE.MeshStandardMaterial({ color: 0xcfc3a9, roughness: 0.6, bumpMap: tex.plastic, bumpScale: 0.0015, roughnessMap: tex.plastic }),
-    beigeDark: new THREE.MeshStandardMaterial({ color: 0xb3a88f, roughness: 0.7, bumpMap: tex.plastic, bumpScale: 0.0015 }),
-    dark: new THREE.MeshStandardMaterial({ color: 0x24242a, roughness: 0.5 }),
-    keys: new THREE.MeshStandardMaterial({ color: 0xd8d0bc, roughness: 0.6 }),
-    metal: new THREE.MeshStandardMaterial({ color: 0x8a8f99, roughness: 0.35, metalness: 0.8 }),
-    lampShade: new THREE.MeshStandardMaterial({ color: 0x2f5d50, roughness: 0.5, side: THREE.DoubleSide }),
-    paper: new THREE.MeshStandardMaterial({ color: 0xf1ede2, roughness: 0.9 }),
-    mug: new THREE.MeshStandardMaterial({ color: 0xb8433a, roughness: 0.4 }),
+    floor: new THREE.MeshStandardMaterial({ ...tex.floor, normalScale: N(0.6), envMapIntensity: 0.5 }),
+    wall: new THREE.MeshStandardMaterial({ ...tex.wall, normalScale: N(0.35), envMapIntensity: 0.4 }),
+    wood: new THREE.MeshStandardMaterial({ ...tex.desk, normalScale: N(0.35), envMapIntensity: 0.9 }),
+    woodDark: new THREE.MeshStandardMaterial({ ...tex.deskDark, normalScale: N(0.3), envMapIntensity: 0.6 }),
+    beige: new THREE.MeshStandardMaterial({ color: 0xcfc3a9, ...tex.plastic, normalScale: N(0.22), envMapIntensity: 1.0 }),
+    beigeDark: new THREE.MeshStandardMaterial({ color: 0xb3a88f, ...tex.plastic, normalScale: N(0.22), envMapIntensity: 0.8 }),
+    dark: new THREE.MeshStandardMaterial({ color: 0x24242a, roughness: 0.5, envMapIntensity: 0.8 }),
+    keys: new THREE.MeshStandardMaterial({ color: 0xd8d0bc, ...tex.plastic, normalScale: N(0.15), envMapIntensity: 0.9 }),
+    metal: new THREE.MeshStandardMaterial({ color: 0x8a8f99, roughness: 0.3, metalness: 0.85, envMapIntensity: 1.6 }),
+    lampShade: new THREE.MeshStandardMaterial({ color: 0x2f5d50, roughness: 0.45, metalness: 0.3, side: THREE.DoubleSide, envMapIntensity: 1.2 }),
+    paper: new THREE.MeshStandardMaterial({ color: 0xf1ede2, roughness: 0.9, envMapIntensity: 0.6 }),
+    mug: new THREE.MeshStandardMaterial({ color: 0xb8433a, roughness: 0.25, envMapIntensity: 1.4 }),
     cutout: new THREE.MeshBasicMaterial({ color: 0x000000, blending: THREE.NoBlending, opacity: 0, transparent: true }),
   };
 
@@ -133,13 +143,18 @@ export function createScene({ container, osRoot, onEnter, onExit }) {
   bezelShape.closePath();
   const hole = new THREE.Path();
   const HOLE_Y = 0.03; // screen sits slightly above the body centre, leaving room for the badge/buttons below
-  hole.moveTo(-SCREEN_W / 2, HOLE_Y - SCREEN_H / 2);
-  hole.lineTo(SCREEN_W / 2, HOLE_Y - SCREEN_H / 2);
-  hole.lineTo(SCREEN_W / 2, HOLE_Y + SCREEN_H / 2);
-  hole.lineTo(-SCREEN_W / 2, HOLE_Y + SCREEN_H / 2);
+  // The extrude bevel rounds the opening inwards, so widen the hole by exactly the
+  // bevel size — otherwise the frame clips the OS taskbar along the bottom edge.
+  const BEVEL = 0.008;
+  const hw = SCREEN_W / 2 + BEVEL;
+  const hh = SCREEN_H / 2 + BEVEL;
+  hole.moveTo(-hw, HOLE_Y - hh);
+  hole.lineTo(hw, HOLE_Y - hh);
+  hole.lineTo(hw, HOLE_Y + hh);
+  hole.lineTo(-hw, HOLE_Y + hh);
   hole.closePath();
   bezelShape.holes.push(hole);
-  const bezel = new THREE.Mesh(new THREE.ExtrudeGeometry(bezelShape, { depth: 0.035, bevelEnabled: true, bevelSize: 0.008, bevelThickness: 0.008, bevelSegments: 2 }), mat.beige);
+  const bezel = new THREE.Mesh(new THREE.ExtrudeGeometry(bezelShape, { depth: 0.035, bevelEnabled: true, bevelSize: BEVEL, bevelThickness: BEVEL, bevelSegments: 2 }), mat.beige);
   bezel.position.set(0, BODY_Y, FRONT_Z);
   bezel.castShadow = true;
   monitor.add(bezel);
@@ -244,8 +259,14 @@ export function createScene({ container, osRoot, onEnter, onExit }) {
   lampLight.shadow.bias = -0.002;
   lamp.add(lampLight);
 
-  scene.add(new THREE.HemisphereLight(0x4a4358, 0x0a0908, 0.8));
-  const fill = new THREE.DirectionalLight(0xb0a090, 0.2);
+  // Stand-in for light bouncing off the desk onto the monitor's face, which the
+  // lamp itself never reaches — without it the hero object sits in shadow.
+  const bounce = new THREE.PointLight(0xffc38f, 0.85, 2.2, 2);
+  bounce.position.set(-0.18, DESK_Y + 0.14, 0.5);
+  scene.add(bounce);
+
+  scene.add(new THREE.HemisphereLight(0x3a3550, 0x08070a, 0.32));
+  const fill = new THREE.DirectionalLight(0x8090c0, 0.12);
   fill.position.set(2, 3, 3);
   scene.add(fill);
 
@@ -264,13 +285,13 @@ export function createScene({ container, osRoot, onEnter, onExit }) {
 
   // ---------- Camera states ----------
   const lookAt = new THREE.Vector3();
-  const idleTarget = new THREE.Vector3(0, DESK_Y + 0.22, -0.12);
+  const idleTarget = new THREE.Vector3(0, DESK_Y + 0.44, -0.12);
   const pointer = { x: 0, y: 0 };
   const idlePose = (t, out) => {
     const angle = Math.sin(t * 0.12) * 0.32 + pointer.x * 0.18;
     // Wider viewports can sit closer; portrait-ish ones need distance so the monitor stays in frame.
-    const radius = camera.aspect > 1.4 ? 2.75 : 2.75 * (1.4 / camera.aspect);
-    out.pos.set(Math.sin(angle) * radius, 1.55 + pointer.y * 0.12, Math.cos(angle) * radius - 0.12);
+    const radius = camera.aspect > 1.4 ? 2.45 : 2.45 * (1.4 / camera.aspect);
+    out.pos.set(Math.sin(angle) * radius, 1.30 + pointer.y * 0.1, Math.cos(angle) * radius - 0.12);
     out.target.copy(idleTarget);
     return out;
   };
@@ -299,6 +320,10 @@ export function createScene({ container, osRoot, onEnter, onExit }) {
 
   idlePose(0, pose);
   camera.position.copy(pose.pos);
+  // Seed the look-at vector too: it is lerped every frame, so leaving it at the
+  // origin makes the camera start aimed at the floor and swing up over the first
+  // second — very visible when the first frames are throttled.
+  lookAt.copy(pose.target);
   camera.lookAt(pose.target);
 
   const setInteractive = (on) => {
