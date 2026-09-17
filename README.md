@@ -33,8 +33,12 @@ assets/           Horn_Saerens_CV_2026.pdf
 
 ## Deploy (GitHub Pages)
 
-1. Create a public repository named `hsaerens-lgtm.github.io`.
-2. Push this folder to its `main` branch.
-3. Settings → Pages → Source: *Deploy from a branch*, branch `main`, folder `/ (root)`.
+The repository is <https://github.com/hsaerens-lgtm/Horn.os>, so the site is published
+as a project page at **<https://hsaerens-lgtm.github.io/Horn.os/>**.
 
+1. Push this folder to the `main` branch.
+2. Settings -> Pages -> Source: *Deploy from a branch*, branch `main`, folder `/ (root)`.
+3. Wait a minute, then open the URL above.
+
+All paths in the site are relative, so it works from that subpath without changes.
 The `.nojekyll` file tells Pages to serve the files exactly as they are.
