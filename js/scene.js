@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { CSS3DRenderer, CSS3DObject } from "three/addons/renderers/CSS3DRenderer.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { plasticGrain, poster } from "./textures.js";
 
 // Screen: 1024x768 CSS px mapped onto a 0.48 m x 0.36 m opening in the CRT bezel.
@@ -38,7 +39,7 @@ export function createScene({ container, osRoot, onEnter, onExit }) {
   // RoomEnvironment is generated in-engine, so this costs no download. Kept dim so
   // the scene still reads as a room lit by one lamp at night.
   const pmrem = new THREE.PMREMGenerator(renderer);
-  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.5).texture;
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
   scene.environmentIntensity = 0.22;
   pmrem.dispose();
 
@@ -122,6 +123,38 @@ export function createScene({ container, osRoot, onEnter, onExit }) {
   for (const [x, z] of [[-1.02, -0.38], [1.02, -0.38], [-1.02, 0.38], [1.02, 0.38]]) {
     box(0.06, DESK_Y - 0.05, 0.06, mat.woodDark, x, (DESK_Y - 0.05) / 2, z);
   }
+
+  // ---------- Furniture (CC0 glTF models, loaded asynchronously) ----------
+  // The room renders immediately and each model appears when it arrives; a failed
+  // load is logged and skipped rather than breaking the scene.
+  const gltfLoader = new GLTFLoader();
+  const addModel = (name, { position, rotationY = 0, scale = 1, tint = null }) =>
+    gltfLoader
+      .loadAsync(`assets/models/${name}/${name}.gltf`)
+      .then(({ scene: obj }) => {
+        obj.position.fromArray(position);
+        obj.rotation.y = rotationY;
+        obj.scale.setScalar(scale);
+        obj.traverse((n) => {
+          if (!n.isMesh) return;
+          n.castShadow = true;
+          n.receiveShadow = true;
+          if (!n.material) return;
+          n.material.envMapIntensity = 0.7;
+          // Scans are lit for a bright studio; tint them down to match a night room.
+          if (tint) n.material.color.multiplyScalar(tint);
+        });
+        scene.add(obj);
+        return obj;
+      })
+      .catch((err) => console.warn(`model "${name}" not loaded:`, err));
+
+  // Placements follow each model's real dimensions: the shelf is a 2.1 m bookcase
+  // that stands on the floor, and the plant is a 27 cm desk plant, not a floor one.
+  // Nothing sits between the camera and the monitor, which stays the hero object.
+  addModel("Shelf_01", { position: [-2.05, 0, -1.02], rotationY: 0.12, tint: 0.42 });
+  addModel("SchoolChair_01", { position: [1.34, 0, 0.62], rotationY: -1.5, tint: 0.8 });
+  addModel("potted_plant_04", { position: [-0.78, DESK_Y, -0.2], rotationY: -0.6 });
 
   // ---------- Monitor (CRT) ----------
   const monitor = new THREE.Group();

@@ -49,9 +49,11 @@ The `.nojekyll` file tells Pages to serve the files exactly as they are.
 
 ## Credits
 
-Room surfaces use PBR texture scans from [Poly Haven](https://polyhaven.com/),
-released under [CC0](https://polyhaven.com/license) (public domain — no attribution
-required; credited here anyway):
+All third-party assets are from [Poly Haven](https://polyhaven.com/) under
+[CC0](https://polyhaven.com/license) — public domain, commercial use allowed, no
+attribution required. Credited here anyway.
+
+Texture scans (diffuse + OpenGL normal + ARM):
 
 | Surface | Asset |
 |---|---|
@@ -59,6 +61,17 @@ required; credited here anyway):
 | Floor | [Dark Wooden Planks](https://polyhaven.com/a/dark_wooden_planks) |
 | Wall | [Grey Plaster 02](https://polyhaven.com/a/grey_plaster_02) |
 
-Each set was downscaled to 512px and re-encoded (482 KB total, down from 5.4 MB at
-1K). The CRT plastic grain, the framed print and the desktop icons are generated in
-code — no third-party UI assets are redistributed here.
+Models (glTF):
+
+| Prop | Asset |
+|---|---|
+| Bookcase | [Shelf 01](https://polyhaven.com/a/Shelf_01) |
+| Chair | [School Chair 01](https://polyhaven.com/a/SchoolChair_01) |
+| Desk plant | [Potted Plant 04](https://polyhaven.com/a/potted_plant_04) |
+
+Every texture was downscaled to 512px and re-encoded, which is what keeps the whole
+site near 2 MB rather than 15 MB at the original 1K. Models load asynchronously and
+only in 3D mode, so the fallback desktop downloads none of them.
+
+The CRT plastic grain, the framed print and the desktop icons are generated in code
+— no third-party UI assets are redistributed here.
