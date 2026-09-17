@@ -1,7 +1,13 @@
+// The CV, written as the Dungeon Master's character sheet.
+// Every fact here is real; only the framing is a game sheet.
+
 export const content = {
   name: "Horn Saerens",
-  title: "AI Solutions Consultant",
-  tagline: "AI Agents, Integrations & Adoption",
+  charClass: "AI Solutions Consultant",
+  level: 4,
+  background: "Sales Operations",
+  alignment: "Pragmatic Good",
+  role: "Dungeon Master",
   location: "Amsterdam",
   contact: {
     email: "saerenshorn@gmail.com",
@@ -11,103 +17,188 @@ export const content = {
   },
   resumePdf: "assets/Horn_Saerens_CV_2026.pdf",
 
-  profile:
-    "I turn business problems into AI solutions that get deployed and actually used. " +
-    "Promoted through four roles in four years at Spotzer Digital — Sales → Team Lead → Sales Operations → AI Solutions Consultant — " +
-    "by building the solutions the business needed at each step. Hybrid profile: business understanding, end-to-end technical ownership " +
-    "(architecture, development, integration, deployment), and a track record of adoption by non-technical teams.",
+  tagline: "I run the table: I turn business problems into AI solutions that get deployed and actually used.",
 
-  skills: [
-    { label: "AI agents & integrations", items: "Agent design, MCP servers (design & deployment), REST APIs, n8n, LibreChat, Codex, Claude Code" },
-    { label: "LLMs & model strategy", items: "Frontier models (Claude, GPT, Gemini), local LLMs (LM Studio, vLLM, Ollama), benchmarking & selection per use case, RAG, guardrails & hallucination control" },
-    { label: "Deployment & self-hosting", items: "Docker & Docker Compose, CI (GitHub Actions), Caddy, self-hosted model serving" },
-    { label: "Engineering", items: "TypeScript, React / Vite, Node.js / Express, Python, Git, Supabase, MongoDB" },
-    { label: "Business tools", items: "Salesforce, Google Workspace, Power BI, Tableau" },
+  blurb:
+    "Four levels in four years at Spotzer Digital — Sales, Team Lead, Sales Operations, " +
+    "AI Solutions Consultant — each one earned by building the solutions the business needed. " +
+    "I sit behind the screen: I set the scope, write the rules, hand the agents their tools, " +
+    "and make sure what happens at the table is something the business can actually use.",
+
+  // Ability scores are a framing device, not a measurement. Each one names a real
+  // strength and says plainly what it means outside the metaphor.
+  abilities: [
+    { key: "INT", label: "Intelligence", score: 17, mod: "+3", note: "Architecture, integration, systems design" },
+    { key: "WIS", label: "Wisdom", score: 16, mod: "+3", note: "Model selection — and knowing when not to use AI" },
+    { key: "CHA", label: "Charisma", score: 16, mod: "+3", note: "Stakeholder translation, enablement, adoption" },
+    { key: "CON", label: "Constitution", score: 15, mod: "+2", note: "Shipping to production and keeping it running" },
+    { key: "DEX", label: "Dexterity", score: 14, mod: "+2", note: "Picking up an unfamiliar stack fast" },
+    { key: "STR", label: "Strength", score: 11, mod: "+0", note: "Carrying the laptop to the meeting room" },
   ],
 
-  company: { name: "Spotzer Digital, Amsterdam", note: "promoted four times in four years" },
-  experience: [
-    {
-      role: "AI Solutions Consultant",
-      dates: "Aug 2025 – Present",
-      bullets: [
-        "Own the full delivery cycle of AI solutions across sales, support, production and knowledge access: discovery, architecture, development, integration, deployment and enablement.",
-        "Design AI agents connected to business tools and data (CRM, Google Workspace, support systems), with grounded outputs and human validation embedded in every flow.",
-        "Benchmark and select models per use case: frontier APIs where capability drives value, self-hosted local models where customer data must stay in-house.",
-        "Lead company-wide AI enablement on prompting, data security, hallucination control and agent creation.",
-      ],
-    },
-    {
-      role: "Sales Operations Manager",
-      dates: "Jul 2024 – Aug 2025",
-      bullets: [
-        "Owned forecasting, market performance and strategy analysis; introduced the company's first AI-assisted processes into sales operations — the bridge to the AI role.",
-      ],
-    },
-    {
-      role: "Team Leader Sales",
-      dates: "Sep 2023 – Jul 2024",
-      bullets: ["Led and coached a sales team and streamlined sales-to-delivery handovers; CEO Award, Sep 2023."],
-    },
-    {
-      role: "Sales Market Leader — FR Market",
-      dates: "Apr 2022 – Oct 2023",
-      bullets: ["Owned French-market sales through direct client engagement and tailored offers."],
-    },
+  proficiencies: [
+    { name: "Agent design & MCP integration", rank: "Expertise" },
+    { name: "LLM selection & benchmarking", rank: "Expertise" },
+    { name: "Business process analysis", rank: "Expertise" },
+    { name: "Self-hosted deployment (Docker)", rank: "Proficient" },
+    { name: "Full-stack delivery (TypeScript, React, Node)", rank: "Proficient" },
+    { name: "Python, Git, CI", rank: "Proficient" },
+    { name: "RAG, guardrails & hallucination control", rank: "Proficient" },
+    { name: "Salesforce, Google Workspace, Power BI", rank: "Proficient" },
   ],
 
-  projects: [
-    {
-      id: "freescout",
-      name: "FreeScout AI Copilot",
-      file: "freescout_copilot.exe",
-      status: "internal tool · self-hosted · sole designer & developer",
-      problem: "Support agents juggled tickets, call transcripts and AI tools across separate systems, with customer data at risk of third-party exposure.",
-      built: "Full-stack workspace (React / TypeScript, Node / Express) unifying FreeScout tickets and call transcriptions with contextual AI search and draft replies — Google multi-user auth, per-operator isolation, strict customer-context isolation before any model call, automated tests and CI.",
-      result: "Self-hosted via Docker / Caddy, designed to run on local models so customer data never leaves the infrastructure; agents work in one workspace with human review before every send.",
-    },
+  inventory: [
+    { slot: "Frontier models", items: "Claude, GPT, Gemini" },
+    { slot: "Local models", items: "LM Studio, vLLM, Ollama" },
+    { slot: "Integration", items: "MCP servers, REST APIs, n8n" },
+    { slot: "Deployment", items: "Docker & Compose, GitHub Actions, Caddy" },
+    { slot: "Engineering", items: "TypeScript, React / Vite, Node / Express, Python, Supabase, MongoDB" },
+  ],
+
+  // The AI agents that sit at this table — all real projects.
+  party: [
     {
       id: "perseus",
-      name: "Perseus AI Platform",
-      file: "perseus_platform.exe",
-      status: "internal platform · in production · LibreChat-based",
-      problem: "Give non-technical teams a safe, governed ChatGPT-like environment connected to company tools, instead of scattered personal AI accounts.",
-      built: "Rebuilt LibreChat from source into an internal platform: full container stack with RAG, local model endpoint, MCP integrations (Google Workspace, Atlassian, Gmail), an agent catalogue with search and access rules, resilient duplicate detection, and guided agent creation for non-technical users.",
-      result: "Business teams create and reuse governed agents on one platform, with privacy and long-term scalability built in.",
+      name: "PERSEUS",
+      role: "The Platform",
+      colour: "#4fc3f7",
+      blurb:
+        "Internal AI platform, in production. LibreChat rebuilt from source: container stack with RAG, " +
+        "a local model endpoint, MCP integrations for Google Workspace, Atlassian and Gmail, and an agent " +
+        "catalogue with access rules and guided creation for non-technical users.",
+    },
+    {
+      id: "hermes",
+      name: "HERMES",
+      role: "The Messenger",
+      colour: "#ffb74d",
+      blurb:
+        "Local terminal agent. Configurable across several model providers, running on the machine rather " +
+        "than in someone else's cloud — the scout that goes out and comes back with the answer.",
+    },
+    {
+      id: "odysseus",
+      name: "ODYSSEUS",
+      role: "The Navigator",
+      colour: "#81c784",
+      blurb:
+        "Self-hosted, local-first AI workspace under evaluation: one interface for chat, agents, deep " +
+        "research, model comparison, documents, memory and tasks, all on local hardware.",
+    },
+    {
+      id: "codex",
+      name: "CODEX",
+      role: "The Artificer",
+      colour: "#ba68c8",
+      blurb:
+        "Coding agent. Builds the tools the rest of the party uses — the one I hand a spec to when " +
+        "something needs to exist by Friday.",
+    },
+  ],
+
+  // Experience, as the campaign so far.
+  campaign: {
+    company: "Spotzer Digital, Amsterdam",
+    note: "four levels in four years",
+    entries: [
+      {
+        role: "AI Solutions Consultant",
+        dates: "Aug 2025 – Present",
+        level: "Level 4",
+        bullets: [
+          "Own the full delivery cycle of AI solutions across sales, support, production and knowledge access: discovery, architecture, development, integration, deployment and enablement.",
+          "Design AI agents connected to business tools and data, with grounded outputs and human validation embedded in every flow.",
+          "Benchmark and select models per use case: frontier APIs where capability drives value, self-hosted local models where customer data must stay in-house.",
+          "Lead company-wide AI enablement on prompting, data security, hallucination control and agent creation.",
+        ],
+      },
+      {
+        role: "Sales Operations Manager",
+        dates: "Jul 2024 – Aug 2025",
+        level: "Level 3",
+        bullets: [
+          "Owned forecasting, market performance and strategy analysis; introduced the company's first AI-assisted processes into sales operations — the bridge to the AI role.",
+        ],
+      },
+      {
+        role: "Team Leader Sales",
+        dates: "Sep 2023 – Jul 2024",
+        level: "Level 2",
+        bullets: ["Led and coached a sales team and streamlined sales-to-delivery handovers."],
+      },
+      {
+        role: "Sales Market Leader — FR Market",
+        dates: "Apr 2022 – Oct 2023",
+        level: "Level 1",
+        bullets: ["Owned French-market sales through direct client engagement and tailored offers."],
+      },
+    ],
+  },
+
+  // Projects, as completed quests.
+  quests: [
+    {
+      id: "freescout",
+      name: "The Support Workspace",
+      real: "FreeScout AI Copilot",
+      status: "Internal tool · self-hosted · sole designer & developer",
+      problem:
+        "Support agents juggled tickets, call transcripts and AI tools across separate systems, with customer data at risk of third-party exposure.",
+      built:
+        "Full-stack workspace (React / TypeScript, Node / Express) unifying FreeScout tickets and call transcriptions with contextual AI search and draft replies — Google multi-user auth, per-operator isolation, strict customer-context isolation before any model call, automated tests and CI.",
+      result:
+        "Self-hosted via Docker / Caddy, designed to run on local models so customer data never leaves the infrastructure; agents work in one workspace with human review before every send.",
+    },
+    {
+      id: "perseus-quest",
+      name: "Raising the Platform",
+      real: "Perseus AI Platform",
+      status: "Internal platform · in production",
+      problem:
+        "Give non-technical teams a safe, governed ChatGPT-like environment connected to company tools, instead of scattered personal AI accounts.",
+      built:
+        "Rebuilt LibreChat from source: container stack with RAG, local model endpoint, MCP integrations (Google Workspace, Atlassian, Gmail), an agent catalogue with search and access rules, resilient duplicate detection, and guided agent creation.",
+      result: "Business teams create and reuse governed agents on one platform, with privacy and scalability built in.",
     },
     {
       id: "aiday",
-      name: "AI Day Workshop",
-      file: "ai_day_workshop.ppt",
-      status: "company-wide enablement · delivered",
-      summary: "Designed and delivered a company-wide workshop — prompting, data security, hallucinations, RAG and hands-on agent creation — giving business teams shared vocabulary and practical guardrails.",
+      name: "Teaching the Village",
+      real: "AI Day Workshop",
+      status: "Company-wide enablement · delivered",
+      summary:
+        "Designed and delivered a company-wide workshop — prompting, data security, hallucinations, RAG and hands-on agent creation — giving business teams shared vocabulary and practical guardrails.",
     },
     {
       id: "docflow",
-      name: "Docflow",
-      file: "docflow_portal.exe",
-      status: "document governance portal · POC",
-      summary: "Designed a portal with Google Drive as single source of truth: document admission with taxonomy and OCR, ownership tracking, and structured update sessions producing traceable annotations — architected for 1,000–10,000 documents.",
+      name: "The Great Library",
+      real: "Docflow",
+      status: "Document governance portal · POC",
+      summary:
+        "Designed a portal with Google Drive as single source of truth: document admission with taxonomy and OCR, ownership tracking, and structured update sessions producing traceable annotations — architected for 1,000–10,000 documents.",
     },
     {
       id: "conversation",
-      name: "Conversation Intelligence Platform",
-      file: "call_intelligence.exe",
-      status: "internal tool · contributor",
-      summary: "Contributed to a local transcription platform with call search, AI chat, translation, speaker separation and multilingual export — customer conversations become searchable and reusable across teams.",
+      name: "Listening to the Realm",
+      real: "Conversation Intelligence Platform",
+      status: "Internal tool · contributor",
+      summary:
+        "Contributed to a local transcription platform with call search, AI chat, translation, speaker separation and multilingual export — customer conversations become searchable and reusable across teams.",
     },
     {
       id: "salesai",
-      name: "Sales AI Workflows",
-      file: "sales_workflows.bat",
-      status: "internal tools · designer",
-      summary: "Designed AI workflows for lead enrichment (deduplication, profiling, product matching, scoring) and call-quality coaching with reusable scoring templates for structured, repeatable coaching.",
+      name: "Sharpening the Blade",
+      real: "Sales AI Workflows",
+      status: "Internal tools · designer",
+      summary:
+        "Designed AI workflows for lead enrichment (deduplication, profiling, product matching, scoring) and call-quality coaching with reusable scoring templates.",
     },
   ],
 
-  education: [
-    "Self-taught in AI engineering and software delivery — the projects on this desktop are the proof of work.",
-    "Architecture studies, ENSAG, Grenoble — 2013–2015.",
+  feats: [
+    "CEO Award, Spotzer Digital — September 2023",
+    "Self-taught in AI engineering and software delivery; the quests above are the proof of work",
+    "Architecture studies, ENSAG, Grenoble — 2013–2015",
   ],
+
   languages: "French (native) · English (fluent)",
 };

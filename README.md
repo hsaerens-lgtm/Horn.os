@@ -1,11 +1,16 @@
-# Horn Saerens — Interactive CV
+# Horn Saerens — the Dungeon Master's sheet
 
-A 3D desk with a retro CRT computer. Click the screen to zoom in; the computer boots
-a Windows 95/98-style desktop whose windows contain my CV (About, Experience,
-Projects, Skills, Contact, Resume.pdf).
+A 3D table set for a D&D session. I am the DM; the players are the AI agents I
+actually run — **Perseus**, **Hermes**, **Odysseus** and **Codex**, each at its own
+terminal across the table. Click the character sheet lying beside the DM screen and
+the camera drops overhead: the CV *is* the DM's character sheet.
+
+The metaphor is the job. An AI Solutions Consultant sets the scope, writes the rules,
+hands the agents their tools, and makes sure what happens at the table is something
+the business can actually use.
 
 Built with [Three.js](https://threejs.org/) — `WebGLRenderer` for the room and
-`CSS3DRenderer` to project a real, clickable HTML desktop onto the monitor.
+`CSS3DRenderer` to lay a real, scrollable HTML sheet flat on the table.
 No build step, no framework: plain ES modules served as static files.
 
 ## Run locally
@@ -17,18 +22,18 @@ python serve.py 4330
 then open <http://localhost:4330>. `serve.py` is a plain static server that sends
 no-cache headers, so edited ES modules are actually re-fetched on reload.
 
-Add `?fallback=1` to preview the desktop without the 3D scene — this is also what
-phones and non-WebGL browsers get.
+Add `?fallback=1` to read the sheet without the 3D table — this is also what phones
+and non-WebGL browsers get.
 
 ## Structure
 
 ```
 index.html        page shell, importmap for Three.js (jsDelivr CDN)
-css/os.css        retro OS styling + page UI
-js/content.js     all CV text — edit this to update the résumé
-js/os.js          boot sequence, desktop icons, window manager, taskbar
-js/scene.js       3D room, camera states, screen projection
-js/textures.js    procedural plastic grain and the wall print
+css/sheet.css     parchment character sheet + page UI
+js/content.js     all CV text, as sheet data — edit this to update the résumé
+js/sheet.js       renders the character sheet
+js/scene.js       3D table, camera states, sheet projection
+js/textures.js    procedural battle map, parchment and agent terminals
 js/main.js        bootstrap: 3D mode or full-screen fallback
 assets/           Horn_Saerens_CV_2026.pdf
 assets/textures/  PBR texture sets (diffuse + normal + ARM), 512px JPG
@@ -66,17 +71,16 @@ Models (glTF):
 | Prop | Asset |
 |---|---|
 | Armchair | [Modern Arm Chair 01](https://polyhaven.com/a/modern_arm_chair_01) |
-| Desk plant | [Potted Plant 04](https://polyhaven.com/a/potted_plant_04) |
+| Table plant | [Potted Plant 04](https://polyhaven.com/a/potted_plant_04) |
 | Alarm clock | [Alarm Clock 01](https://polyhaven.com/a/alarm_clock_01) |
 
-Art direction is deliberately *modern retro*: clean contemporary surfaces —
-polished herringbone, smooth concrete, walnut — around a period-correct CRT, rather
-than a weathered or nostalgic room. A teal bias light behind the monitor ties the
-room to the desktop palette.
+Art direction is a modern room, not a fantasy tavern: polished herringbone, smooth
+concrete and walnut, lit by one pendant lamp over the table. The dice, the battle
+map, the DM screen and the four agent terminals are generated in code — icosahedron,
+dodecahedron and the rest come straight out of Three.js.
 
 Every texture is downscaled to 512px and re-encoded, which keeps the whole site near
 2 MB rather than 15 MB at the original 1K. Models load asynchronously and only in 3D
 mode, so the fallback desktop downloads none of them.
 
-The CRT plastic grain, the framed print and the desktop icons are generated in code
-— no third-party UI assets are redistributed here.
+No third-party UI assets are redistributed here.

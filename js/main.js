@@ -1,7 +1,7 @@
 import { content } from "./content.js";
-import { createOS } from "./os.js";
+import { createSheet } from "./sheet.js";
 
-const root = document.getElementById("os-root");
+const root = document.getElementById("sheet-root");
 const loader = document.getElementById("loader");
 const hint = document.querySelector(".hint");
 const back = document.querySelector(".back");
@@ -18,9 +18,8 @@ function supportsWebGL() {
 
 function startFallback(reason) {
   document.body.classList.add("fallback");
-  const os = createOS(root, content, { onBack: null });
+  createSheet(root, content);
   loader.classList.add("hidden");
-  os.boot();
   if (reason) {
     const n = document.createElement("div");
     n.className = "notice";
@@ -33,18 +32,19 @@ async function start3D() {
   const { createScene } = await import("./scene.js");
   const scene = createScene({
     container: document.getElementById("scene"),
-    osRoot: root,
+    sheetRoot: root,
+    agents: content.party,
     onEnter() {
       hint.classList.add("hidden");
       back.classList.remove("hidden");
-      os.boot();
+      sheet.scrollTop();
     },
     onExit() {
       back.classList.add("hidden");
       hint.classList.remove("hidden");
     },
   });
-  const os = createOS(root, content, { onBack: () => scene.exit() });
+  const sheet = createSheet(root, content);
   hint.addEventListener("click", () => scene.enter());
   back.addEventListener("click", () => scene.exit());
   loader.classList.add("hidden");
@@ -56,5 +56,5 @@ const wantFallback = params.has("fallback") || window.innerWidth < 900 || !suppo
 if (wantFallback) startFallback();
 else start3D().catch((err) => {
   console.error("3D mode failed, using fallback:", err);
-  startFallback("3D scene unavailable — showing the desktop directly.");
+  startFallback("3D table unavailable — showing the character sheet directly.");
 });

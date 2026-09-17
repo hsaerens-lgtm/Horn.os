@@ -2,16 +2,17 @@ import * as THREE from "three";
 import { CSS3DRenderer, CSS3DObject } from "three/addons/renderers/CSS3DRenderer.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { plasticGrain, poster } from "./textures.js";
+import { plasticGrain, parchment, battleMap, agentScreen } from "./textures.js";
 
-// Screen: 1024x768 CSS px mapped onto a 0.48 m x 0.36 m opening in the CRT bezel.
-const SCREEN_W = 0.48;
-const SCREEN_H = 0.36;
-const SCREEN_SCALE = SCREEN_W / 1024;
+// The sheet is 860x1180 CSS px, laid flat on the table at this physical width.
+const SHEET_W = 0.34;
+const SHEET_SCALE = SHEET_W / 860;
+const SHEET_H = 1180 * SHEET_SCALE;
 
+const TABLE_Y = 0.76;
 const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
-export function createScene({ container, osRoot, onEnter, onExit }) {
+export function createScene({ container, sheetRoot, agents, onEnter, onExit }) {
   const width = () => container.clientWidth;
   const height = () => container.clientHeight;
 
@@ -35,18 +36,12 @@ export function createScene({ container, osRoot, onEnter, onExit }) {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(45, width() / height(), 0.05, 50);
 
-  // Image-based lighting: without it, plastic and metal read as flat shaded blocks.
-  // RoomEnvironment is generated in-engine, so this costs no download. Kept dim so
-  // the scene still reads as a room lit by one lamp at night.
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-  scene.environmentIntensity = 0.22;
+  scene.environmentIntensity = 0.24;
   pmrem.dispose();
 
   // ---------- Materials ----------
-  // Photo-based PBR sets from Poly Haven (CC0). Each set is three 512px JPGs:
-  // diffuse, OpenGL normal, and an ARM map whose green channel is roughness —
-  // which is exactly the channel MeshStandardMaterial reads for roughnessMap.
   const texLoader = new THREE.TextureLoader();
   const loadPBR = (name, repeat) => {
     const load = (suffix, isColor) => {
@@ -61,29 +56,27 @@ export function createScene({ container, osRoot, onEnter, onExit }) {
   };
 
   const tex = {
-    desk: loadPBR("american_walnut_veneer", [1.6, 0.8]),
-    deskEdge: loadPBR("american_walnut_veneer", [4, 0.4]),
+    table: loadPBR("american_walnut_veneer", [1.4, 0.9]),
+    tableEdge: loadPBR("american_walnut_veneer", [4, 0.4]),
     floor: loadPBR("herringbone_parquet", [2.2, 2.2]),
     wall: loadPBR("concrete_wall_008", [3, 1.4]),
     plastic: plasticGrain(),
-    poster: poster(),
+    parchment: parchment(),
+    map: battleMap(),
   };
+
   const N = (x, y = x) => new THREE.Vector2(x, y);
   const mat = {
-    // Polished herringbone: low normal relief, and glossy enough to catch the lamp.
     floor: new THREE.MeshStandardMaterial({ ...tex.floor, color: 0x8a7258, normalScale: N(0.35), roughness: 0.55, envMapIntensity: 0.7 }),
-    // Smooth concrete tinted to a deep blue-grey so the room reads modern, not derelict.
-    wall: new THREE.MeshStandardMaterial({ ...tex.wall, color: 0x70778c, normalScale: N(0.3), envMapIntensity: 0.5 }),
-    wood: new THREE.MeshStandardMaterial({ ...tex.desk, color: 0xc08a5a, normalScale: N(0.5), envMapIntensity: 0.9 }),
-    woodDark: new THREE.MeshStandardMaterial({ ...tex.deskEdge, color: 0x6b4a30, normalScale: N(0.4), envMapIntensity: 0.6 }),
-    beige: new THREE.MeshStandardMaterial({ color: 0xcfc3a9, ...tex.plastic, normalScale: N(0.22), envMapIntensity: 1.0 }),
-    beigeDark: new THREE.MeshStandardMaterial({ color: 0xb3a88f, ...tex.plastic, normalScale: N(0.22), envMapIntensity: 0.8 }),
-    dark: new THREE.MeshStandardMaterial({ color: 0x24242a, roughness: 0.5, envMapIntensity: 0.8 }),
-    keys: new THREE.MeshStandardMaterial({ color: 0xd8d0bc, ...tex.plastic, normalScale: N(0.15), envMapIntensity: 0.9 }),
+    wall: new THREE.MeshStandardMaterial({ ...tex.wall, color: 0x6a7186, normalScale: N(0.3), envMapIntensity: 0.5 }),
+    wood: new THREE.MeshStandardMaterial({ ...tex.table, color: 0xb8855a, normalScale: N(0.5), envMapIntensity: 0.9 }),
+    woodDark: new THREE.MeshStandardMaterial({ ...tex.tableEdge, color: 0x6b4a30, normalScale: N(0.4), envMapIntensity: 0.6 }),
+    parchment: new THREE.MeshStandardMaterial({ ...tex.parchment, normalScale: N(0.4), envMapIntensity: 0.5, side: THREE.DoubleSide }),
+    map: new THREE.MeshStandardMaterial({ ...tex.map, normalScale: N(0.25), envMapIntensity: 0.4 }),
+    dice: new THREE.MeshStandardMaterial({ color: 0xc8342a, roughness: 0.22, metalness: 0.1, envMapIntensity: 1.5 }),
+    dicePale: new THREE.MeshStandardMaterial({ color: 0xe8dcc0, roughness: 0.3, envMapIntensity: 1.2 }),
     metal: new THREE.MeshStandardMaterial({ color: 0x8a8f99, roughness: 0.3, metalness: 0.85, envMapIntensity: 1.6 }),
-    lampShade: new THREE.MeshStandardMaterial({ color: 0x2f5d50, roughness: 0.45, metalness: 0.3, side: THREE.DoubleSide, envMapIntensity: 1.2 }),
-    paper: new THREE.MeshStandardMaterial({ color: 0xf1ede2, roughness: 0.9, envMapIntensity: 0.6 }),
-    mug: new THREE.MeshStandardMaterial({ color: 0xb8433a, roughness: 0.25, envMapIntensity: 1.4 }),
+    dark: new THREE.MeshStandardMaterial({ color: 0x1c1f26, roughness: 0.45, envMapIntensity: 0.9 }),
     cutout: new THREE.MeshBasicMaterial({ color: 0x000000, blending: THREE.NoBlending, opacity: 0, transparent: true }),
   };
 
@@ -97,37 +90,159 @@ export function createScene({ container, osRoot, onEnter, onExit }) {
   };
 
   // ---------- Room ----------
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(12, 12), mat.floor);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(14, 14), mat.floor);
   floor.rotation.x = -Math.PI / 2;
   floor.receiveShadow = true;
   scene.add(floor);
 
-  const wall = new THREE.Mesh(new THREE.PlaneGeometry(12, 5), mat.wall);
-  wall.position.set(0, 2.5, -1.3);
+  const wall = new THREE.Mesh(new THREE.PlaneGeometry(14, 5), mat.wall);
+  wall.position.set(0, 2.5, -2.1);
   wall.receiveShadow = true;
   scene.add(wall);
+  box(14, 0.1, 0.02, mat.woodDark, 0, 0.05, -2.09, { cast: false });
 
-  // Skirting board and a framed print so the back wall isn't a flat void.
-  box(12, 0.1, 0.02, mat.woodDark, 0, 0.05, -1.29, { cast: false });
-  const frame = new THREE.Mesh(new THREE.BoxGeometry(0.66, 0.66, 0.03), mat.woodDark);
-  frame.position.set(0.95, 1.75, -1.28);
-  frame.castShadow = true;
-  scene.add(frame);
-  const print = new THREE.Mesh(new THREE.PlaneGeometry(0.58, 0.58), new THREE.MeshStandardMaterial({ map: tex.poster, roughness: 0.9 }));
-  print.position.set(0.95, 1.75, -1.26);
-  scene.add(print);
-
-  // ---------- Desk ----------
-  const DESK_Y = 0.75;
-  box(2.2, 0.05, 0.9, mat.wood, 0, DESK_Y - 0.025, 0);
-  box(2.2, 0.08, 0.04, mat.woodDark, 0, DESK_Y - 0.09, 0.43);
-  for (const [x, z] of [[-1.02, -0.38], [1.02, -0.38], [-1.02, 0.38], [1.02, 0.38]]) {
-    box(0.06, DESK_Y - 0.05, 0.06, mat.woodDark, x, (DESK_Y - 0.05) / 2, z);
+  // ---------- Table ----------
+  const TABLE_W = 2.1;
+  const TABLE_D = 1.35;
+  box(TABLE_W, 0.05, TABLE_D, mat.wood, 0, TABLE_Y - 0.025, 0);
+  box(TABLE_W + 0.04, 0.05, 0.04, mat.woodDark, 0, TABLE_Y - 0.06, TABLE_D / 2);
+  box(TABLE_W + 0.04, 0.05, 0.04, mat.woodDark, 0, TABLE_Y - 0.06, -TABLE_D / 2);
+  for (const [x, z] of [[-0.94, -0.56], [0.94, -0.56], [-0.94, 0.56], [0.94, 0.56]]) {
+    box(0.08, TABLE_Y - 0.05, 0.08, mat.woodDark, x, (TABLE_Y - 0.05) / 2, z);
   }
 
-  // ---------- Furniture (CC0 glTF models, loaded asynchronously) ----------
-  // The room renders immediately and each model appears when it arrives; a failed
-  // load is logged and skipped rather than breaking the scene.
+  // ---------- Battle map ----------
+  const mapMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.92, 0.72), mat.map);
+  mapMesh.rotation.x = -Math.PI / 2;
+  mapMesh.position.set(0.12, TABLE_Y + 0.002, -0.08);
+  mapMesh.receiveShadow = true;
+  scene.add(mapMesh);
+
+  // ---------- DM screen: three parchment panels, hinged, facing the players ----------
+  const dmScreen = new THREE.Group();
+  dmScreen.position.set(-0.66, TABLE_Y, -0.02);
+  scene.add(dmScreen);
+  const panel = (w, x, rotY) => {
+    const p = new THREE.Mesh(new THREE.BoxGeometry(w, 0.235, 0.008), mat.parchment);
+    p.position.set(x, 0.118, 0);
+    p.rotation.y = rotY;
+    p.castShadow = true;
+    p.receiveShadow = true;
+    dmScreen.add(p);
+    return p;
+  };
+  panel(0.26, -0.24, 0.5);
+  panel(0.3, 0, 0);
+  panel(0.26, 0.24, -0.5);
+
+  // ---------- Character sheet, lying flat in front of the DM ----------
+  const SHEET_POS = new THREE.Vector3(-0.3, TABLE_Y + 0.004, 0.36);
+  const sheetObject = new CSS3DObject(sheetRoot);
+  sheetObject.scale.setScalar(SHEET_SCALE);
+  sheetObject.rotation.x = -Math.PI / 2;
+  sheetObject.position.copy(SHEET_POS);
+  scene.add(sheetObject);
+
+  const sheetMesh = new THREE.Mesh(new THREE.PlaneGeometry(SHEET_W, SHEET_H), mat.cutout);
+  sheetMesh.rotation.x = -Math.PI / 2;
+  sheetMesh.position.copy(SHEET_POS);
+  scene.add(sheetMesh);
+
+  // A paper edge under the sheet so it reads as a physical page on the table.
+  const sheetBack = new THREE.Mesh(
+    new THREE.PlaneGeometry(SHEET_W + 0.012, SHEET_H + 0.012),
+    new THREE.MeshStandardMaterial({ color: 0xd9cdb2, roughness: 0.9, envMapIntensity: 0.4 })
+  );
+  sheetBack.rotation.x = -Math.PI / 2;
+  sheetBack.position.set(SHEET_POS.x, TABLE_Y + 0.0015, SHEET_POS.z);
+  sheetBack.receiveShadow = true;
+  scene.add(sheetBack);
+
+  // ---------- Dice ----------
+  const diceSpecs = [
+    [new THREE.IcosahedronGeometry(0.026), mat.dice, 0.06, 0.3],
+    [new THREE.DodecahedronGeometry(0.022), mat.dicePale, 0.13, 0.42],
+    [new THREE.OctahedronGeometry(0.02), mat.dice, -0.02, 0.46],
+    [new THREE.TetrahedronGeometry(0.022), mat.dicePale, 0.1, 0.19],
+    [new THREE.BoxGeometry(0.03, 0.03, 0.03), mat.dice, 0.19, 0.3],
+    [new THREE.BoxGeometry(0.028, 0.028, 0.028), mat.dicePale, 0.24, 0.42],
+  ];
+  for (const [geo, m, x, z] of diceSpecs) {
+    const d = new THREE.Mesh(geo, m);
+    d.position.set(x, TABLE_Y + 0.019, z);
+    d.rotation.set(Math.random() * 3, Math.random() * 3, Math.random() * 3);
+    d.castShadow = true;
+    scene.add(d);
+  }
+
+  // ---------- Miniatures: one per agent on the map, plus what they are fighting ----------
+  const mini = (colour, x, z, tall = 0.052) => {
+    const g = new THREE.Group();
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.019, 0.021, 0.006, 20), mat.dark);
+    base.castShadow = true;
+    g.add(base);
+    const bodyMat = new THREE.MeshStandardMaterial({ color: colour, roughness: 0.35, metalness: 0.15, envMapIntensity: 1.3 });
+    const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.011, tall * 0.55, 4, 12), bodyMat);
+    body.position.y = 0.006 + tall * 0.5;
+    body.castShadow = true;
+    g.add(body);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.0115, 14, 12), bodyMat);
+    head.position.y = 0.006 + tall * 0.95;
+    head.castShadow = true;
+    g.add(head);
+    g.position.set(x, TABLE_Y + 0.004, z);
+    scene.add(g);
+    return g;
+  };
+
+  const party = agents ?? [];
+  const miniSpots = [[-0.12, -0.16], [-0.04, -0.05], [0.05, -0.18], [0.14, -0.06]];
+  party.slice(0, 4).forEach((a, i) => mini(a.colour, miniSpots[i][0], miniSpots[i][1]));
+  // the encounter on the far side of the map
+  mini(0x8c2f22, 0.34, -0.3, 0.07);
+  mini(0x8c2f22, 0.44, -0.2, 0.062);
+
+  // ---------- The party: one terminal per agent, across the table ----------
+  const agentLights = [];
+  party.slice(0, 4).forEach((a, i) => {
+    const x = -0.66 + i * 0.44;
+    const z = -0.52;
+    const g = new THREE.Group();
+    g.position.set(x, TABLE_Y, z);
+    g.rotation.y = 0.16 * (1.5 - i);
+    scene.add(g);
+
+    const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.012, 20), mat.dark);
+    stand.position.y = 0.006;
+    stand.castShadow = true;
+    g.add(stand);
+
+    const neck = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.05, 0.012), mat.metal);
+    neck.position.y = 0.035;
+    g.add(neck);
+
+    const shell = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.14, 0.014), mat.dark);
+    shell.position.set(0, 0.125, 0);
+    shell.rotation.x = -0.22;
+    shell.castShadow = true;
+    g.add(shell);
+
+    const screen = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.178, 0.118),
+      new THREE.MeshBasicMaterial({ map: agentScreen(a.name, a.colour, { seed: i + 1 }), toneMapped: false })
+    );
+    screen.position.set(0, 0.125, 0.0085);
+    screen.rotation.x = -0.22;
+    screen.position.z += 0.0022;
+    g.add(screen);
+
+    const glow = new THREE.PointLight(new THREE.Color(a.colour), 0.5, 1.15, 2);
+    glow.position.set(0, 0.14, 0.12);
+    g.add(glow);
+    agentLights.push(glow);
+  });
+
+  // ---------- Furniture ----------
   const gltfLoader = new GLTFLoader();
   const addModel = (name, { position, rotationY = 0, scale = 1, tint = null }) =>
     gltfLoader
@@ -142,7 +257,6 @@ export function createScene({ container, osRoot, onEnter, onExit }) {
           n.receiveShadow = true;
           if (!n.material) return;
           n.material.envMapIntensity = 0.7;
-          // Scans are lit for a bright studio; tint them down to match a night room.
           if (tint) n.material.color.multiplyScalar(tint);
         });
         scene.add(obj);
@@ -150,242 +264,103 @@ export function createScene({ container, osRoot, onEnter, onExit }) {
       })
       .catch((err) => console.warn(`model "${name}" not loaded:`, err));
 
-  // Placements follow each model's real dimensions: the shelf is a 2.1 m bookcase
-  // that stands on the floor, and the plant is a 27 cm desk plant, not a floor one.
-  // Nothing sits between the camera and the monitor, which stays the hero object.
-  addModel("modern_arm_chair_01", { position: [1.38, 0, 0.78], rotationY: -1.95, tint: 0.9 });
-  addModel("potted_plant_04", { position: [-0.82, DESK_Y, -0.22], rotationY: -0.6 });
-  addModel("alarm_clock_01", { position: [0.62, DESK_Y, -0.24], rotationY: -0.35 });
+  addModel("modern_arm_chair_01", { position: [-1.95, 0, -0.5], rotationY: 1.25, tint: 0.85 });
+  addModel("potted_plant_04", { position: [-0.94, TABLE_Y, -0.5], rotationY: -0.6 });
+  addModel("alarm_clock_01", { position: [0.72, TABLE_Y, 0.38], rotationY: -2.5 });
 
-  // ---------- Monitor (CRT) ----------
-  const monitor = new THREE.Group();
-  monitor.position.set(0, DESK_Y, -0.12);
-  monitor.rotation.y = -0.03;
-  scene.add(monitor);
-
-  const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.19, 0.04, 32), mat.beigeDark);
-  stand.position.y = 0.02;
-  stand.castShadow = true;
-  monitor.add(stand);
-
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 0.04, 24), mat.beigeDark);
-  neck.position.y = 0.06;
-  monitor.add(neck);
-
-  const BODY_H = 0.47;
-  const BODY_Y = 0.08 + BODY_H / 2;
-  const body = new THREE.Mesh(new THREE.BoxGeometry(0.6, BODY_H, 0.4), mat.beige);
-  body.position.set(0, BODY_Y, -0.06);
-  body.castShadow = true;
-  monitor.add(body);
-
-  const back = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.36, 0.14), mat.beigeDark);
-  back.position.set(0, BODY_Y, -0.32);
-  back.castShadow = true;
-  monitor.add(back);
-
-  // Bezel: a frame with a rectangular hole, extruded towards the viewer.
-  const FRONT_Z = -0.06 + 0.2;
-  const bezelShape = new THREE.Shape();
-  bezelShape.moveTo(-0.3, -BODY_H / 2);
-  bezelShape.lineTo(0.3, -BODY_H / 2);
-  bezelShape.lineTo(0.3, BODY_H / 2);
-  bezelShape.lineTo(-0.3, BODY_H / 2);
-  bezelShape.closePath();
-  const hole = new THREE.Path();
-  const HOLE_Y = 0.03; // screen sits slightly above the body centre, leaving room for the badge/buttons below
-  // The extrude bevel rounds the opening inwards, so widen the hole by exactly the
-  // bevel size — otherwise the frame clips the OS taskbar along the bottom edge.
-  const BEVEL = 0.008;
-  const hw = SCREEN_W / 2 + BEVEL;
-  const hh = SCREEN_H / 2 + BEVEL;
-  hole.moveTo(-hw, HOLE_Y - hh);
-  hole.lineTo(hw, HOLE_Y - hh);
-  hole.lineTo(hw, HOLE_Y + hh);
-  hole.lineTo(-hw, HOLE_Y + hh);
-  hole.closePath();
-  bezelShape.holes.push(hole);
-  const bezel = new THREE.Mesh(new THREE.ExtrudeGeometry(bezelShape, { depth: 0.035, bevelEnabled: true, bevelSize: BEVEL, bevelThickness: BEVEL, bevelSegments: 2 }), mat.beige);
-  bezel.position.set(0, BODY_Y, FRONT_Z);
-  bezel.castShadow = true;
-  monitor.add(bezel);
-
-  // Power LED + buttons under the screen
-  const led = new THREE.Mesh(new THREE.CircleGeometry(0.006, 12), new THREE.MeshBasicMaterial({ color: 0x40ff70 }));
-  led.position.set(0.22, BODY_Y + HOLE_Y - SCREEN_H / 2 - 0.035, FRONT_Z + 0.036);
-  monitor.add(led);
-  for (let i = 0; i < 3; i++) {
-    const btn = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.008, 0.01), mat.beigeDark);
-    btn.position.set(-0.2 + i * 0.03, BODY_Y + HOLE_Y - SCREEN_H / 2 - 0.035, FRONT_Z + 0.038);
-    monitor.add(btn);
-  }
-
-  // Screen: CSS3D element + WebGL cut-out (also the raycast target)
-  // Recessed only a few millimetres: deeper and the bezel walls would occlude the screen edges when zoomed in.
-  const SCREEN_Z = FRONT_Z + 0.035 - 0.004;
-  const screenObject = new CSS3DObject(osRoot);
-  screenObject.scale.setScalar(SCREEN_SCALE);
-  screenObject.position.set(0, BODY_Y + HOLE_Y, SCREEN_Z);
-  monitor.add(screenObject);
-
-  const screenMesh = new THREE.Mesh(new THREE.PlaneGeometry(SCREEN_W, SCREEN_H), mat.cutout);
-  screenMesh.position.copy(screenObject.position);
-  monitor.add(screenMesh);
-
-  // Teal spill from the desktop once the OS is on; off while the CRT is dark.
-  const screenGlow = new THREE.PointLight(0x5fb0b0, 0, 1.2, 2);
-  let screenOn = false;
-  screenGlow.position.set(0, BODY_Y + HOLE_Y, SCREEN_Z + 0.25);
-  monitor.add(screenGlow);
-
-  // ---------- Keyboard, mouse, props ----------
-  const kb = box(0.46, 0.025, 0.16, mat.dark, 0.02, DESK_Y + 0.0125, 0.26);
-  kb.rotation.y = 0.02;
-  const keyGeo = new THREE.BoxGeometry(0.024, 0.008, 0.024);
-  const keyCount = 14 * 5;
-  const keys = new THREE.InstancedMesh(keyGeo, mat.keys, keyCount);
-  const tmp = new THREE.Object3D();
-  let k = 0;
-  for (let r = 0; r < 5; r++) {
-    for (let c = 0; c < 14; c++) {
-      tmp.position.set(-0.19 + c * 0.029 + (r % 2) * 0.006, 0.0165, -0.055 + r * 0.028);
-      tmp.updateMatrix();
-      keys.setMatrixAt(k++, tmp.matrix);
-    }
-  }
-  keys.castShadow = true;
-  kb.add(keys);
-
-  const mouse = new THREE.Mesh(new THREE.CapsuleGeometry(0.028, 0.05, 6, 12), mat.beige);
-  mouse.rotation.x = Math.PI / 2;
-  mouse.scale.set(1, 1, 0.55);
-  mouse.position.set(0.42, DESK_Y + 0.016, 0.26);
-  mouse.castShadow = true;
-  scene.add(mouse);
-
-  const mug = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.036, 0.1, 24), mat.mug);
-  mug.position.set(0.62, DESK_Y + 0.05, 0.05);
-  mug.castShadow = true;
-  scene.add(mug);
-  const handle = new THREE.Mesh(new THREE.TorusGeometry(0.025, 0.006, 8, 16, Math.PI), mat.mug);
-  handle.position.set(0.66, DESK_Y + 0.05, 0.05);
-  handle.rotation.z = -Math.PI / 2;
-  scene.add(handle);
-
-  for (let i = 0; i < 3; i++) {
-    const paper = new THREE.Mesh(new THREE.BoxGeometry(0.21, 0.002, 0.297), mat.paper);
-    paper.position.set(-0.62 + i * 0.02, DESK_Y + 0.002 + i * 0.002, 0.2 - i * 0.03);
-    paper.rotation.y = -0.25 + i * 0.12;
-    paper.receiveShadow = true;
-    scene.add(paper);
-  }
-
-  // ---------- Lamp ----------
-  const lamp = new THREE.Group();
-  lamp.position.set(-0.8, DESK_Y, -0.22);
-  scene.add(lamp);
-  const lampBase = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.1, 0.02, 32), mat.metal);
-  lampBase.position.y = 0.01;
-  lamp.add(lampBase);
-  const arm1 = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.42, 12), mat.metal);
-  arm1.position.set(0.06, 0.22, 0);
-  arm1.rotation.z = -0.3;
-  lamp.add(arm1);
-  const arm2 = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.38, 12), mat.metal);
-  arm2.position.set(0.28, 0.5, 0.02);
-  arm2.rotation.z = -1.25;
-  lamp.add(arm2);
-  const shade = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.16, 32, 1, true), mat.lampShade);
-  shade.position.set(0.44, 0.52, 0.04);
-  shade.rotation.set(0.35, 0, 0.55);
+  // ---------- Lighting ----------
+  // A pendant lamp over the table is the key light: it puts the map and the sheet
+  // in a warm pool and lets the room fall away, the way a real table looks at night.
+  const pendant = new THREE.Group();
+  pendant.position.set(0, 1.62, -0.05);
+  scene.add(pendant);
+  const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.9, 8), mat.dark);
+  cord.position.y = 0.45;
+  pendant.add(cord);
+  const shade = new THREE.Mesh(
+    new THREE.ConeGeometry(0.22, 0.17, 28, 1, true),
+    new THREE.MeshStandardMaterial({ color: 0x24262c, roughness: 0.5, metalness: 0.5, side: THREE.DoubleSide, envMapIntensity: 1.1 })
+  );
   shade.castShadow = true;
-  lamp.add(shade);
-  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.02, 12, 12), new THREE.MeshBasicMaterial({ color: 0xffd9a0 }));
-  bulb.position.set(0.44, 0.49, 0.06);
-  lamp.add(bulb);
-  const lampLight = new THREE.PointLight(0xffb372, 2.6, 4.5, 2);
-  lampLight.position.set(0.46, 0.46, 0.08);
-  lampLight.castShadow = true;
-  lampLight.shadow.mapSize.set(1024, 1024);
-  lampLight.shadow.bias = -0.002;
-  lamp.add(lampLight);
+  pendant.add(shade);
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.026, 14, 12), new THREE.MeshBasicMaterial({ color: 0xffdca8 }));
+  bulb.position.y = -0.06;
+  pendant.add(bulb);
 
-  // Stand-in for light bouncing off the desk onto the monitor's face, which the
-  // lamp itself never reaches — without it the hero object sits in shadow.
-  const bounce = new THREE.PointLight(0xffc38f, 0.85, 2.2, 2);
-  bounce.position.set(-0.18, DESK_Y + 0.14, 0.5);
-  scene.add(bounce);
+  const keyLight = new THREE.PointLight(0xffc489, 8, 4.5, 2);
+  keyLight.position.set(0, 1.55, -0.05);
+  keyLight.castShadow = true;
+  keyLight.shadow.mapSize.set(1024, 1024);
+  keyLight.shadow.bias = -0.002;
+  scene.add(keyLight);
 
-  // Bias light behind the monitor, in the OS desktop teal: it haloes the CRT against
-  // the wall so the room and the screen share a palette, and reads as deliberate
-  // desk lighting rather than a stray glow.
-  const accent = new THREE.PointLight(0x2fbfb0, 1.1, 1.9, 2);
-  accent.position.set(0, DESK_Y + 0.34, -0.62);
-  scene.add(accent);
-
-  scene.add(new THREE.HemisphereLight(0x3a3550, 0x08070a, 0.32));
+  scene.add(new THREE.HemisphereLight(0x3a3550, 0x0b0a09, 0.28));
   const fill = new THREE.DirectionalLight(0x8090c0, 0.12);
   fill.position.set(2, 3, 3);
   scene.add(fill);
 
   // ---------- Dust ----------
-  const DUST = 180;
+  const DUST = 170;
   const dustPos = new Float32Array(DUST * 3);
   for (let i = 0; i < DUST; i++) {
-    dustPos[i * 3] = (Math.random() - 0.5) * 3;
-    dustPos[i * 3 + 1] = 0.6 + Math.random() * 1.6;
-    dustPos[i * 3 + 2] = (Math.random() - 0.5) * 2.4 - 0.2;
+    dustPos[i * 3] = (Math.random() - 0.5) * 3.2;
+    dustPos[i * 3 + 1] = 0.7 + Math.random() * 1.2;
+    dustPos[i * 3 + 2] = (Math.random() - 0.5) * 2.4;
   }
   const dustGeo = new THREE.BufferGeometry();
   dustGeo.setAttribute("position", new THREE.BufferAttribute(dustPos, 3));
-  const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({ color: 0xfff1d6, size: 0.008, transparent: true, opacity: 0.55, sizeAttenuation: true }));
+  const dust = new THREE.Points(
+    dustGeo,
+    new THREE.PointsMaterial({ color: 0xfff1d6, size: 0.007, transparent: true, opacity: 0.5, sizeAttenuation: true })
+  );
   scene.add(dust);
 
   // ---------- Camera states ----------
+  const UP_IDLE = new THREE.Vector3(0, 1, 0);
+  // Looking straight down, the default up vector is parallel to the view direction,
+  // which is degenerate. The sheet's local +Y maps to world -Z once it is laid flat,
+  // so that is the direction that must read as "up" on screen when focused.
+  const UP_FOCUS = new THREE.Vector3(0, 0, -1);
+  const camUp = UP_IDLE.clone();
+
   const lookAt = new THREE.Vector3();
-  const idleTarget = new THREE.Vector3(0, DESK_Y + 0.44, -0.12);
+  const idleTarget = new THREE.Vector3(-0.05, TABLE_Y + 0.1, -0.05);
   const pointer = { x: 0, y: 0 };
+
   const idlePose = (t, out) => {
-    const angle = Math.sin(t * 0.12) * 0.32 + pointer.x * 0.18;
-    // Wider viewports can sit closer; portrait-ish ones need distance so the monitor stays in frame.
-    const radius = camera.aspect > 1.4 ? 2.45 : 2.45 * (1.4 / camera.aspect);
-    out.pos.set(Math.sin(angle) * radius, 1.30 + pointer.y * 0.1, Math.cos(angle) * radius - 0.12);
+    const angle = Math.sin(t * 0.1) * 0.3 + pointer.x * 0.16;
+    const radius = camera.aspect > 1.4 ? 2.35 : 2.35 * (1.4 / camera.aspect);
+    out.pos.set(Math.sin(angle) * radius, 1.5 + pointer.y * 0.1, Math.cos(angle) * radius + 0.25);
     out.target.copy(idleTarget);
     return out;
   };
 
-  const screenCenter = new THREE.Vector3();
-  const screenNormal = new THREE.Vector3();
   const focusPose = (out) => {
-    screenMesh.getWorldPosition(screenCenter);
-    screenNormal.set(0, 0, 1).applyQuaternion(monitor.getWorldQuaternion(new THREE.Quaternion()));
     const fovRad = THREE.MathUtils.degToRad(camera.fov);
-    const fill = 0.86;
-    const dH = (SCREEN_H / 2) / Math.tan(fovRad / 2) / fill;
-    const dW = (SCREEN_W / 2) / (Math.tan(fovRad / 2) * camera.aspect) / fill;
+    const fill = 0.9;
+    const dH = SHEET_H / 2 / Math.tan(fovRad / 2) / fill;
+    const dW = SHEET_W / 2 / (Math.tan(fovRad / 2) * camera.aspect) / fill;
     const d = Math.max(dH, dW);
-    out.pos.copy(screenCenter).addScaledVector(screenNormal, d);
-    out.target.copy(screenCenter);
+    out.pos.set(SHEET_POS.x, TABLE_Y + d, SHEET_POS.z);
+    out.target.copy(SHEET_POS);
     return out;
   };
 
   const pose = { pos: new THREE.Vector3(), target: new THREE.Vector3() };
-  const from = { pos: new THREE.Vector3(), target: new THREE.Vector3() };
+  const from = { pos: new THREE.Vector3(), target: new THREE.Vector3(), up: new THREE.Vector3() };
   const to = { pos: new THREE.Vector3(), target: new THREE.Vector3() };
   let mode = "idle"; // idle | toFocus | focused | toIdle
   let tweenStart = 0;
-  const TWEEN_MS = 1300;
+  const TWEEN_MS = 1400;
 
   idlePose(0, pose);
   camera.position.copy(pose.pos);
-  // Seed the look-at vector too: it is lerped every frame, so leaving it at the
-  // origin makes the camera start aimed at the floor and swing up over the first
-  // second — very visible when the first frames are throttled.
   lookAt.copy(pose.target);
+  camera.up.copy(camUp);
   camera.lookAt(pose.target);
 
   const setInteractive = (on) => {
-    osRoot.style.pointerEvents = on ? "auto" : "none";
+    sheetRoot.style.pointerEvents = on ? "auto" : "none";
     container.style.cursor = on ? "default" : "grab";
   };
   setInteractive(false);
@@ -394,9 +369,9 @@ export function createScene({ container, osRoot, onEnter, onExit }) {
     if (mode === "focused" || mode === "toFocus") return;
     from.pos.copy(camera.position);
     from.target.copy(lookAt);
+    from.up.copy(camUp);
     mode = "toFocus";
     tweenStart = performance.now();
-    screenOn = true;
     onEnter?.();
   }
 
@@ -404,6 +379,7 @@ export function createScene({ container, osRoot, onEnter, onExit }) {
     if (mode === "idle" || mode === "toIdle") return;
     from.pos.copy(camera.position);
     from.target.copy(lookAt);
+    from.up.copy(camUp);
     mode = "toIdle";
     tweenStart = performance.now();
     setInteractive(false);
@@ -413,21 +389,21 @@ export function createScene({ container, osRoot, onEnter, onExit }) {
   // ---------- Interaction ----------
   const raycaster = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
-  const hitScreen = (e) => {
+  const hitSheet = (e) => {
     const r = container.getBoundingClientRect();
     ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
     raycaster.setFromCamera(ndc, camera);
-    return raycaster.intersectObject(screenMesh, false).length > 0;
+    return raycaster.intersectObject(sheetMesh, false).length > 0;
   };
 
   container.addEventListener("pointermove", (e) => {
     const r = container.getBoundingClientRect();
     pointer.x = ((e.clientX - r.left) / r.width) * 2 - 1;
     pointer.y = -((e.clientY - r.top) / r.height) * 2 + 1;
-    if (mode === "idle") container.style.cursor = hitScreen(e) ? "pointer" : "grab";
+    if (mode === "idle") container.style.cursor = hitSheet(e) ? "pointer" : "grab";
   });
   container.addEventListener("pointerdown", (e) => {
-    if (mode === "idle" && hitScreen(e)) enter();
+    if (mode === "idle" && hitSheet(e)) enter();
   });
   window.addEventListener("keydown", (e) => {
     if (e.key === "Escape") exit();
@@ -445,32 +421,37 @@ export function createScene({ container, osRoot, onEnter, onExit }) {
   renderer.setAnimationLoop(() => {
     const t = clock.getElapsedTime();
 
-    // dust drift
     const p = dust.geometry.attributes.position;
     for (let i = 0; i < DUST; i++) {
-      let y = p.getY(i) + 0.0006 + Math.sin(t + i) * 0.00025;
-      if (y > 2.3) y = 0.6;
+      let y = p.getY(i) + 0.0005 + Math.sin(t + i) * 0.0002;
+      if (y > 1.9) y = 0.7;
       p.setY(i, y);
-      p.setX(i, p.getX(i) + Math.sin(t * 0.3 + i * 1.7) * 0.0002);
+      p.setX(i, p.getX(i) + Math.sin(t * 0.3 + i * 1.7) * 0.00018);
     }
     p.needsUpdate = true;
-    screenGlow.intensity = screenOn ? 0.09 + Math.sin(t * 9) * 0.01 : 0;
+
+    // the agent terminals breathe slightly, so the party looks awake
+    agentLights.forEach((l, i) => (l.intensity = 0.45 + Math.sin(t * 1.6 + i * 1.9) * 0.1));
 
     if (mode === "idle") {
       idlePose(t, pose);
       camera.position.lerp(pose.pos, 0.04);
       lookAt.lerp(pose.target, 0.06);
+      camUp.lerp(UP_IDLE, 0.08);
     } else if (mode === "focused") {
       focusPose(pose);
       camera.position.copy(pose.pos);
       lookAt.copy(pose.target);
+      camUp.copy(UP_FOCUS);
     } else {
       const k = Math.min(1, (performance.now() - tweenStart) / TWEEN_MS);
       const e = easeInOutCubic(k);
+      const targetUp = mode === "toFocus" ? UP_FOCUS : UP_IDLE;
       if (mode === "toFocus") focusPose(to);
       else idlePose(t, to);
       camera.position.lerpVectors(from.pos, to.pos, e);
       lookAt.lerpVectors(from.target, to.target, e);
+      camUp.copy(from.up).lerp(targetUp, e).normalize();
       if (k >= 1) {
         if (mode === "toFocus") {
           mode = "focused";
@@ -478,6 +459,7 @@ export function createScene({ container, osRoot, onEnter, onExit }) {
         } else mode = "idle";
       }
     }
+    camera.up.copy(camUp);
     camera.lookAt(lookAt);
 
     renderer.render(scene, camera);
