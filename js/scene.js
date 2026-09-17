@@ -217,6 +217,9 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit }) {
     new THREE.MeshStandardMaterial({ ...(striped ? pin : twill), color: 0x141826, normalScale: N(0.45), envMapIntensity: 0.25 });
   const shirtMat = new THREE.MeshStandardMaterial({ ...poplin, color: 0x8f96a6, normalScale: N(0.35), envMapIntensity: 0.3 });
   const cuffMat = new THREE.MeshStandardMaterial({ color: 0x6e7484, roughness: 0.78, envMapIntensity: 0.25 });
+  const chairMat = new THREE.MeshStandardMaterial({ color: 0x2f2a26, roughness: 0.72, envMapIntensity: 0.4 });
+  const chairLegMat = new THREE.MeshStandardMaterial({ color: 0x6d7280, roughness: 0.35, metalness: 0.75, envMapIntensity: 1.0 });
+  const shoeMat = new THREE.MeshStandardMaterial({ color: 0x14161d, roughness: 0.34, envMapIntensity: 0.9 });
   const handMat = new THREE.MeshStandardMaterial({ color: 0x474d5c, roughness: 0.72, envMapIntensity: 0.3 });
   const caseMat = new THREE.MeshStandardMaterial({ color: 0x31353e, roughness: 0.6, ...tex.plastic, normalScale: N(0.25), envMapIntensity: 0.8 });
   const heads = [];
@@ -247,6 +250,34 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit }) {
     return s;
   })();
 
+  // Seated proportions, measured off a real chair rather than guessed: the seat is
+  // 45 cm, the hip sits just above it, thighs run forward to the knee and the shins
+  // drop to the floor. Everything above the hip is placed relative to SEAT_Y so the
+  // whole figure moves together if the chair height ever changes.
+  const SEAT_Y = 0.45;
+  const HIP_Y = SEAT_Y + 0.05;
+
+  const makeChair = (g) => {
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.045, 0.42), chairMat);
+    seat.position.set(0, SEAT_Y, 0.06);
+    seat.castShadow = true;
+    seat.receiveShadow = true;
+    g.add(seat);
+
+    const back = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.44, 0.04), chairMat);
+    back.position.set(0, SEAT_Y + 0.24, -0.13);
+    back.rotation.x = -0.12;
+    back.castShadow = true;
+    g.add(back);
+
+    for (const [lx, lz] of [[-0.18, -0.11], [0.18, -0.11], [-0.18, 0.23], [0.18, 0.23]]) {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.015, SEAT_Y, 10), chairLegMat);
+      leg.position.set(lx, SEAT_Y / 2, lz);
+      leg.castShadow = true;
+      g.add(leg);
+    }
+  };
+
   const makeAgent = (a, x, z, rotY, { striped = false } = {}) => {
     const accent = new THREE.Color(a.colour);
     const suitMat = suitOf(striped);
@@ -255,6 +286,32 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit }) {
     g.position.set(x, 0, z);
     g.rotation.y = rotY;
     scene.add(g);
+
+    makeChair(g);
+
+    // ----- legs -----
+    for (const s of [-1, 1]) {
+      const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(0.075, 0.26, 4, 14), suitMat);
+      thigh.position.set(s * 0.105, HIP_Y - 0.01, 0.17);
+      thigh.rotation.x = Math.PI / 2;
+      thigh.castShadow = true;
+      g.add(thigh);
+
+      const knee = new THREE.Mesh(new THREE.SphereGeometry(0.072, 14, 12), suitMat);
+      knee.position.set(s * 0.105, HIP_Y - 0.015, 0.315);
+      g.add(knee);
+
+      const shin = new THREE.Mesh(new THREE.CapsuleGeometry(0.058, 0.26, 4, 14), suitMat);
+      shin.position.set(s * 0.105, HIP_Y - 0.17, 0.335);
+      shin.rotation.x = 0.1;
+      shin.castShadow = true;
+      g.add(shin);
+
+      const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.05, 0.19), shoeMat);
+      shoe.position.set(s * 0.105, 0.028, 0.385);
+      shoe.castShadow = true;
+      g.add(shoe);
+    }
 
     // ----- jacket -----
     const torso = new THREE.Mesh(
@@ -268,14 +325,13 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit }) {
       }),
       suitMat
     );
-    torso.position.set(0, 1.09, -0.085);
+    torso.position.set(0, HIP_Y + 0.34, -0.085);
     torso.castShadow = true;
     torso.receiveShadow = true;
     g.add(torso);
 
-    // The jacket opening: a dark V so the chest is not one flat slab.
     const opening = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.26, 0.02), suitDark);
-    opening.position.set(0, 1.18, 0.117);
+    opening.position.set(0, HIP_Y + 0.43, 0.117);
     g.add(opening);
 
     for (const s of [-1, 1]) {
@@ -284,69 +340,68 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit }) {
         suitDark
       );
       lapel.scale.x = s;
-      lapel.position.set(0, 1.09, 0.108);
+      lapel.position.set(0, HIP_Y + 0.34, 0.108);
       g.add(lapel);
 
-      // ----- arm: shoulder cap, upper arm out and down, forearm onto the table -----
+      // ----- arm: shoulder, upper arm down, forearm forward onto the table -----
       const cap = new THREE.Mesh(new THREE.SphereGeometry(0.055, 16, 12), suitMat);
-      cap.position.set(s * 0.176, 1.265, -0.005);
+      cap.position.set(s * 0.176, HIP_Y + 0.515, -0.005);
       cap.scale.set(1, 0.85, 0.95);
       cap.castShadow = true;
       g.add(cap);
 
       const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.05, 0.16, 4, 14), suitMat);
-      upper.position.set(s * 0.198, 1.16, 0.035);
+      upper.position.set(s * 0.198, HIP_Y + 0.41, 0.035);
       upper.rotation.set(0.42, 0, s * 0.14);
       upper.castShadow = true;
       g.add(upper);
 
       const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.048, 14, 12), suitMat);
-      elbow.position.set(s * 0.216, 1.055, 0.115);
+      elbow.position.set(s * 0.216, HIP_Y + 0.305, 0.115);
       g.add(elbow);
 
       const fore = new THREE.Mesh(new THREE.CapsuleGeometry(0.045, 0.21, 4, 14), suitMat);
-      fore.position.set(s * 0.214, 0.94, 0.265);
-      fore.rotation.set(1.16, 0, s * 0.05);
+      fore.position.set(s * 0.214, HIP_Y + 0.215, 0.255);
+      fore.rotation.set(1.31, 0, s * 0.05);
       fore.castShadow = true;
       g.add(fore);
 
       const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.047, 0.047, 0.014, 16), cuffMat);
-      cuff.position.set(s * 0.212, 0.862, 0.375);
-      cuff.rotation.x = 1.16;
+      cuff.position.set(s * 0.212, HIP_Y + 0.185, 0.365);
+      cuff.rotation.x = 1.31;
       g.add(cuff);
 
-      // A flattened box reads as a hand laid on the table; a sphere read as a ball.
       const hand = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.03, 0.13), handMat);
-      hand.position.set(s * 0.212, 0.836, 0.44);
-      hand.rotation.set(0.06, s * -0.12, 0);
+      hand.position.set(s * 0.212, TABLE_Y + 0.022, 0.43);
+      hand.rotation.set(0.05, s * -0.12, 0);
       hand.castShadow = true;
       g.add(hand);
     }
 
     // ----- shirt, collar, tie -----
     const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.078, 0.04, 18), shirtMat);
-    collar.position.set(0, 1.285, 0.012);
+    collar.position.set(0, HIP_Y + 0.535, 0.012);
     g.add(collar);
 
     const shirt = new THREE.Mesh(new THREE.BoxGeometry(0.085, 0.13, 0.014), shirtMat);
-    shirt.position.set(0, 1.225, 0.124);
+    shirt.position.set(0, HIP_Y + 0.475, 0.124);
     g.add(shirt);
 
     const knot = new THREE.Mesh(new THREE.BoxGeometry(0.036, 0.034, 0.018), new THREE.MeshStandardMaterial({ color: accent, roughness: 0.36, envMapIntensity: 1.4 }));
-    knot.position.set(0, 1.268, 0.132);
+    knot.position.set(0, HIP_Y + 0.518, 0.132);
     g.add(knot);
 
     const tie = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.165, 0.014), new THREE.MeshStandardMaterial({ color: accent, roughness: 0.38, envMapIntensity: 1.3 }));
-    tie.position.set(0, 1.168, 0.132);
+    tie.position.set(0, HIP_Y + 0.418, 0.132);
     g.add(tie);
 
     const pocket = new THREE.Mesh(new THREE.BoxGeometry(0.042, 0.014, 0.012), new THREE.MeshStandardMaterial({ color: accent, roughness: 0.5, envMapIntensity: 1.2 }));
-    pocket.position.set(-0.104, 1.19, 0.118);
+    pocket.position.set(-0.104, HIP_Y + 0.44, 0.118);
     g.add(pocket);
 
     // ----- television head -----
     const head = new THREE.Group();
-    head.position.set(0, 1.44, 0.012);
+    head.position.set(0, HIP_Y + 0.69, 0.012);
     g.add(head);
 
     const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.044, 0.056, 0.1, 16), suitDark);
@@ -376,7 +431,7 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit }) {
     }
 
     const faceGlow = new THREE.PointLight(accent, 0.55, 1.1, 2);
-    faceGlow.position.set(0, 1.44, 0.22);
+    faceGlow.position.set(0, HIP_Y + 0.69, 0.22);
     g.add(faceGlow);
     agentLights.push(faceGlow);
 

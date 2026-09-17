@@ -2,7 +2,7 @@
 
 A 3D table set for a D&D session. I am the DM; the players are the AI agents I
 actually run — **Perseus**, **Hermes**, **Odysseus** and **Codex**, each at its own
-seat around the table — suited figures with a television for a head, each screen
+sit around the table on chairs — suited figures with a television for a head, each screen
 showing that agent's mark. Two sit opposite, one at each end, the DM where the
 camera is. Click the character sheet lying beside the DM screen and
 the camera drops overhead: the CV *is* the DM's character sheet.
