@@ -336,3 +336,85 @@ export function agentFace(agent, { w = 512, h = 384, seed = 4 } = {}) {
 
   return toTexture(c, { srgb: true });
 }
+
+/**
+ * Woven suit cloth: a diagonal twill with slub noise, optionally pinstriped.
+ * Drawn mid-grey so the material's own colour does the tinting.
+ */
+export function suitFabric({ size = 256, seed = 41, pinstripe = false, repeat = [3, 3] } = {}) {
+  const rand = rng(seed + (pinstripe ? 7 : 0));
+  const [c, ctx] = canvas(size);
+  ctx.fillStyle = "#9a9a9a";
+  ctx.fillRect(0, 0, size, size);
+
+  // twill runs at 45 degrees; two tones one pixel apart give the weave its ridge
+  ctx.lineWidth = 1;
+  for (let i = -size; i < size * 2; i += 4) {
+    ctx.strokeStyle = "rgba(255,255,255,0.13)";
+    ctx.beginPath();
+    ctx.moveTo(i, 0);
+    ctx.lineTo(i + size, size);
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(0,0,0,0.16)";
+    ctx.beginPath();
+    ctx.moveTo(i + 1.6, 0);
+    ctx.lineTo(i + 1.6 + size, size);
+    ctx.stroke();
+  }
+
+  // cross-weave, much fainter, so the cloth is not a single directional streak
+  for (let i = -size; i < size * 2; i += 6) {
+    ctx.strokeStyle = "rgba(0,0,0,0.06)";
+    ctx.beginPath();
+    ctx.moveTo(i, size);
+    ctx.lineTo(i + size, 0);
+    ctx.stroke();
+  }
+
+  if (pinstripe) {
+    for (let x = 0; x < size; x += 26) {
+      ctx.strokeStyle = "rgba(255,255,255,0.3)";
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, size);
+      ctx.stroke();
+    }
+  }
+
+  speckle(ctx, size, 5200, rand, 0.1, false);
+  speckle(ctx, size, 3200, rand, 0.07, true);
+
+  return {
+    map: toTexture(c, { repeat, srgb: true }),
+    normalMap: toTexture(normalFrom(c, 0.75), { repeat }),
+    roughnessMap: toTexture(roughnessFrom(c, 0.66, 0.9), { repeat }),
+  };
+}
+
+/** Fine poplin for the shirt and cuffs. */
+export function shirtFabric({ size = 128, seed = 53, repeat = [4, 4] } = {}) {
+  const rand = rng(seed);
+  const [c, ctx] = canvas(size);
+  ctx.fillStyle = "#b4b4b4";
+  ctx.fillRect(0, 0, size, size);
+  ctx.lineWidth = 1;
+  for (let i = 0; i < size; i += 3) {
+    ctx.strokeStyle = "rgba(0,0,0,0.08)";
+    ctx.beginPath();
+    ctx.moveTo(i, 0);
+    ctx.lineTo(i, size);
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(255,255,255,0.09)";
+    ctx.beginPath();
+    ctx.moveTo(0, i);
+    ctx.lineTo(size, i);
+    ctx.stroke();
+  }
+  speckle(ctx, size, 1800, rand, 0.06, false);
+  return {
+    map: toTexture(c, { repeat, srgb: true }),
+    normalMap: toTexture(normalFrom(c, 0.5), { repeat }),
+    roughnessMap: toTexture(roughnessFrom(c, 0.62, 0.86), { repeat }),
+  };
+}

@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { CSS3DRenderer, CSS3DObject } from "three/addons/renderers/CSS3DRenderer.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { plasticGrain, parchment, battleMap, agentScreen, agentFace } from "./textures.js";
+import { plasticGrain, parchment, battleMap, agentScreen, agentFace, suitFabric, shirtFabric } from "./textures.js";
 
 // The sheet is 860x1180 CSS px, laid flat on the table at this physical width.
 const SHEET_W = 0.34;
@@ -120,7 +120,7 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit }) {
 
   // ---------- DM screen: three parchment panels, hinged, facing the players ----------
   const dmScreen = new THREE.Group();
-  dmScreen.position.set(-0.66, TABLE_Y, -0.02);
+  dmScreen.position.set(-0.84, TABLE_Y, 0.44);
   scene.add(dmScreen);
   const panel = (w, x, rotY) => {
     const p = new THREE.Mesh(new THREE.BoxGeometry(w, 0.235, 0.008), mat.parchment);
@@ -131,9 +131,10 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit }) {
     dmScreen.add(p);
     return p;
   };
-  panel(0.26, -0.24, 0.5);
-  panel(0.3, 0, 0);
-  panel(0.26, 0.24, -0.5);
+  dmScreen.rotation.y = Math.PI; // the printed side faces the DM, the blank side the table
+  panel(0.24, -0.22, 0.5);
+  panel(0.28, 0, 0);
+  panel(0.24, 0.22, -0.5);
 
   // ---------- Character sheet, lying flat in front of the DM ----------
   const SHEET_POS = new THREE.Vector3(-0.3, TABLE_Y + 0.004, 0.36);
@@ -205,9 +206,16 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit }) {
   // ---------- The party ----------
   // Each agent is a suited figure with a television for a head, its mark on the
   // screen. Built from primitives so there is nothing to download or license.
-  const suitMat = new THREE.MeshStandardMaterial({ color: 0x1c2130, roughness: 0.82, envMapIntensity: 0.3 });
-  const suitDark = new THREE.MeshStandardMaterial({ color: 0x141826, roughness: 0.84, envMapIntensity: 0.25 });
-  const shirtMat = new THREE.MeshStandardMaterial({ color: 0x8f96a6, roughness: 0.75, envMapIntensity: 0.3 });
+  // Two cloths so the party reads as individuals rather than four copies: plain
+  // twill and a pinstripe. Both are drawn mid-grey, so the material colour tints them.
+  const twill = suitFabric({ repeat: [2.6, 2.6] });
+  const pin = suitFabric({ pinstripe: true, seed: 47, repeat: [2.6, 2.6] });
+  const poplin = shirtFabric();
+  const suitOf = (striped) =>
+    new THREE.MeshStandardMaterial({ ...(striped ? pin : twill), color: 0x1c2130, normalScale: N(0.55), envMapIntensity: 0.3 });
+  const suitDarkOf = (striped) =>
+    new THREE.MeshStandardMaterial({ ...(striped ? pin : twill), color: 0x141826, normalScale: N(0.45), envMapIntensity: 0.25 });
+  const shirtMat = new THREE.MeshStandardMaterial({ ...poplin, color: 0x8f96a6, normalScale: N(0.35), envMapIntensity: 0.3 });
   const cuffMat = new THREE.MeshStandardMaterial({ color: 0x6e7484, roughness: 0.78, envMapIntensity: 0.25 });
   const handMat = new THREE.MeshStandardMaterial({ color: 0x474d5c, roughness: 0.72, envMapIntensity: 0.3 });
   const caseMat = new THREE.MeshStandardMaterial({ color: 0x31353e, roughness: 0.6, ...tex.plastic, normalScale: N(0.25), envMapIntensity: 0.8 });
@@ -239,8 +247,10 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit }) {
     return s;
   })();
 
-  const makeAgent = (a, x, z, rotY) => {
+  const makeAgent = (a, x, z, rotY, { striped = false } = {}) => {
     const accent = new THREE.Color(a.colour);
+    const suitMat = suitOf(striped);
+    const suitDark = suitDarkOf(striped);
     const g = new THREE.Group();
     g.position.set(x, 0, z);
     g.rotation.y = rotY;
@@ -373,12 +383,20 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit }) {
     return g;
   };
 
+  // Seats around the table, the way a real session sits: the DM is where the camera
+  // is, two players opposite, one at each end. Each laptop sits in front of its seat.
+  const SEATS = [
+    { lap: [-0.44, -0.52], rot: 0.12, fig: [-0.44, -1.06], striped: false },
+    { lap: [0.44, -0.52], rot: -0.12, fig: [0.44, -1.06], striped: true },
+    { lap: [-0.84, 0.0], rot: Math.PI / 2, fig: [-1.4, 0.0], striped: true },
+    { lap: [0.84, 0.0], rot: -Math.PI / 2, fig: [1.4, 0.0], striped: false },
+  ];
+
   party.slice(0, 4).forEach((a, i) => {
-    const x = -0.78 + i * 0.52;
-    const z = -0.52;
+    const seat = SEATS[i];
     const g = new THREE.Group();
-    g.position.set(x, TABLE_Y, z);
-    g.rotation.y = 0.16 * (1.5 - i);
+    g.position.set(seat.lap[0], TABLE_Y, seat.lap[1]);
+    g.rotation.y = seat.rot;
     scene.add(g);
 
     const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.012, 20), mat.dark);
@@ -408,7 +426,7 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit }) {
   });
 
   // The figures sit behind their laptops, on the far side of the table.
-  party.slice(0, 4).forEach((a, i) => makeAgent(a, -0.78 + i * 0.52, -1.02, 0.2 * (1.5 - i)));
+  party.slice(0, 4).forEach((a, i) => makeAgent(a, SEATS[i].fig[0], SEATS[i].fig[1], SEATS[i].rot, { striped: SEATS[i].striped }));
 
   // ---------- Furniture ----------
   const gltfLoader = new GLTFLoader();
@@ -432,8 +450,8 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit }) {
       })
       .catch((err) => console.warn(`model "${name}" not loaded:`, err));
 
-  addModel("modern_arm_chair_01", { position: [-1.95, 0, -0.5], rotationY: 1.25, tint: 0.85 });
-  addModel("potted_plant_04", { position: [-0.94, TABLE_Y, -0.5], rotationY: -0.6 });
+  addModel("modern_arm_chair_01", { position: [-2.55, 0, 0.95], rotationY: 0.95, tint: 0.85 });
+  addModel("potted_plant_04", { position: [-0.92, TABLE_Y, -0.52], rotationY: -0.6 });
   addModel("alarm_clock_01", { position: [0.72, TABLE_Y, 0.38], rotationY: -2.5 });
 
   // ---------- Lighting ----------
