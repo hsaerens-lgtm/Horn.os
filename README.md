@@ -58,20 +58,25 @@ Texture scans (diffuse + OpenGL normal + ARM):
 | Surface | Asset |
 |---|---|
 | Desk | [American Walnut Veneer](https://polyhaven.com/a/american_walnut_veneer) |
-| Floor | [Dark Wooden Planks](https://polyhaven.com/a/dark_wooden_planks) |
-| Wall | [Grey Plaster 02](https://polyhaven.com/a/grey_plaster_02) |
+| Floor | [Herringbone Parquet](https://polyhaven.com/a/herringbone_parquet) |
+| Wall | [Concrete Wall 008](https://polyhaven.com/a/concrete_wall_008) |
 
 Models (glTF):
 
 | Prop | Asset |
 |---|---|
-| Bookcase | [Shelf 01](https://polyhaven.com/a/Shelf_01) |
-| Chair | [School Chair 01](https://polyhaven.com/a/SchoolChair_01) |
+| Armchair | [Modern Arm Chair 01](https://polyhaven.com/a/modern_arm_chair_01) |
 | Desk plant | [Potted Plant 04](https://polyhaven.com/a/potted_plant_04) |
+| Alarm clock | [Alarm Clock 01](https://polyhaven.com/a/alarm_clock_01) |
 
-Every texture was downscaled to 512px and re-encoded, which is what keeps the whole
-site near 2 MB rather than 15 MB at the original 1K. Models load asynchronously and
-only in 3D mode, so the fallback desktop downloads none of them.
+Art direction is deliberately *modern retro*: clean contemporary surfaces —
+polished herringbone, smooth concrete, walnut — around a period-correct CRT, rather
+than a weathered or nostalgic room. A teal bias light behind the monitor ties the
+room to the desktop palette.
+
+Every texture is downscaled to 512px and re-encoded, which keeps the whole site near
+2 MB rather than 15 MB at the original 1K. Models load asynchronously and only in 3D
+mode, so the fallback desktop downloads none of them.
 
 The CRT plastic grain, the framed print and the desktop icons are generated in code
 — no third-party UI assets are redistributed here.

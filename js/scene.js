@@ -63,16 +63,17 @@ export function createScene({ container, osRoot, onEnter, onExit }) {
   const tex = {
     desk: loadPBR("american_walnut_veneer", [1.6, 0.8]),
     deskEdge: loadPBR("american_walnut_veneer", [4, 0.4]),
-    floor: loadPBR("dark_wooden_planks", [3, 3]),
-    wall: loadPBR("grey_plaster_02", [4, 1.8]),
+    floor: loadPBR("herringbone_parquet", [2.2, 2.2]),
+    wall: loadPBR("concrete_wall_008", [3, 1.4]),
     plastic: plasticGrain(),
     poster: poster(),
   };
   const N = (x, y = x) => new THREE.Vector2(x, y);
   const mat = {
-    floor: new THREE.MeshStandardMaterial({ ...tex.floor, color: 0x6a6a72, normalScale: N(0.8), envMapIntensity: 0.5 }),
-    // The plaster scan is a light grey; tinted down so the room still reads as night.
-    wall: new THREE.MeshStandardMaterial({ ...tex.wall, color: 0x4a4a5c, normalScale: N(0.5), envMapIntensity: 0.4 }),
+    // Polished herringbone: low normal relief, and glossy enough to catch the lamp.
+    floor: new THREE.MeshStandardMaterial({ ...tex.floor, color: 0x8a7258, normalScale: N(0.35), roughness: 0.55, envMapIntensity: 0.7 }),
+    // Smooth concrete tinted to a deep blue-grey so the room reads modern, not derelict.
+    wall: new THREE.MeshStandardMaterial({ ...tex.wall, color: 0x70778c, normalScale: N(0.3), envMapIntensity: 0.5 }),
     wood: new THREE.MeshStandardMaterial({ ...tex.desk, color: 0xc08a5a, normalScale: N(0.5), envMapIntensity: 0.9 }),
     woodDark: new THREE.MeshStandardMaterial({ ...tex.deskEdge, color: 0x6b4a30, normalScale: N(0.4), envMapIntensity: 0.6 }),
     beige: new THREE.MeshStandardMaterial({ color: 0xcfc3a9, ...tex.plastic, normalScale: N(0.22), envMapIntensity: 1.0 }),
@@ -152,9 +153,9 @@ export function createScene({ container, osRoot, onEnter, onExit }) {
   // Placements follow each model's real dimensions: the shelf is a 2.1 m bookcase
   // that stands on the floor, and the plant is a 27 cm desk plant, not a floor one.
   // Nothing sits between the camera and the monitor, which stays the hero object.
-  addModel("Shelf_01", { position: [-2.05, 0, -1.02], rotationY: 0.12, tint: 0.42 });
-  addModel("SchoolChair_01", { position: [1.34, 0, 0.62], rotationY: -1.5, tint: 0.8 });
-  addModel("potted_plant_04", { position: [-0.78, DESK_Y, -0.2], rotationY: -0.6 });
+  addModel("modern_arm_chair_01", { position: [1.38, 0, 0.78], rotationY: -1.95, tint: 0.9 });
+  addModel("potted_plant_04", { position: [-0.82, DESK_Y, -0.22], rotationY: -0.6 });
+  addModel("alarm_clock_01", { position: [0.62, DESK_Y, -0.24], rotationY: -0.35 });
 
   // ---------- Monitor (CRT) ----------
   const monitor = new THREE.Group();
@@ -314,6 +315,13 @@ export function createScene({ container, osRoot, onEnter, onExit }) {
   const bounce = new THREE.PointLight(0xffc38f, 0.85, 2.2, 2);
   bounce.position.set(-0.18, DESK_Y + 0.14, 0.5);
   scene.add(bounce);
+
+  // Bias light behind the monitor, in the OS desktop teal: it haloes the CRT against
+  // the wall so the room and the screen share a palette, and reads as deliberate
+  // desk lighting rather than a stray glow.
+  const accent = new THREE.PointLight(0x2fbfb0, 1.1, 1.9, 2);
+  accent.position.set(0, DESK_Y + 0.34, -0.62);
+  scene.add(accent);
 
   scene.add(new THREE.HemisphereLight(0x3a3550, 0x08070a, 0.32));
   const fill = new THREE.DirectionalLight(0x8090c0, 0.12);
