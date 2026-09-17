@@ -214,3 +214,125 @@ export function agentScreen(name, colour, { w = 512, h = 340, seed = 1 } = {}) {
 
   return toTexture(c, { srgb: true });
 }
+
+/** Each agent's mark, drawn as vector paths so there is nothing to license. */
+function drawLogo(ctx, id, cx, cy, r, colour) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.strokeStyle = colour;
+  ctx.fillStyle = colour;
+  ctx.lineWidth = Math.max(3, r * 0.14);
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+
+  if (id === "perseus") {
+    // a mirrored shield
+    ctx.beginPath();
+    ctx.moveTo(0, -r);
+    ctx.lineTo(r * 0.8, -r * 0.55);
+    ctx.lineTo(r * 0.8, r * 0.25);
+    ctx.quadraticCurveTo(r * 0.8, r * 0.9, 0, r);
+    ctx.quadraticCurveTo(-r * 0.8, r * 0.9, -r * 0.8, r * 0.25);
+    ctx.lineTo(-r * 0.8, -r * 0.55);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.globalAlpha = 0.28;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.36, -r * 0.1);
+    ctx.lineTo(0, r * 0.38);
+    ctx.lineTo(r * 0.36, -r * 0.1);
+    ctx.stroke();
+  } else if (id === "hermes") {
+    // a winged staff
+    ctx.beginPath();
+    ctx.moveTo(0, -r * 0.9);
+    ctx.lineTo(0, r * 0.95);
+    ctx.stroke();
+    for (const s of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(0, -r * 0.45);
+      ctx.quadraticCurveTo(s * r * 0.95, -r * 0.8, s * r * 0.85, -r * 0.05);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0, -r * 0.12);
+      ctx.quadraticCurveTo(s * r * 0.7, -r * 0.4, s * r * 0.62, r * 0.25);
+      ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.arc(0, -r * 0.92, r * 0.16, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (id === "odysseus") {
+    // a ship's wheel
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.62, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a) * r * 0.2, Math.sin(a) * r * 0.2);
+      ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+      ctx.stroke();
+    }
+  } else {
+    // codex: braces around a stack of lines
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.42, -r * 0.95);
+    ctx.quadraticCurveTo(-r * 0.92, -r * 0.95, -r * 0.92, 0);
+    ctx.quadraticCurveTo(-r * 0.92, r * 0.95, -r * 0.42, r * 0.95);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(r * 0.42, -r * 0.95);
+    ctx.quadraticCurveTo(r * 0.92, -r * 0.95, r * 0.92, 0);
+    ctx.quadraticCurveTo(r * 0.92, r * 0.95, r * 0.42, r * 0.95);
+    ctx.stroke();
+    for (let i = -1; i <= 1; i++) {
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.32, i * r * 0.42);
+      ctx.lineTo(r * 0.32 - Math.abs(i) * r * 0.18, i * r * 0.42);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+/** The face shown on an agent's television head: its mark over a live-looking screen. */
+export function agentFace(agent, { w = 512, h = 384, seed = 4 } = {}) {
+  const rand = rng(seed * 613 + agent.name.length);
+  const [c, ctx] = canvas(w, h);
+
+  ctx.fillStyle = "#07090d";
+  ctx.fillRect(0, 0, w, h);
+  const g = ctx.createRadialGradient(w / 2, h * 0.44, 10, w / 2, h * 0.44, w * 0.62);
+  g.addColorStop(0, agent.colour + "3a");
+  g.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, w, h);
+
+  drawLogo(ctx, agent.id, w / 2, h * 0.41, h * 0.23, agent.colour);
+
+  ctx.textAlign = "center";
+  ctx.fillStyle = agent.colour;
+  ctx.font = "bold 44px 'Courier New', monospace";
+  ctx.fillText(agent.name, w / 2, h * 0.79);
+
+  ctx.font = "20px 'Courier New', monospace";
+  ctx.fillStyle = "rgba(210,235,255,0.45)";
+  ctx.fillText(agent.role.toUpperCase(), w / 2, h * 0.88);
+
+  // curved-tube vignette, then scanlines
+  const v = ctx.createRadialGradient(w / 2, h / 2, w * 0.3, w / 2, h / 2, w * 0.62);
+  v.addColorStop(0, "rgba(0,0,0,0)");
+  v.addColorStop(1, "rgba(0,0,0,0.65)");
+  ctx.fillStyle = v;
+  ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = "rgba(0,0,0,0.16)";
+  for (let y = 0; y < h; y += 4) ctx.fillRect(0, y, w, 2);
+  speckle(ctx, Math.max(w, h), 420, rand, 0.04, true);
+
+  return toTexture(c, { srgb: true });
+}

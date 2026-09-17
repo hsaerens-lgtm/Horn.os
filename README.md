@@ -2,7 +2,8 @@
 
 A 3D table set for a D&D session. I am the DM; the players are the AI agents I
 actually run — **Perseus**, **Hermes**, **Odysseus** and **Codex**, each at its own
-terminal across the table. Click the character sheet lying beside the DM screen and
+terminal across the table — suited figures with a television for a head, each screen
+showing that agent'''s mark. Click the character sheet lying beside the DM screen and
 the camera drops overhead: the CV *is* the DM's character sheet.
 
 The metaphor is the job. An AI Solutions Consultant sets the scope, writes the rules,
@@ -33,7 +34,7 @@ css/sheet.css     parchment character sheet + page UI
 js/content.js     all CV text, as sheet data — edit this to update the résumé
 js/sheet.js       renders the character sheet
 js/scene.js       3D table, camera states, sheet projection
-js/textures.js    procedural battle map, parchment and agent terminals
+js/textures.js    procedural battle map, parchment, agent marks and screen faces
 js/main.js        bootstrap: 3D mode or full-screen fallback
 assets/           Horn_Saerens_CV_2026.pdf
 assets/textures/  PBR texture sets (diffuse + normal + ARM), 512px JPG
@@ -76,8 +77,9 @@ Models (glTF):
 
 Art direction is a modern room, not a fantasy tavern: polished herringbone, smooth
 concrete and walnut, lit by one pendant lamp over the table. The dice, the battle
-map, the DM screen and the four agent terminals are generated in code — icosahedron,
-dodecahedron and the rest come straight out of Three.js.
+map, the DM screen, the four agents and every die are generated in code — the party
+is built from capsules and boxes, their marks are drawn as canvas vector paths, and
+the icosahedron and dodecahedron come straight out of Three.js.
 
 Every texture is downscaled to 512px and re-encoded, which keeps the whole site near
 2 MB rather than 15 MB at the original 1K. Models load asynchronously and only in 3D
