@@ -3,7 +3,7 @@
 A 3D table set for a D&D session. I am the DM; the players are the AI agents I
 actually run — **Perseus**, **Hermes**, **Odysseus** and **Codex**, each at its own
 terminal across the table — suited figures with a television for a head, each screen
-showing that agent'''s mark. Click the character sheet lying beside the DM screen and
+showing that agent's mark. Click the character sheet lying beside the DM screen and
 the camera drops overhead: the CV *is* the DM's character sheet.
 
 The metaphor is the job. An AI Solutions Consultant sets the scope, writes the rules,
@@ -76,7 +76,7 @@ Models (glTF):
 | Alarm clock | [Alarm Clock 01](https://polyhaven.com/a/alarm_clock_01) |
 
 Art direction is a modern room, not a fantasy tavern: polished herringbone, smooth
-concrete and walnut, lit by one pendant lamp over the table. The dice, the battle
+concrete and walnut, lit by one pendant lamp over the table. The battle
 map, the DM screen, the four agents and every die are generated in code — the party
 is built from capsules and boxes, their marks are drawn as canvas vector paths, and
 the icosahedron and dodecahedron come straight out of Three.js.
