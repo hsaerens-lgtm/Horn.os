@@ -118,7 +118,7 @@ export function parchment({ size = 512, seed = 21 } = {}) {
   for (let i = 0; i < 260; i++) {
     const x = rand() * size, y = rand() * size, r = 18 + rand() * 90;
     const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-    g.addColorStop(0, rand() > 0.45 ? "rgba(120,86,40,0.10)" : "rgba(255,246,222,0.14)");
+    g.addColorStop(0, rand() > 0.45 ? "rgba(120,86,40,0.05)" : "rgba(255,246,222,0.10)");
     g.addColorStop(1, "rgba(0,0,0,0)");
     ctx.fillStyle = g;
     ctx.fillRect(x - r, y - r, r * 2, r * 2);
@@ -451,5 +451,48 @@ export function scoreLabel(value, sides, kind = "normal") {
 
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+/**
+ * Cold-press paper: a tileable sheet of tooth and fibre. Used by the watercolour
+ * pass both as the grain laid over the image and as the low-frequency noise that
+ * wobbles the sampling, which is what keeps painted edges from looking machined.
+ */
+export function paperGrain({ size = 512, seed = 71 } = {}) {
+  const rand = rng(seed);
+  const [c, ctx] = canvas(size);
+  ctx.fillStyle = "#808080";
+  ctx.fillRect(0, 0, size, size);
+
+  // broad cloudy blotches: the low-frequency channel
+  for (let i = 0; i < 170; i++) {
+    const x = rand() * size, y = rand() * size, r = 40 + rand() * 150;
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    const light = rand() > 0.5;
+    g.addColorStop(0, light ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.10)");
+    g.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+
+  // the tooth of the paper: short fibres in both directions
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 2600; i++) {
+    const x = rand() * size, y = rand() * size;
+    const len = 4 + rand() * 16;
+    const horiz = rand() > 0.5;
+    ctx.strokeStyle = rand() > 0.5 ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.09)";
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(horiz ? x + len : x + rand() * 2, horiz ? y + rand() * 2 : y + len);
+    ctx.stroke();
+  }
+
+  speckle(ctx, size, 6000, rand, 0.07, false);
+  speckle(ctx, size, 6000, rand, 0.07, true);
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
   return tex;
 }

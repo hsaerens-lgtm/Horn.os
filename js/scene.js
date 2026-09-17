@@ -3,6 +3,7 @@ import { CSS3DRenderer, CSS3DObject } from "three/addons/renderers/CSS3DRenderer
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { plasticGrain, parchment, battleMap, agentScreen, agentFace, suitFabric, shirtFabric, scoreLabel } from "./textures.js";
+import { createWatercolour } from "./watercolour.js";
 
 // The sheet is 860x1180 CSS px, laid flat on the table at this physical width.
 const SHEET_W = 0.34;
@@ -27,8 +28,9 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit, onA
   renderer.setSize(width(), height());
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 0.88;
+  // Tone mapping happens inside the watercolour pass, not here: the pass needs the
+  // raw HDR values to sample, and applying the curve twice would flatten the scene.
+  renderer.toneMapping = THREE.NoToneMapping;
   renderer.domElement.style.zIndex = "2";
   renderer.domElement.style.pointerEvents = "none";
   container.appendChild(renderer.domElement);
@@ -652,6 +654,9 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit, onA
   );
   scene.add(dust);
 
+  // ---------- Watercolour pass ----------
+  const painter = createWatercolour(renderer, scene, camera);
+
   // ---------- Camera states ----------
   const UP_IDLE = new THREE.Vector3(0, 1, 0);
   // Looking straight down, the default up vector is parallel to the view direction,
@@ -794,6 +799,7 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit, onA
     camera.updateProjectionMatrix();
     renderer.setSize(width(), height());
     cssRenderer.setSize(width(), height());
+    painter.setSize(width(), height());
   });
 
   // ---------- Loop ----------
@@ -853,7 +859,7 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit, onA
     camera.up.copy(camUp);
     camera.lookAt(lookAt);
 
-    renderer.render(scene, camera);
+    painter.render();
     cssRenderer.render(scene, camera);
   });
 

@@ -19,7 +19,9 @@ hands the agents their tools, and makes sure what happens at the table is someth
 the business can actually use.
 
 Built with [Three.js](https://threejs.org/) — `WebGLRenderer` for the room and
-`CSS3DRenderer` to lay a real, scrollable HTML sheet flat on the table.
+`CSS3DRenderer` to lay a real, scrollable HTML sheet flat on the table. The room is
+then painted: a watercolour pass lays paper grain over the image, pools pigment at
+the edges and lets the washes bleed, while the sheet itself stays crisp.
 No build step, no framework: plain ES modules served as static files.
 
 ## Run locally
@@ -42,6 +44,7 @@ css/sheet.css     parchment character sheet + page UI
 js/content.js     all CV text, as sheet data — edit this to update the résumé
 js/sheet.js       renders the character sheet
 js/scene.js       3D table, camera states, sheet projection
+js/watercolour.js the painted look: post-processing chain and its shader
 js/textures.js    procedural battle map, parchment, suit cloth, agent marks and faces
 js/main.js        bootstrap: 3D mode or full-screen fallback
 assets/           Horn_Saerens_CV_2026.pdf
