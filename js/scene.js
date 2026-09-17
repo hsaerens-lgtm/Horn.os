@@ -12,7 +12,7 @@ const SHEET_H = 1180 * SHEET_SCALE;
 const TABLE_Y = 0.76;
 const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
-export function createScene({ container, sheetRoot, agents, onEnter, onExit }) {
+export function createScene({ container, sheetRoot, agents, onEnter, onExit, onAgent }) {
   const width = () => container.clientWidth;
   const height = () => container.clientHeight;
 
@@ -217,6 +217,7 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit }) {
     new THREE.MeshStandardMaterial({ ...(striped ? pin : twill), color: 0x141826, normalScale: N(0.45), envMapIntensity: 0.25 });
   const shirtMat = new THREE.MeshStandardMaterial({ ...poplin, color: 0x8f96a6, normalScale: N(0.35), envMapIntensity: 0.3 });
   const cuffMat = new THREE.MeshStandardMaterial({ color: 0x6e7484, roughness: 0.78, envMapIntensity: 0.25 });
+  const hitMat = new THREE.MeshBasicMaterial({ visible: false });
   const chairMat = new THREE.MeshStandardMaterial({ color: 0x2f2a26, roughness: 0.72, envMapIntensity: 0.4 });
   const chairLegMat = new THREE.MeshStandardMaterial({ color: 0x6d7280, roughness: 0.35, metalness: 0.75, envMapIntensity: 1.0 });
   const shoeMat = new THREE.MeshStandardMaterial({ color: 0x14161d, roughness: 0.34, envMapIntensity: 0.9 });
@@ -225,6 +226,7 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit }) {
   const heads = [];
 
   const agentLights = [];
+  const agentHits = [];
 
   // A jacket silhouette: square across the shoulders, tapering to the waist. Extruding
   // a profile with a bevel gives soft edges without the balloon look of stacked spheres.
@@ -435,6 +437,16 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit }) {
     g.add(faceGlow);
     agentLights.push(faceGlow);
 
+    // One invisible box per agent is a far cheaper and steadier click target than
+    // raycasting the two dozen meshes each figure is made of.
+    const hit = new THREE.Mesh(new THREE.BoxGeometry(0.72, 1.15, 0.62), hitMat);
+    hit.position.set(0, HIP_Y + 0.45, 0.04);
+    hit.visible = false;
+    hit.userData.agent = a;
+    hit.userData.seat = { x, z, rotY };
+    g.add(hit);
+    agentHits.push(hit);
+
     return g;
   };
 
@@ -595,6 +607,18 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit }) {
     return out;
   };
 
+  // Framing one agent: stand off along the direction they face, at head height, so
+  // the shot reads as looking across the table at that player.
+  let focusedAgent = null;
+  const agentPose = (out) => {
+    const { x, z, rotY } = focusedAgent.userData.seat;
+    const headY = 0.5 + 0.69;
+    const d = camera.aspect > 1.4 ? 1.12 : 1.12 * (1.4 / camera.aspect);
+    out.pos.set(x + Math.sin(rotY) * d, headY + 0.16, z + Math.cos(rotY) * d);
+    out.target.set(x, headY - 0.08, z);
+    return out;
+  };
+
   const pose = { pos: new THREE.Vector3(), target: new THREE.Vector3() };
   const from = { pos: new THREE.Vector3(), target: new THREE.Vector3(), up: new THREE.Vector3() };
   const to = { pos: new THREE.Vector3(), target: new THREE.Vector3() };
@@ -624,6 +648,17 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit }) {
     onEnter?.();
   }
 
+  function enterAgent(hit) {
+    if (mode !== "idle") return;
+    focusedAgent = hit;
+    from.pos.copy(camera.position);
+    from.target.copy(lookAt);
+    from.up.copy(camUp);
+    mode = "toAgent";
+    tweenStart = performance.now();
+    onAgent?.(hit.userData.agent);
+  }
+
   function exit() {
     if (mode === "idle" || mode === "toIdle") return;
     from.pos.copy(camera.position);
@@ -638,21 +673,32 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit }) {
   // ---------- Interaction ----------
   const raycaster = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
-  const hitSheet = (e) => {
+  const aim = (e) => {
     const r = container.getBoundingClientRect();
     ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
     raycaster.setFromCamera(ndc, camera);
+  };
+  const hitSheet = (e) => {
+    aim(e);
     return raycaster.intersectObject(sheetMesh, false).length > 0;
+  };
+  const hitAgent = (e) => {
+    aim(e);
+    const hits = raycaster.intersectObjects(agentHits, false);
+    return hits.length ? hits[0].object : null;
   };
 
   container.addEventListener("pointermove", (e) => {
     const r = container.getBoundingClientRect();
     pointer.x = ((e.clientX - r.left) / r.width) * 2 - 1;
     pointer.y = -((e.clientY - r.top) / r.height) * 2 + 1;
-    if (mode === "idle") container.style.cursor = hitSheet(e) ? "pointer" : "grab";
+    if (mode === "idle") container.style.cursor = hitSheet(e) || hitAgent(e) ? "pointer" : "grab";
   });
   container.addEventListener("pointerdown", (e) => {
-    if (mode === "idle" && hitSheet(e)) enter();
+    if (mode !== "idle") return;
+    if (hitSheet(e)) return enter();
+    const a = hitAgent(e);
+    if (a) enterAgent(a);
   });
   window.addEventListener("keydown", (e) => {
     if (e.key === "Escape") exit();
@@ -692,11 +738,17 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit }) {
       camera.position.copy(pose.pos);
       lookAt.copy(pose.target);
       camUp.copy(UP_FOCUS);
+    } else if (mode === "agent") {
+      agentPose(pose);
+      camera.position.copy(pose.pos);
+      lookAt.copy(pose.target);
+      camUp.copy(UP_IDLE);
     } else {
       const k = Math.min(1, (performance.now() - tweenStart) / TWEEN_MS);
       const e = easeInOutCubic(k);
       const targetUp = mode === "toFocus" ? UP_FOCUS : UP_IDLE;
       if (mode === "toFocus") focusPose(to);
+      else if (mode === "toAgent") agentPose(to);
       else idlePose(t, to);
       camera.position.lerpVectors(from.pos, to.pos, e);
       lookAt.lerpVectors(from.target, to.target, e);
@@ -705,7 +757,11 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit }) {
         if (mode === "toFocus") {
           mode = "focused";
           setInteractive(true);
-        } else mode = "idle";
+        } else if (mode === "toAgent") mode = "agent";
+        else {
+          mode = "idle";
+          focusedAgent = null;
+        }
       }
     }
     camera.up.copy(camUp);

@@ -115,3 +115,25 @@ export function createSheet(root, c) {
 
   return { scrollTop: () => (root.scrollTop = 0) };
 }
+
+/** The card shown when you click one of the agents at the table. */
+export function renderAgentCard(el, a, quest) {
+  el.style.setProperty("--dot", a.colour);
+  el.innerHTML = `
+    <div class="ac-head">
+      <span class="ac-name">${esc(a.name)}</span>
+      <span class="ac-role">${esc(a.role)}</span>
+    </div>
+    <div class="ac-status">${esc(a.status)}</div>
+    <p>${esc(a.blurb)}</p>
+    <div class="ac-label">Stack</div>
+    <p class="ac-stack">${esc(a.stack)}</p>
+    ${
+      quest
+        ? `<div class="ac-label">Quest at this table</div>
+           <p class="ac-quest"><b>${esc(quest.name)}</b> — ${esc(quest.real)}<br><span>${esc(quest.status)}</span></p>`
+        : ""
+    }
+    <button class="ac-close" type="button">Back to the table <kbd>Esc</kbd></button>`;
+  return el.querySelector(".ac-close");
+}

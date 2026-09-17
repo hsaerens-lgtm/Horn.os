@@ -61,6 +61,9 @@ export const content = {
       id: "perseus",
       name: "PERSEUS",
       role: "The Platform",
+      status: "In production",
+      stack: "LibreChat (built from source) · Docker Compose · RAG + pgvector · MCP · LM Studio",
+      quest: "Raising the Platform",
       colour: "#4fc3f7",
       blurb:
         "Internal AI platform, in production. LibreChat rebuilt from source: container stack with RAG, " +
@@ -71,6 +74,9 @@ export const content = {
       id: "hermes",
       name: "HERMES",
       role: "The Messenger",
+      status: "Running locally",
+      stack: "Terminal agent · multi-provider model routing · local-first",
+      quest: "Sharpening the Blade",
       colour: "#ffb74d",
       blurb:
         "Local terminal agent. Configurable across several model providers, running on the machine rather " +
@@ -80,6 +86,9 @@ export const content = {
       id: "odysseus",
       name: "ODYSSEUS",
       role: "The Navigator",
+      status: "Under evaluation",
+      stack: "Self-hosted workspace · chat, agents, deep research, memory · local hardware",
+      quest: "The Great Library",
       colour: "#81c784",
       blurb:
         "Self-hosted, local-first AI workspace under evaluation: one interface for chat, agents, deep " +
@@ -89,6 +98,9 @@ export const content = {
       id: "codex",
       name: "CODEX",
       role: "The Artificer",
+      status: "Daily driver",
+      stack: "Coding agent · spec to implementation · used to build this very table",
+      quest: "The Support Workspace",
       colour: "#ba68c8",
       blurb:
         "Coding agent. Builds the tools the rest of the party uses — the one I hand a spec to when " +

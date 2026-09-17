@@ -1,10 +1,11 @@
 import { content } from "./content.js";
-import { createSheet } from "./sheet.js";
+import { createSheet, renderAgentCard } from "./sheet.js";
 
 const root = document.getElementById("sheet-root");
 const loader = document.getElementById("loader");
 const hint = document.querySelector(".hint");
 const back = document.querySelector(".back");
+const card = document.getElementById("agent-card");
 const params = new URLSearchParams(location.search);
 
 function supportsWebGL() {
@@ -39,9 +40,17 @@ async function start3D() {
       back.classList.remove("hidden");
       sheet.scrollTop();
     },
+    onAgent(agent) {
+      hint.classList.add("hidden");
+      back.classList.remove("hidden");
+      const quest = content.quests.find((q) => q.name === agent.quest);
+      renderAgentCard(card, agent, quest).addEventListener("click", () => scene.exit());
+      card.classList.remove("hidden");
+    },
     onExit() {
       back.classList.add("hidden");
       hint.classList.remove("hidden");
+      card.classList.add("hidden");
     },
   });
   const sheet = createSheet(root, content);
