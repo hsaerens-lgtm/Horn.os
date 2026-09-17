@@ -418,3 +418,38 @@ export function shirtFabric({ size = 128, seed = 53, repeat = [4, 4] } = {}) {
     roughnessMap: toTexture(roughnessFrom(c, 0.62, 0.86), { repeat }),
   };
 }
+
+/**
+ * The number that floats up after a die lands. `kind` is "crit" on a natural 20,
+ * "fumble" on a natural 1, and "normal" otherwise — the colour carries the result
+ * before the reader has parsed the digits.
+ */
+export function scoreLabel(value, sides, kind = "normal") {
+  const [c, ctx] = canvas(256, 168);
+  const col = kind === "crit" ? "#ffd24a" : kind === "fumble" ? "#e8503f" : "#f2e8d2";
+
+  ctx.textAlign = "center";
+  ctx.textBaseline = "alphabetic";
+
+  // a soft disc behind the digits so they stay readable over the battle map
+  const g = ctx.createRadialGradient(128, 78, 6, 128, 78, 118);
+  g.addColorStop(0, kind === "normal" ? "rgba(10,8,6,0.72)" : col + "55");
+  g.addColorStop(1, "rgba(10,8,6,0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 256, 168);
+
+  ctx.font = "bold 104px Georgia, 'Times New Roman', serif";
+  ctx.shadowColor = col;
+  ctx.shadowBlur = kind === "normal" ? 14 : 34;
+  ctx.fillStyle = col;
+  ctx.fillText(String(value), 128, 108);
+  ctx.shadowBlur = 0;
+
+  ctx.font = "600 20px Georgia, serif";
+  ctx.fillStyle = "rgba(240,232,210,0.62)";
+  ctx.fillText(kind === "crit" ? "CRITICAL" : kind === "fumble" ? "FUMBLE" : "d" + sides, 128, 140);
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}

@@ -7,6 +7,8 @@ showing that agent's mark. Two sit opposite, one at each end, the DM where the
 camera is. Click the character sheet lying beside the DM screen and
 the camera drops overhead: the CV *is* the DM's character sheet. Click any player
 instead and the camera turns to them, with a card showing what that agent actually is.
+The dice are live: click one and it tumbles, then a score floats up — gold on a
+natural 20, red on a natural 1.
 
 The metaphor is the job. An AI Solutions Consultant sets the scope, writes the rules,
 hands the agents their tools, and makes sure what happens at the table is something

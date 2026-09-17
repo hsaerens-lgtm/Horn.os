@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { CSS3DRenderer, CSS3DObject } from "three/addons/renderers/CSS3DRenderer.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { plasticGrain, parchment, battleMap, agentScreen, agentFace, suitFabric, shirtFabric } from "./textures.js";
+import { plasticGrain, parchment, battleMap, agentScreen, agentFace, suitFabric, shirtFabric, scoreLabel } from "./textures.js";
 
 // The sheet is 860x1180 CSS px, laid flat on the table at this physical width.
 const SHEET_W = 0.34;
@@ -161,20 +161,96 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit, onA
 
   // ---------- Dice ----------
   const diceSpecs = [
-    [new THREE.IcosahedronGeometry(0.026), mat.dice, 0.06, 0.3],
-    [new THREE.DodecahedronGeometry(0.022), mat.dicePale, 0.13, 0.42],
-    [new THREE.OctahedronGeometry(0.02), mat.dice, -0.02, 0.46],
-    [new THREE.TetrahedronGeometry(0.022), mat.dicePale, 0.1, 0.19],
-    [new THREE.BoxGeometry(0.03, 0.03, 0.03), mat.dice, 0.19, 0.3],
-    [new THREE.BoxGeometry(0.028, 0.028, 0.028), mat.dicePale, 0.24, 0.42],
+    [new THREE.IcosahedronGeometry(0.026), mat.dice, 0.06, 0.3, 20],
+    [new THREE.DodecahedronGeometry(0.022), mat.dicePale, 0.13, 0.42, 12],
+    [new THREE.OctahedronGeometry(0.02), mat.dice, -0.02, 0.46, 8],
+    [new THREE.TetrahedronGeometry(0.022), mat.dicePale, 0.1, 0.19, 4],
+    [new THREE.BoxGeometry(0.03, 0.03, 0.03), mat.dice, 0.19, 0.3, 6],
+    [new THREE.BoxGeometry(0.028, 0.028, 0.028), mat.dicePale, 0.24, 0.42, 6],
   ];
-  for (const [geo, m, x, z] of diceSpecs) {
+  const dice = [];
+  for (const [geo, m, x, z, sides] of diceSpecs) {
     const d = new THREE.Mesh(geo, m);
     d.position.set(x, TABLE_Y + 0.019, z);
     d.rotation.set(Math.random() * 3, Math.random() * 3, Math.random() * 3);
     d.castShadow = true;
+    d.userData.sides = sides;
     scene.add(d);
+    dice.push(d);
   }
+
+  // ---------- Rolling ----------
+  // No physics engine: a die hops along an arc while it tumbles, then settles and
+  // pushes a floating number. The result is drawn up front, so the animation is
+  // presentation rather than simulation — which is also why it cannot land wrong.
+  const rolls = [];
+  const labels = [];
+
+  const spawnLabel = (die, value, sides) => {
+    const kind = sides === 20 && value === 20 ? "crit" : sides === 20 && value === 1 ? "fumble" : "normal";
+    const sprite = new THREE.Sprite(
+      new THREE.SpriteMaterial({ map: scoreLabel(value, sides, kind), transparent: true, depthTest: false, depthWrite: false })
+    );
+    sprite.position.copy(die.position).add(new THREE.Vector3(0, 0.085, 0));
+    sprite.renderOrder = 999;
+    scene.add(sprite);
+    labels.push({ sprite, t0: performance.now(), dur: kind === "normal" ? 1900 : 2600, y0: sprite.position.y, kind });
+  };
+
+  const rollDie = (die) => {
+    if (die.userData.rolling) return;
+    die.userData.rolling = true;
+    const result = 1 + Math.floor(Math.random() * die.userData.sides);
+    const from = die.position.clone();
+    const to = from.clone();
+    to.x += (Math.random() - 0.5) * 0.13;
+    to.z += (Math.random() - 0.5) * 0.11;
+    rolls.push({
+      die,
+      result,
+      from,
+      to,
+      axis: new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize(),
+      spin: 16 + Math.random() * 9,
+      t0: performance.now(),
+      dur: 1150,
+    });
+  };
+
+  const updateDice = () => {
+    const now = performance.now();
+
+    for (let i = rolls.length - 1; i >= 0; i--) {
+      const r = rolls[i];
+      const k = Math.min(1, (now - r.t0) / r.dur);
+      const travel = 1 - Math.pow(1 - k, 3);
+      r.die.position.lerpVectors(r.from, r.to, travel);
+      r.die.position.y = r.from.y + Math.sin(Math.PI * Math.min(1, k * 1.08)) * 0.2;
+      r.die.rotateOnAxis(r.axis, r.spin * (1 - k) * 0.017);
+      if (k >= 1) {
+        r.die.position.copy(r.to);
+        r.die.userData.rolling = false;
+        spawnLabel(r.die, r.result, r.die.userData.sides);
+        rolls.splice(i, 1);
+      }
+    }
+
+    for (let i = labels.length - 1; i >= 0; i--) {
+      const l = labels[i];
+      const k = Math.min(1, (now - l.t0) / l.dur);
+      l.sprite.position.y = l.y0 + k * 0.24;
+      const pop = k < 0.14 ? k / 0.14 : 1;
+      const base = l.kind === "normal" ? 0.26 : 0.36;
+      l.sprite.scale.set(base * (0.75 + pop * 0.25), base * 0.66 * (0.75 + pop * 0.25), 1);
+      l.sprite.material.opacity = k > 0.62 ? 1 - (k - 0.62) / 0.38 : 1;
+      if (k >= 1) {
+        scene.remove(l.sprite);
+        l.sprite.material.map.dispose();
+        l.sprite.material.dispose();
+        labels.splice(i, 1);
+      }
+    }
+  };
 
   // ---------- Miniatures: one per agent on the map, plus what they are fighting ----------
   const mini = (colour, x, z, tall = 0.052) => {
@@ -687,15 +763,24 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit, onA
     const hits = raycaster.intersectObjects(agentHits, false);
     return hits.length ? hits[0].object : null;
   };
+  const hitDie = (e) => {
+    aim(e);
+    const hits = raycaster.intersectObjects(dice, false);
+    return hits.length ? hits[0].object : null;
+  };
 
   container.addEventListener("pointermove", (e) => {
     const r = container.getBoundingClientRect();
     pointer.x = ((e.clientX - r.left) / r.width) * 2 - 1;
     pointer.y = -((e.clientY - r.top) / r.height) * 2 + 1;
-    if (mode === "idle") container.style.cursor = hitSheet(e) || hitAgent(e) ? "pointer" : "grab";
+    if (mode === "idle") container.style.cursor = hitDie(e) || hitSheet(e) || hitAgent(e) ? "pointer" : "grab";
   });
   container.addEventListener("pointerdown", (e) => {
     if (mode !== "idle") return;
+    // Dice are tested first: they sit on the table and are small enough that the
+    // sheet behind them would otherwise swallow the click.
+    const d = hitDie(e);
+    if (d) return rollDie(d);
     if (hitSheet(e)) return enter();
     const a = hitAgent(e);
     if (a) enterAgent(a);
@@ -727,6 +812,7 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit, onA
 
     // the agent terminals breathe slightly, so the party looks awake
     agentLights.forEach((l, i) => (l.intensity = 0.45 + Math.sin(t * 1.6 + i * 1.9) * 0.1));
+    updateDice();
 
     if (mode === "idle") {
       idlePose(t, pose);
