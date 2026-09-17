@@ -207,7 +207,9 @@ body.fallback #os-root {
   outline: 1px dotted #ffff80;
 }
 
-.windows { position: absolute; inset: 0; }
+/* The layer itself must not swallow clicks meant for the icons underneath it. */
+.windows { position: absolute; inset: 0; pointer-events: none; }
+.windows > .window { pointer-events: auto; }
 
 /* ---------- Windows ---------- */
 .window {
@@ -523,9 +525,18 @@ body.fallback #os-root {
 .sm-sep { height: 2px; margin: 3px 4px; border-top: 1px solid var(--chrome-dark); border-bottom: 1px solid #fff; }
 
 /* ---------- Small screens (fallback mode) ---------- */
+/* Narrow desktop / tablet: icons stay in a column, windows fill the space to their right. */
 @media (max-width: 900px) {
-  body.fallback .icons { grid-template-rows: repeat(3, 86px); }
-  body.fallback .window { left: 8px !important; top: 8px !important; right: 8px; bottom: 36px; width: auto !important; height: auto !important; }
+  body.fallback .window { left: 104px !important; top: 8px !important; right: 8px; bottom: 36px; width: auto !important; height: auto !important; }
   body.fallback .file .fname { min-width: 0; }
   body.fallback .skill-row { grid-template-columns: 1fr; gap: 2px; }
+}
+
+/* Phone: icons in two rows across the top, windows below them, so icons are always reachable. */
+@media (max-width: 600px) {
+  body.fallback .icons { grid-auto-flow: row; grid-template-rows: none; grid-template-columns: repeat(3, 1fr); left: 8px; right: 8px; top: 8px; gap: 2px; }
+  body.fallback .icon { width: auto; }
+  body.fallback .window { left: 6px !important; top: 196px !important; right: 6px; bottom: 34px; min-width: 0; }
+  body.fallback .win-body { padding: 10px; }
+  body.fallback .role { flex-direction: column; gap: 0; }
 }

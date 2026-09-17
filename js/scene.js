@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { CSS3DRenderer, CSS3DObject } from "three/addons/renderers/CSS3DRenderer.js";
+import { wood, floorboards, plaster, plasticGrain, poster } from "./textures.js";
 
 // Screen: 1024x768 CSS px mapped onto a 0.48 m x 0.36 m opening in the CRT bezel.
 const SCREEN_W = 0.48;
@@ -33,13 +34,21 @@ export function createScene({ container, osRoot, onEnter, onExit }) {
   const camera = new THREE.PerspectiveCamera(45, width() / height(), 0.05, 50);
 
   // ---------- Materials ----------
+  const tex = {
+    desk: wood({ base: "#6a4527", seed: 7, repeat: [2, 1] }),
+    deskDark: wood({ base: "#3e2816", seed: 13, repeat: [1, 1] }),
+    floor: floorboards({ repeat: [6, 6] }),
+    wall: plaster({ repeat: [5, 2] }),
+    plastic: plasticGrain(),
+    poster: poster(),
+  };
   const mat = {
-    floor: new THREE.MeshStandardMaterial({ color: 0x14141c, roughness: 0.95 }),
-    wall: new THREE.MeshStandardMaterial({ color: 0x1c1c28, roughness: 1 }),
-    wood: new THREE.MeshStandardMaterial({ color: 0x5a3d25, roughness: 0.7 }),
-    woodDark: new THREE.MeshStandardMaterial({ color: 0x3c2817, roughness: 0.8 }),
-    beige: new THREE.MeshStandardMaterial({ color: 0xcfc3a9, roughness: 0.65 }),
-    beigeDark: new THREE.MeshStandardMaterial({ color: 0xb3a88f, roughness: 0.7 }),
+    floor: new THREE.MeshStandardMaterial({ map: tex.floor.map, bumpMap: tex.floor.bumpMap, bumpScale: 0.02, roughness: 0.85 }),
+    wall: new THREE.MeshStandardMaterial({ map: tex.wall.map, bumpMap: tex.wall.bumpMap, bumpScale: 0.01, roughness: 1 }),
+    wood: new THREE.MeshStandardMaterial({ map: tex.desk.map, bumpMap: tex.desk.bumpMap, bumpScale: 0.004, roughness: 0.55 }),
+    woodDark: new THREE.MeshStandardMaterial({ map: tex.deskDark.map, bumpMap: tex.deskDark.bumpMap, bumpScale: 0.003, roughness: 0.7 }),
+    beige: new THREE.MeshStandardMaterial({ color: 0xcfc3a9, roughness: 0.6, bumpMap: tex.plastic, bumpScale: 0.0015, roughnessMap: tex.plastic }),
+    beigeDark: new THREE.MeshStandardMaterial({ color: 0xb3a88f, roughness: 0.7, bumpMap: tex.plastic, bumpScale: 0.0015 }),
     dark: new THREE.MeshStandardMaterial({ color: 0x24242a, roughness: 0.5 }),
     keys: new THREE.MeshStandardMaterial({ color: 0xd8d0bc, roughness: 0.6 }),
     metal: new THREE.MeshStandardMaterial({ color: 0x8a8f99, roughness: 0.35, metalness: 0.8 }),
@@ -68,6 +77,16 @@ export function createScene({ container, osRoot, onEnter, onExit }) {
   wall.position.set(0, 2.5, -1.3);
   wall.receiveShadow = true;
   scene.add(wall);
+
+  // Skirting board and a framed print so the back wall isn't a flat void.
+  box(12, 0.1, 0.02, mat.woodDark, 0, 0.05, -1.29, { cast: false });
+  const frame = new THREE.Mesh(new THREE.BoxGeometry(0.66, 0.66, 0.03), mat.woodDark);
+  frame.position.set(0.95, 1.75, -1.28);
+  frame.castShadow = true;
+  scene.add(frame);
+  const print = new THREE.Mesh(new THREE.PlaneGeometry(0.58, 0.58), new THREE.MeshStandardMaterial({ map: tex.poster, roughness: 0.9 }));
+  print.position.set(0.95, 1.75, -1.26);
+  scene.add(print);
 
   // ---------- Desk ----------
   const DESK_Y = 0.75;
