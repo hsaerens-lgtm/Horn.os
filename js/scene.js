@@ -28,7 +28,7 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit }) {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.0;
+  renderer.toneMappingExposure = 0.88;
   renderer.domElement.style.zIndex = "2";
   renderer.domElement.style.pointerEvents = "none";
   container.appendChild(renderer.domElement);
@@ -38,7 +38,7 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit }) {
 
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-  scene.environmentIntensity = 0.24;
+  scene.environmentIntensity = 0.16;
   pmrem.dispose();
 
   // ---------- Materials ----------
@@ -205,11 +205,11 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit }) {
   // ---------- The party ----------
   // Each agent is a suited figure with a television for a head, its mark on the
   // screen. Built from primitives so there is nothing to download or license.
-  const suitMat = new THREE.MeshStandardMaterial({ color: 0x2b3142, roughness: 0.76, envMapIntensity: 0.7 });
-  const suitDark = new THREE.MeshStandardMaterial({ color: 0x1f2433, roughness: 0.78, envMapIntensity: 0.55 });
-  const shirtMat = new THREE.MeshStandardMaterial({ color: 0xb9bfcc, roughness: 0.7, envMapIntensity: 0.45 });
-  const cuffMat = new THREE.MeshStandardMaterial({ color: 0x8b91a0, roughness: 0.74, envMapIntensity: 0.35 });
-  const handMat = new THREE.MeshStandardMaterial({ color: 0x5c6270, roughness: 0.66, envMapIntensity: 0.5 });
+  const suitMat = new THREE.MeshStandardMaterial({ color: 0x1c2130, roughness: 0.82, envMapIntensity: 0.3 });
+  const suitDark = new THREE.MeshStandardMaterial({ color: 0x141826, roughness: 0.84, envMapIntensity: 0.25 });
+  const shirtMat = new THREE.MeshStandardMaterial({ color: 0x8f96a6, roughness: 0.75, envMapIntensity: 0.3 });
+  const cuffMat = new THREE.MeshStandardMaterial({ color: 0x6e7484, roughness: 0.78, envMapIntensity: 0.25 });
+  const handMat = new THREE.MeshStandardMaterial({ color: 0x474d5c, roughness: 0.72, envMapIntensity: 0.3 });
   const caseMat = new THREE.MeshStandardMaterial({ color: 0x31353e, roughness: 0.6, ...tex.plastic, normalScale: N(0.25), envMapIntensity: 0.8 });
   const heads = [];
 
@@ -455,7 +455,7 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit }) {
   bulb.position.y = -0.06;
   pendant.add(bulb);
 
-  const keyLight = new THREE.PointLight(0xffc489, 8, 4.5, 2);
+  const keyLight = new THREE.PointLight(0xffc489, 6.2, 4.2, 2);
   keyLight.position.set(0, 1.71, -0.05);
   keyLight.castShadow = true;
   keyLight.shadow.mapSize.set(1024, 1024);
@@ -464,13 +464,13 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit }) {
 
   // Rim light from behind the party, so the figures read against the dark wall
   // instead of dissolving into it.
-  const rim = new THREE.DirectionalLight(0x9fb4d8, 0.26);
+  const rim = new THREE.DirectionalLight(0x9fb4d8, 0.12);
   rim.position.set(-1.2, 2.4, -3.2);
   rim.target.position.set(0, 1.1, -0.6);
   scene.add(rim);
   scene.add(rim.target);
 
-  scene.add(new THREE.HemisphereLight(0x3a3550, 0x0b0a09, 0.28));
+  scene.add(new THREE.HemisphereLight(0x3a3550, 0x0b0a09, 0.18));
   const fill = new THREE.DirectionalLight(0x8090c0, 0.12);
   fill.position.set(2, 3, 3);
   scene.add(fill);
