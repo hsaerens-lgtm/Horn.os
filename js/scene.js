@@ -205,13 +205,39 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit }) {
   // ---------- The party ----------
   // Each agent is a suited figure with a television for a head, its mark on the
   // screen. Built from primitives so there is nothing to download or license.
-  const suitMat = new THREE.MeshStandardMaterial({ color: 0x3b4252, roughness: 0.74, envMapIntensity: 0.7 });
-  const suitDark = new THREE.MeshStandardMaterial({ color: 0x2a3040, roughness: 0.78, envMapIntensity: 0.55 });
+  const suitMat = new THREE.MeshStandardMaterial({ color: 0x2b3142, roughness: 0.76, envMapIntensity: 0.7 });
+  const suitDark = new THREE.MeshStandardMaterial({ color: 0x1f2433, roughness: 0.78, envMapIntensity: 0.55 });
   const shirtMat = new THREE.MeshStandardMaterial({ color: 0xb9bfcc, roughness: 0.7, envMapIntensity: 0.45 });
+  const cuffMat = new THREE.MeshStandardMaterial({ color: 0x8b91a0, roughness: 0.74, envMapIntensity: 0.35 });
+  const handMat = new THREE.MeshStandardMaterial({ color: 0x5c6270, roughness: 0.66, envMapIntensity: 0.5 });
   const caseMat = new THREE.MeshStandardMaterial({ color: 0x31353e, roughness: 0.6, ...tex.plastic, normalScale: N(0.25), envMapIntensity: 0.8 });
   const heads = [];
 
   const agentLights = [];
+
+  // A jacket silhouette: square across the shoulders, tapering to the waist. Extruding
+  // a profile with a bevel gives soft edges without the balloon look of stacked spheres.
+  const jacketShape = (() => {
+    const s = new THREE.Shape();
+    const SH = 0.168; // half-width at the shoulder
+    const WA = 0.118; // half-width at the waist
+    s.moveTo(-SH, 0.2);
+    s.lineTo(SH, 0.2); // straight shoulder line
+    s.bezierCurveTo(SH + 0.008, 0.06, WA + 0.03, -0.1, WA, -0.26);
+    s.lineTo(-WA, -0.26);
+    s.bezierCurveTo(-WA - 0.03, -0.1, -SH - 0.008, 0.06, -SH, 0.2);
+    return s;
+  })();
+
+  const lapelShape = (() => {
+    const s = new THREE.Shape();
+    s.moveTo(0, 0.2);
+    s.lineTo(0.085, 0.2);
+    s.lineTo(0.05, 0.03);
+    s.lineTo(0.012, -0.12);
+    s.lineTo(0, -0.05);
+    return s;
+  })();
 
   const makeAgent = (a, x, z, rotY) => {
     const accent = new THREE.Color(a.colour);
@@ -220,102 +246,127 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit }) {
     g.rotation.y = rotY;
     scene.add(g);
 
-    // Seated torso: a capsule flattened front-to-back reads as a body in a jacket.
-    const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.19, 0.32, 4, 18), suitMat);
-    torso.scale.set(1, 1, 0.66);
-    torso.position.y = 1.0;
+    // ----- jacket -----
+    const torso = new THREE.Mesh(
+      new THREE.ExtrudeGeometry(jacketShape, {
+        depth: 0.17,
+        bevelEnabled: true,
+        bevelSize: 0.018,
+        bevelThickness: 0.018,
+        bevelSegments: 4,
+        curveSegments: 16,
+      }),
+      suitMat
+    );
+    torso.position.set(0, 1.09, -0.085);
     torso.castShadow = true;
+    torso.receiveShadow = true;
     g.add(torso);
 
-    for (const s of [-1, 1]) {
-      const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.085, 16, 12), suitMat);
-      shoulder.position.set(s * 0.185, 1.15, 0);
-      shoulder.scale.z = 0.8;
-      shoulder.castShadow = true;
-      g.add(shoulder);
+    // The jacket opening: a dark V so the chest is not one flat slab.
+    const opening = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.26, 0.02), suitDark);
+    opening.position.set(0, 1.18, 0.117);
+    g.add(opening);
 
-      // Upper arm angles down and forward; the forearm rests on the table edge.
-      const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.052, 0.17, 4, 12), suitMat);
-      upper.position.set(s * 0.2, 0.99, 0.05);
-      upper.rotation.set(0.5, 0, s * 0.12);
+    for (const s of [-1, 1]) {
+      const lapel = new THREE.Mesh(
+        new THREE.ExtrudeGeometry(lapelShape, { depth: 0.02, bevelEnabled: true, bevelSize: 0.006, bevelThickness: 0.006, bevelSegments: 2 }),
+        suitDark
+      );
+      lapel.scale.x = s;
+      lapel.position.set(0, 1.09, 0.108);
+      g.add(lapel);
+
+      // ----- arm: shoulder cap, upper arm out and down, forearm onto the table -----
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.055, 16, 12), suitMat);
+      cap.position.set(s * 0.176, 1.265, -0.005);
+      cap.scale.set(1, 0.85, 0.95);
+      cap.castShadow = true;
+      g.add(cap);
+
+      const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.05, 0.16, 4, 14), suitMat);
+      upper.position.set(s * 0.198, 1.16, 0.035);
+      upper.rotation.set(0.42, 0, s * 0.14);
       upper.castShadow = true;
       g.add(upper);
 
-      const fore = new THREE.Mesh(new THREE.CapsuleGeometry(0.046, 0.2, 4, 12), suitMat);
-      fore.position.set(s * 0.21, 0.86, 0.24);
-      fore.rotation.set(1.28, 0, s * 0.06);
+      const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.048, 14, 12), suitMat);
+      elbow.position.set(s * 0.216, 1.055, 0.115);
+      g.add(elbow);
+
+      const fore = new THREE.Mesh(new THREE.CapsuleGeometry(0.045, 0.21, 4, 14), suitMat);
+      fore.position.set(s * 0.214, 0.94, 0.265);
+      fore.rotation.set(1.16, 0, s * 0.05);
       fore.castShadow = true;
       g.add(fore);
 
-      const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.048, 0.016, 14), shirtMat);
-      cuff.position.set(s * 0.215, 0.815, 0.335);
-      cuff.rotation.x = 1.28;
+      const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.047, 0.047, 0.014, 16), cuffMat);
+      cuff.position.set(s * 0.212, 0.862, 0.375);
+      cuff.rotation.x = 1.16;
       g.add(cuff);
 
-      const hand = new THREE.Mesh(new THREE.SphereGeometry(0.045, 14, 12), new THREE.MeshStandardMaterial({ color: 0x5f6472, roughness: 0.68, envMapIntensity: 0.5 }));
-      hand.position.set(s * 0.215, 0.795, 0.39);
-      hand.scale.set(0.85, 0.6, 1.15);
+      // A flattened box reads as a hand laid on the table; a sphere read as a ball.
+      const hand = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.03, 0.13), handMat);
+      hand.position.set(s * 0.212, 0.836, 0.44);
+      hand.rotation.set(0.06, s * -0.12, 0);
       hand.castShadow = true;
       g.add(hand);
-
-      // lapel
-      const lapel = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.18, 0.011), suitDark);
-      lapel.position.set(s * 0.06, 1.095, 0.124);
-      lapel.rotation.z = s * 0.2;
-      g.add(lapel);
     }
 
-    const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.072, 0.086, 0.035, 16), shirtMat);
-    collar.position.set(0, 1.165, 0.015);
+    // ----- shirt, collar, tie -----
+    const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.078, 0.04, 18), shirtMat);
+    collar.position.set(0, 1.285, 0.012);
     g.add(collar);
 
-    const shirt = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.15, 0.01), shirtMat);
-    shirt.position.set(0, 1.105, 0.12);
+    const shirt = new THREE.Mesh(new THREE.BoxGeometry(0.085, 0.13, 0.014), shirtMat);
+    shirt.position.set(0, 1.225, 0.124);
     g.add(shirt);
 
-    const tie = new THREE.Mesh(new THREE.BoxGeometry(0.028, 0.17, 0.01), new THREE.MeshStandardMaterial({ color: accent, roughness: 0.38, envMapIntensity: 1.3 }));
-    tie.position.set(0, 1.07, 0.128);
+    const knot = new THREE.Mesh(new THREE.BoxGeometry(0.036, 0.034, 0.018), new THREE.MeshStandardMaterial({ color: accent, roughness: 0.36, envMapIntensity: 1.4 }));
+    knot.position.set(0, 1.268, 0.132);
+    g.add(knot);
+
+    const tie = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.165, 0.014), new THREE.MeshStandardMaterial({ color: accent, roughness: 0.38, envMapIntensity: 1.3 }));
+    tie.position.set(0, 1.168, 0.132);
     g.add(tie);
 
-    const pocket = new THREE.Mesh(new THREE.BoxGeometry(0.038, 0.016, 0.01), new THREE.MeshStandardMaterial({ color: accent, roughness: 0.5, envMapIntensity: 1.1 }));
-    pocket.position.set(-0.115, 1.0, 0.126);
+    const pocket = new THREE.Mesh(new THREE.BoxGeometry(0.042, 0.014, 0.012), new THREE.MeshStandardMaterial({ color: accent, roughness: 0.5, envMapIntensity: 1.2 }));
+    pocket.position.set(-0.104, 1.19, 0.118);
     g.add(pocket);
 
     // ----- television head -----
     const head = new THREE.Group();
-    head.position.set(0, 1.30, 0.01);
+    head.position.set(0, 1.44, 0.012);
     g.add(head);
-    heads.push({ head, base: 0.01 });
 
-    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.042, 0.055, 0.1, 14), suitDark);
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.044, 0.056, 0.1, 16), suitDark);
     neck.position.y = -0.125;
     head.add(neck);
 
-    const shell = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.25, 0.23), caseMat);
+    const shell = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.235, 0.22), caseMat);
     shell.castShadow = true;
     head.add(shell);
 
-    const bezel = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.23, 0.02), caseMat);
-    bezel.position.z = 0.117;
+    const bezel = new THREE.Mesh(new THREE.BoxGeometry(0.262, 0.218, 0.02), caseMat);
+    bezel.position.z = 0.112;
     head.add(bezel);
 
     const face = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.235, 0.176),
+      new THREE.PlaneGeometry(0.222, 0.166),
       new THREE.MeshBasicMaterial({ map: agentFace(a, { seed: party.indexOf(a) + 2 }), toneMapped: false })
     );
-    face.position.set(0, 0.008, 0.129);
+    face.position.set(0, 0.008, 0.124);
     head.add(face);
 
-    // side knobs, because every set had them
     for (let k = 0; k < 2; k++) {
-      const knob = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.012, 12), suitDark);
-      knob.position.set(0.152, 0.05 - k * 0.055, 0.05);
+      const knob = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.012, 12), suitDark);
+      knob.position.set(0.142, 0.048 - k * 0.052, 0.05);
       knob.rotation.z = Math.PI / 2;
       head.add(knob);
     }
 
     const faceGlow = new THREE.PointLight(accent, 0.55, 1.1, 2);
-    faceGlow.position.set(0, 1.30, 0.22);
+    faceGlow.position.set(0, 1.44, 0.22);
     g.add(faceGlow);
     agentLights.push(faceGlow);
 
@@ -323,7 +374,7 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit }) {
   };
 
   party.slice(0, 4).forEach((a, i) => {
-    const x = -0.66 + i * 0.44;
+    const x = -0.78 + i * 0.52;
     const z = -0.52;
     const g = new THREE.Group();
     g.position.set(x, TABLE_Y, z);
@@ -357,7 +408,7 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit }) {
   });
 
   // The figures sit behind their laptops, on the far side of the table.
-  party.slice(0, 4).forEach((a, i) => makeAgent(a, -0.66 + i * 0.44, -1.02, 0.2 * (1.5 - i)));
+  party.slice(0, 4).forEach((a, i) => makeAgent(a, -0.78 + i * 0.52, -1.02, 0.2 * (1.5 - i)));
 
   // ---------- Furniture ----------
   const gltfLoader = new GLTFLoader();
@@ -413,7 +464,7 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit }) {
 
   // Rim light from behind the party, so the figures read against the dark wall
   // instead of dissolving into it.
-  const rim = new THREE.DirectionalLight(0x9fb4d8, 0.5);
+  const rim = new THREE.DirectionalLight(0x9fb4d8, 0.26);
   rim.position.set(-1.2, 2.4, -3.2);
   rim.target.position.set(0, 1.1, -0.6);
   scene.add(rim);
