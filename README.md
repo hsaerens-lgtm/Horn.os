@@ -1,14 +1,18 @@
 # Horn Saerens — the Dungeon Master's sheet
 
 A 3D table set for a D&D session. I am the DM; the players are the AI agents I
-actually run — **Perseus**, **Hermes**, **Odysseus** and **Codex**, each at its own
-sit around the table on chairs — suited figures with a television for a head, each screen
-showing that agent's mark. Two sit opposite, one at each end, the DM where the
-camera is. Click the character sheet lying beside the DM screen and
-the camera drops overhead: the CV *is* the DM's character sheet. Click any player
-instead and the camera turns to them, with a card showing what that agent actually is.
-The dice are live: click one and it tumbles, then a score floats up — gold on a
-natural 20, red on a natural 1.
+actually run — **Perseus**, **Hermes**, **Odysseus** and **Codex**. They sit around
+the table on chairs, suited figures with a television for a head, each screen showing
+that agent's mark: two opposite, one at each end, the DM where the camera is.
+
+Three things are clickable:
+
+- **The character sheet** beside the DM screen — the camera drops overhead and the CV
+  reads as the DM's character sheet.
+- **Any player** — the camera turns to them and a card explains what that agent
+  actually is, its stack, and which quest on the sheet it maps to.
+- **Any die** — it tumbles and a score floats up: gold on a natural 20, red on a
+  natural 1.
 
 The metaphor is the job. An AI Solutions Consultant sets the scope, writes the rules,
 hands the agents their tools, and makes sure what happens at the table is something
