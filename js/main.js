@@ -48,6 +48,10 @@ async function start3D() {
     sheetRoot: root,
     agentRoots,
     agents: content.party,
+    // ?players=robot swaps the hand-built figures for three.js's CC0
+    // RobotExpressive, seated. Kept as a switch so the two can be compared
+    // side by side rather than one replacing the other on a hunch.
+    players: params.get("players") === "robot" ? "robot" : "suit",
     onEnter() {
       hint.classList.add("hidden");
       back.classList.remove("hidden");

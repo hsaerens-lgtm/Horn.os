@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { CSS3DRenderer, CSS3DObject } from "three/addons/renderers/CSS3DRenderer.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { clone as cloneSkeleton } from "three/addons/utils/SkeletonUtils.js";
 import {
   plasticGrain,
   parchment,
@@ -28,7 +29,7 @@ const SHEET_H = 1180 * SHEET_SCALE;
 const TABLE_Y = 0.76;
 const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
-export function createScene({ container, sheetRoot, agentRoots, agents, onEnter, onExit, onAgent }) {
+export function createScene({ container, sheetRoot, agentRoots, agents, players = "suit", onEnter, onExit, onAgent }) {
   const width = () => container.clientWidth;
   const height = () => container.clientHeight;
 
@@ -60,6 +61,9 @@ export function createScene({ container, sheetRoot, agentRoots, agents, onEnter,
 
   // ---------- Materials ----------
   const texLoader = new THREE.TextureLoader();
+  // Declared up here, not beside the furniture that used to be its only client:
+  // the players may need it too, and they are built earlier in the file.
+  const gltfLoader = new GLTFLoader();
   const loadPBR = (name, repeat) => {
     const load = (suffix, isColor) => {
       const t = texLoader.load(`assets/textures/${name}_${suffix}.jpg`);
@@ -372,6 +376,16 @@ export function createScene({ container, sheetRoot, agentRoots, agents, onEnter,
   const SEAT_Y = 0.45;
   const HIP_Y = SEAT_Y + 0.05;
 
+  // RobotExpressive arrives at its own scale and in its own pose, so these are
+  // measured in the browser and written down rather than guessed: how tall the
+  // seated robot should end up, how far back on the seat it sits, and how far
+  // the television rides above where its own head was.
+  const ROBOT_SEATED_H = 1.02;
+  const ROBOT_Z = 0.02;
+  const ROBOT_HEAD_LIFT = 0.04;
+  const DEBUG_ROBOT = new URLSearchParams(location.search).has("debug");
+  const robotTrim = new THREE.MeshStandardMaterial({ color: 0x1b1f27, roughness: 0.55, envMapIntensity: 0.5 });
+
   const makeChair = (g) => {
     const seat = new THREE.Mesh(roundedBox(0.44, 0.045, 0.42, 0.014), chairMat);
     seat.position.set(0, SEAT_Y, 0.06);
@@ -512,14 +526,28 @@ export function createScene({ container, sheetRoot, agentRoots, agents, onEnter,
     put(new THREE.Mesh(roundedBox(0.042, 0.014, 0.012, 0.004), accentMat(0.5)), -0.104, 0.44, 0.118);
 
     // ----- television head -----
-    const head = new THREE.Group();
+    const head = buildTvHead(a, suitDark, { neck: true });
     head.position.set(0, 0.69, 0.012);
     head.rotation.set(tilt, turn, 0);
     upper.add(head);
 
-    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.044, 0.056, 0.1, 16), suitDark);
-    neck.position.y = -0.125;
-    head.add(neck);
+    finishAgent(g, a, seat);
+    return g;
+  };
+
+  /**
+   * The television that stands in for a face, built on its own so both kinds of
+   * player can wear one: it is the thing that says which agent this is.
+   */
+  function buildTvHead(a, trim, { neck = true } = {}) {
+    const accent = new THREE.Color(a.colour);
+    const head = new THREE.Group();
+
+    if (neck) {
+      const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.044, 0.056, 0.1, 16), trim);
+      stalk.position.y = -0.125;
+      head.add(stalk);
+    }
 
     // The shell is an extruded rounded rectangle rather than a box: the soft
     // corner is most of what separates a television set from a crate.
@@ -562,26 +590,38 @@ export function createScene({ container, sheetRoot, agentRoots, agents, onEnter,
     head.add(face);
 
     // a brand strip under the screen, and the vents every set of this era had
-    const strip = new THREE.Mesh(roundedBox(0.086, 0.011, 0.006, 0.002), suitDark);
+    const strip = new THREE.Mesh(roundedBox(0.086, 0.011, 0.006, 0.002), trim);
     strip.position.set(-0.042, -0.086, 0.0955);
     head.add(strip);
     for (let i = 0; i < 5; i++) {
-      const vent = new THREE.Mesh(roundedBox(0.1, 0.004, 0.006, 0.0015), suitDark);
+      const vent = new THREE.Mesh(roundedBox(0.1, 0.004, 0.006, 0.0015), trim);
       vent.position.set(0, 0.114, -0.014 - i * 0.015);
       head.add(vent);
     }
     for (const s of [-1, 1]) {
-      const foot = new THREE.Mesh(roundedBox(0.026, 0.013, 0.045, 0.004), suitDark);
+      const foot = new THREE.Mesh(roundedBox(0.026, 0.013, 0.045, 0.004), trim);
       foot.position.set(s * 0.078, -0.118, -0.016);
       head.add(foot);
     }
     for (let k = 0; k < 2; k++) {
-      const knob = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.012, 12), accentMat(0.4));
-      knob.position.set(0.094, -0.085, 0.0955);
-      knob.position.x -= k * 0.03;
+      const knob = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.012, 0.012, 0.012, 12),
+        new THREE.MeshStandardMaterial({ color: accent, roughness: 0.4, envMapIntensity: 1.4 })
+      );
+      knob.position.set(0.094 - k * 0.03, -0.085, 0.0955);
       knob.rotation.x = Math.PI / 2;
       head.add(knob);
     }
+    return head;
+  }
+
+  /**
+   * The parts every player needs whatever it is made of: the glow its screen
+   * throws forward, and the box you click to open its sheet.
+   */
+  function finishAgent(g, a, seat) {
+    const [x, z] = seat.fig;
+    const accent = new THREE.Color(a.colour);
 
     const faceGlow = new THREE.PointLight(accent, 0.55, 1.1, 2);
     faceGlow.position.set(0, HIP_Y + 0.69, 0.22);
@@ -598,9 +638,132 @@ export function createScene({ container, sheetRoot, agentRoots, agents, onEnter,
     hit.visible = false;
     hit.userData.agent = a;
     hit.userData.index = party.indexOf(a);
-    hit.userData.seat = { x, z, rotY };
+    hit.userData.seat = { x, z, rotY: seat.rot };
     g.add(hit);
     agentHits.push(hit);
+  }
+
+  /* ------------------------------------------------------------------ *
+   *  The other kind of player: RobotExpressive, seated.
+   *
+   *  Tomás Laulhé's robot is the one rigged character three.js ships that
+   *  is actually CC0, and it carries a "Sitting" clip, which is the whole
+   *  reason to reach for it — a real articulated sitting pose is the thing
+   *  primitives cannot fake. It keeps the television head, because that is
+   *  what tells you which agent you are looking at.
+   *
+   *  Loading is async and everything else is not, so the seat, the chair,
+   *  the light and the click box are built immediately and only the body
+   *  arrives late. Clicking a player before it lands still works.
+   * ------------------------------------------------------------------ */
+  let robotAsset = null;
+  const loadRobot = () => (robotAsset ??= gltfLoader.loadAsync("assets/models/RobotExpressive/RobotExpressive.glb"));
+
+  // How the robot is folded into a chair. The rig makes this necessary rather
+  // than optional, and the numbers are in one place so they can be tuned.
+  const ROBOT_POSE = {
+    upperLeg: -1.42, // hip: swing the thigh from hanging down to horizontal
+    lowerLeg: 1.28, //  knee: drop the shin back to vertical
+    abdomen: 0.1, //    a slight lean towards the table
+    upperArm: 1.3, //   bring the arms down along the body
+    lowerArm: 0.25, //  and the forearms forward towards the table
+    footZ: 0.28, //     the feet are not attached to the legs; they are placed
+    footY: 0.02, //     under the knees by hand
+  };
+
+  const makeRobotAgent = (a, seat) => {
+    const [x, z] = seat.fig;
+    const accent = new THREE.Color(a.colour);
+    const g = new THREE.Group();
+    g.position.set(x, 0, z);
+    g.rotation.y = seat.rot;
+    scene.add(g);
+
+    makeChair(g);
+    finishAgent(g, a, seat);
+
+    loadRobot()
+      .then((gltf) => {
+        // SkeletonUtils.clone, not Object3D.clone: the hands are skinned, and a
+        // plain clone would leave all four robots sharing one skeleton.
+        const root = cloneSkeleton(gltf.scene);
+
+        root.traverse((n) => {
+          if (!n.isMesh) return;
+          n.castShadow = true;
+          n.receiveShadow = true;
+          // Materials survive the clone by reference, so tinting one robot
+          // would tint all four.
+          n.material = n.material.clone();
+          n.material.envMapIntensity = 0.55;
+          if (n.material.name === "Main") n.material.color.copy(accent).multiplyScalar(0.6);
+          else if (n.material.name === "Grey") n.material.color.setHex(0x8b929f);
+        });
+
+        const bone = (n) => root.getObjectByName(n);
+
+        // The rig ships no seated pose. Its "Sitting" clip is a 0.42 s crouch —
+        // the hips drop a sixth of the body height and the feet do not move at
+        // all — so the chair pose is built here, bone by bone. Local X is the
+        // bend axis for both the hip and the knee, which the rest rotations
+        // give away: the knee sits at a plain 0.72 about X and nothing else.
+        for (const side of ["L", "R"]) {
+          bone(`UpperLeg${side}`).rotation.x += ROBOT_POSE.upperLeg;
+          bone(`LowerLeg${side}`).rotation.x += ROBOT_POSE.lowerLeg;
+          bone(`UpperArm${side}`).rotation.x += ROBOT_POSE.upperArm;
+          bone(`LowerArm${side}`).rotation.x += ROBOT_POSE.lowerArm;
+        }
+        bone("Abdomen").rotation.x += ROBOT_POSE.abdomen;
+
+        // The feet hang off the root bone rather than off the legs, so bending
+        // the knees leaves them standing where they were. They get moved.
+        for (const side of ["L", "R"]) {
+          const foot = bone(`Foot${side}`);
+          foot.position.z += ROBOT_POSE.footZ;
+          foot.position.y += ROBOT_POSE.footY;
+        }
+
+        // Its own head comes off; the television goes where it was.
+        const headBone = bone("Head");
+        const headArt = bone("Head_1");
+        if (headArt) headArt.visible = false;
+
+        const holder = new THREE.Group();
+        holder.add(root);
+        holder.rotation.y = Math.PI; // the model faces -Z; the table is at +Z
+        g.add(holder);
+        root.updateMatrixWorld(true);
+
+        // Scale off two landmarks rather than off a bounding box: two of the
+        // meshes are skinned, and Box3.setFromObject measures those in their
+        // bind pose, which reports this robot as 4.8 units tall when its head
+        // is at 3.0.
+        const hips = bone("Hips").getWorldPosition(new THREE.Vector3());
+        const headAt = headBone.getWorldPosition(new THREE.Vector3());
+        const scale = (HIP_Y + 0.69 - SEAT_Y - 0.05) / Math.max(0.001, headAt.y - hips.y);
+        holder.scale.setScalar(scale);
+        holder.position.set(0, SEAT_Y + 0.05 - hips.y * scale, ROBOT_Z);
+        holder.updateMatrixWorld(true);
+
+        const tv = buildTvHead(a, robotTrim, { neck: false });
+        const p = headBone.getWorldPosition(new THREE.Vector3());
+        g.worldToLocal(p);
+        tv.position.copy(p).add(new THREE.Vector3(0, ROBOT_HEAD_LIFT, 0));
+        tv.rotation.set(seat.tilt ?? 0, seat.turn ?? 0, 0);
+        g.add(tv);
+
+        if (DEBUG_ROBOT) {
+          (window.__robots ??= []).push({ name: a.name, root, holder, tv, bone });
+          const foot = bone("FootL").getWorldPosition(new THREE.Vector3());
+          console.debug("PROBE robot", a.name, {
+            scale: +scale.toFixed(4),
+            hipsWorldY: +(SEAT_Y + 0.05).toFixed(3),
+            headLocal: [+tv.position.x.toFixed(3), +tv.position.y.toFixed(3), +tv.position.z.toFixed(3)],
+            footWorld: [+foot.x.toFixed(3), +foot.y.toFixed(3), +foot.z.toFixed(3)],
+          });
+        }
+      })
+      .catch((err) => console.warn("robot player not loaded:", err));
 
     return g;
   };
@@ -656,7 +819,8 @@ export function createScene({ container, sheetRoot, agentRoots, agents, onEnter,
   });
 
   // The figures sit behind their laptops, on the far side of the table.
-  party.slice(0, 4).forEach((a, i) => makeAgent(a, SEATS[i]));
+  const buildPlayer = players === "robot" ? makeRobotAgent : makeAgent;
+  party.slice(0, 4).forEach((a, i) => buildPlayer(a, SEATS[i]));
 
   // ---------- Each player's character sheet ----------
   // The sheet lies face-up on the table in front of its player, the way a sheet
@@ -739,7 +903,6 @@ export function createScene({ container, sheetRoot, agentRoots, agents, onEnter,
   };
 
   // ---------- Furniture ----------
-  const gltfLoader = new GLTFLoader();
   const addModel = (name, { position, rotationY = 0, scale = 1, tint = null }) =>
     gltfLoader
       .loadAsync(`assets/models/${name}/${name}.gltf`)

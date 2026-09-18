@@ -39,6 +39,9 @@ no-cache headers, so edited ES modules are actually re-fetched on reload.
 Add `?fallback=1` to read the sheet without the 3D table — this is also what phones
 and non-WebGL browsers get.
 
+Add `?players=robot` to seat three.js's CC0 RobotExpressive at the table instead of
+the hand-built suited figures. See **The players** below.
+
 ## Structure
 
 ```
@@ -97,6 +100,34 @@ Models (glTF):
 
 The sofa, the fireplace, the television and its console are built from primitives in
 `js/room.js`, so there is nothing more to download for them.
+
+`assets/models/RobotExpressive/` is [RobotExpressive](https://github.com/mrdoob/three.js/tree/dev/examples/models/gltf/RobotExpressive)
+by [Tomás Laulhé](https://www.patreon.com/quaternius), CC0, with modifications by
+[Don McCurdy](https://donmccurdy.com/). It is only fetched on `?players=robot`.
+
+## The players
+
+The four agents are hand-built out of primitives: a jacket extruded from a profile,
+a television for a head with that agent's mark on the screen. Each has its own cloth
+colour, lean, head turn and reach across the table, which does more to stop four
+figures reading as four copies than extra geometry would.
+
+`?players=robot` swaps them for RobotExpressive, seated. It is worth knowing what
+that costs, because the answer was not obvious until it was tried:
+
+- It is the **only rigged character three.js ships that is actually CC0**. Soldier,
+  Michelle and Xbot are Mixamo; readyplayer.me carries its own terms.
+- Its `Sitting` clip is **not a seated pose**. It is a 0.42 s crouch: the hips drop a
+  sixth of the body height, and the feet do not move at all. The chair pose in
+  `ROBOT_POSE` is authored here, bone by bone.
+- The **feet are not attached to the legs** — they hang off the root bone as siblings
+  of the body — so bending the knees leaves them standing where they were, and they
+  have to be moved by hand as well.
+- `Box3.setFromObject` reports it as 4.8 units tall when its head is at 3.0, because
+  two of its meshes are skinned and get measured in their bind pose. It is scaled off
+  the distance between two landmark bones instead.
+- And it is a cartoon robot, which costs the suit — the thing the whole metaphor of a
+  consultant's agents sitting at his table rests on.
 
 Art direction is a modern-retro living room, not a fantasy tavern: polished
 herringbone, painted plaster and walnut, a pendant over the table with a hearth and a
