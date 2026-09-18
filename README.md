@@ -175,6 +175,46 @@ a two-clause joke. It scales with length now, roughly 1.9 s plus 85 ms a charact
 and capped at 8, with a 1.4–3.2 s pause after the bubble clears rather than a
 cadence measured from the trigger, which left no gap at all after a long line.
 
+## Textures and baked occlusion
+
+The photo scans are 2048 square. At 512 the floor was the softest thing in the
+render, and not only because of the resolution: the parquet tiled 2.2 times across
+a 14 m plane, which is 6.4 m to a tile and 80 pixels to the metre — and a 6.4 m
+parquet tile is not a parquet tile, it is a photograph of one enlarged until the
+blocks are the size of floorboards. The tile is 2.5 m now and the texture four
+times bigger, so the same square metre of floor carries about twelve times the
+detail. Anisotropy went from 8 to whatever the GPU will give, because a floor read
+at a grazing angle across ten metres is the case that filtering exists for.
+
+Cost: 5.2 MB of JPEG, re-encoded down from the 14.5 MB Poly Haven ships.
+
+The floor's ambient occlusion is **baked once at load**, in about 150 ms. Real-time
+AO was tried and rejected — a `GTAOPass` costs ten times the frame at this mesh
+count — but nothing says it has to be recomputed every frame. None of this
+furniture moves, except for the eight seconds after a natural 1, when the whole
+overlay is hidden anyway.
+
+It is rendered, not ray cast. An orthographic camera looks down at the floor and
+the room is drawn into it four times, with the near and far planes clipped to a
+slice of height. Each pass comes back as a silhouette of everything in that slice —
+real outlines, chair legs and leaves included, because it is the actual geometry
+rasterised by the actual renderer. Each slice is then blurred by an amount that
+grows with its height and mixed in with a weight that falls with it, which is what
+occlusion does: the contact patch under a table leg is small and nearly black, the
+shadow of the table top two feet above is wide and faint. Slicing by height is what
+makes one blur radius per pass legitimate.
+
+The one counterintuitive detail: **the bottom slice starts below the floor.** Seen
+from straight above, a vertical surface has no projected area at all — a table leg
+is four vertical faces and two horizontal caps, and only a cap is visible from up
+there. Its bottom cap sits a centimetre under its nominal base because the rounded
+box bevels, so a slice starting above the floor clipped it and the leg cast nothing
+whatsoever. That was not visible in a screenshot; it was visible as a profile read
+across the leg, which came back a smooth ramp from 22 to 53 with no peak where the
+leg is. It reads 85 against 49 beside it now.
+
+Twenty-four quads became one.
+
 ## Run locally
 
 ```bash
@@ -204,6 +244,7 @@ js/chatter.js     the speech bubbles, one at a time
 js/effects.js     what a natural 20 and a natural 1 do to the room
 js/merge.js       baking small static pieces into single meshes
 js/palette.js     collapsing duplicate materials once the scene is built
+js/occlusion.js   the floor's ambient occlusion, baked from above at load
 js/shapes.js      rounded boxes — nothing in a room has a knife edge
 js/plants.js      houseplants: procedural leaves, one merged mesh per plant
 js/room.js        the room around it: posters, fireplace, sofa, television, windows

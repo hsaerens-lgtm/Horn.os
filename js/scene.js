@@ -23,6 +23,7 @@ import { createProps } from "./props.js";
 import { createChatter } from "./chatter.js";
 import { createEffects } from "./effects.js";
 import { dedupeMaterials } from "./palette.js";
+import { bakeFloorOcclusion } from "./occlusion.js";
 import { roundedBox } from "./shapes.js";
 
 // The sheet is 860x1180 CSS px, laid flat on the table at this physical width.
@@ -73,17 +74,27 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
       const t = texLoader.load(`assets/textures/${name}_${suffix}.jpg`);
       t.wrapS = t.wrapT = THREE.RepeatWrapping;
       t.repeat.set(repeat[0], repeat[1]);
-      t.anisotropy = 8;
+      // The floor is read at a grazing angle across ten metres, which is the
+      // case anisotropic filtering exists for; at 8 the far half of a 2K
+      // parquet turns to soup.
+      t.anisotropy = renderer.capabilities.getMaxAnisotropy();
       if (isColor) t.colorSpace = THREE.SRGBColorSpace;
       return t;
     };
     return { map: load("diff", true), normalMap: load("nor_gl", false), roughnessMap: load("arm", false) };
   };
 
+  // The scans are 2048 square. At 512 the floor was the softest thing in the
+  // render: the parquet tiled 2.2 times across a 14 m plane, which is 6.4 m to
+  // a tile and 80 pixels to the metre — and a 6.4 m parquet tile is not a
+  // parquet tile, it is a photograph of one enlarged past the point where the
+  // blocks are the size of floorboards. The tile is 2.5 m now and the texture
+  // four times bigger, so the same square metre of floor carries twelve times
+  // the detail it did.
   const tex = {
     table: loadPBR("american_walnut_veneer", [1.4, 0.9]),
     tableEdge: loadPBR("american_walnut_veneer", [4, 0.4]),
-    floor: loadPBR("herringbone_parquet", [2.2, 2.2]),
+    floor: loadPBR("herringbone_parquet", [5.5, 5.5]),
     wall: wallpaper(),
     plastic: plasticGrain(),
     parchment: parchment(),
@@ -1375,7 +1386,31 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
     if (DEBUG_ROBOT) console.debug(`PROBE materials ${before} -> ${after}`);
   };
   tidy();
-  Promise.all(pending).then(tidy);
+
+  // Bake the floor's ambient occlusion once everything is standing on it. This
+  // has to wait for the players: they load asynchronously and they take up
+  // rather a lot of the floor under the table.
+  const bakeOcclusion = () => {
+    const { mesh, ms, size } = bakeFloorOcclusion(renderer, scene, {
+      // Everything lying flat on the floor, by name: the bottom slice now
+      // reaches under the floor to catch the undersides of things, so anything
+      // already flat on it would black out the whole map.
+      exclude: [floor, room.contact, room.rug],
+    });
+    room.contact.clear();
+    room.contact.add(mesh);
+    if (DEBUG_ROBOT) {
+      console.debug(`PROBE occlusion ${size[0]}x${size[1]} in ${ms} ms`);
+      // ?debug only: the bake has to be checked against the room it was made
+      // from, and that means reading it through a raycast at known positions.
+      window.__debug = { scene, renderer, camera, ao: mesh };
+    }
+  };
+
+  Promise.all(pending).then(() => {
+    tidy();
+    bakeOcclusion();
+  });
 
   // ---------- Loop ----------
   const clock = new THREE.Clock();
