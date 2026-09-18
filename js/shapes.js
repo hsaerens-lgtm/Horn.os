@@ -82,3 +82,52 @@ export function roundedBox(w, h, d, r = 0.008, curve = 3) {
   cache.set(key, geo);
   return geo;
 }
+
+/**
+ * Box-projected UVs, written onto a geometry that has none.
+ *
+ * RobotExpressive ships without a UV set, which means no map of any kind can be
+ * put on it — and with nothing but a flat colour at roughness 0.9 the players
+ * were the only things in the room with no surface. Unwrapping a rigged model
+ * properly is a modelling job; for a fine, isotropic detail texture a box
+ * projection is enough. Each vertex takes the two axes its normal is *least*
+ * aligned with, so a face never samples the texture edge-on and nothing smears.
+ *
+ * The cost is a seam wherever neighbouring faces pick different axes, because
+ * the two share a vertex and it can only hold one pair of coordinates. On a
+ * grain with no direction and no features to line up, that is invisible; on
+ * anything with a pattern it would not be.
+ *
+ * `scale` is tiles per unit of object space.
+ */
+export function boxProjectUVs(geometry, scale = 4) {
+  const pos = geometry.attributes.position;
+  const nrm = geometry.attributes.normal;
+  if (!pos || !nrm || geometry.attributes.uv) return geometry;
+
+  const uv = new Float32Array(pos.count * 2);
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i);
+    const y = pos.getY(i);
+    const z = pos.getZ(i);
+    const nx = Math.abs(nrm.getX(i));
+    const ny = Math.abs(nrm.getY(i));
+    const nz = Math.abs(nrm.getZ(i));
+    let u;
+    let v;
+    if (nx >= ny && nx >= nz) {
+      u = z;
+      v = y;
+    } else if (ny >= nz) {
+      u = x;
+      v = z;
+    } else {
+      u = x;
+      v = y;
+    }
+    uv[i * 2] = u * scale;
+    uv[i * 2 + 1] = v * scale;
+  }
+  geometry.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+  return geometry;
+}

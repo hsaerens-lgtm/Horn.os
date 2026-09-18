@@ -14,6 +14,7 @@ import {
   dmScreenTables,
   dmScreenArt,
   screenFace,
+  paintedShell,
 } from "./textures.js";
 import { createWatercolour } from "./watercolour.js";
 import { createRoom, WINDOWS } from "./room.js";
@@ -22,9 +23,9 @@ import { createProps } from "./props.js";
 import { createChatter } from "./chatter.js";
 import { createEffects } from "./effects.js";
 import { dedupeMaterials } from "./palette.js";
-import { bakeFloorOcclusion } from "./occlusion.js";
+import { bakeFloorOcclusion, bakeCavityAO } from "./occlusion.js";
 import { createAmbience } from "./environment.js";
-import { roundedBox } from "./shapes.js";
+import { roundedBox, boxProjectUVs } from "./shapes.js";
 
 // The sheet is 860x1180 CSS px, laid flat on the table at this physical width.
 const SHEET_W = 0.34;
@@ -104,6 +105,8 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
     floor: loadPBR("herringbone_parquet", [5.5, 5.5]),
     wall: wallpaper(),
     plastic: plasticGrain(),
+    // One set for all four players; the accent stays in material.color.
+    shell: paintedShell({ repeat: [1, 1] }),
     parchment: parchment(),
   };
 
@@ -790,12 +793,41 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
           if (!n.isMesh) return;
           n.castShadow = true;
           n.receiveShadow = true;
+          // The model has no UVs, so there is nowhere to put a map until one is
+          // made. Box projection, in object space, shared by all four.
+          boxProjectUVs(n.geometry, 1.45);
           // Materials survive the clone by reference, so tinting one robot
           // would tint all four.
           n.material = n.material.clone();
-          n.material.envMapIntensity = 0.55;
-          if (n.material.name === "Main") n.material.color.copy(accent).multiplyScalar(0.6);
-          else if (n.material.name === "Grey") n.material.color.setHex(0x8b929f);
+          // Everything below is the fix for "the players look worse than the
+          // room". They shipped at roughness 0.9 and metalness 0.1 with no maps
+          // — a matte chalk that takes light identically from every direction,
+          // in a room where the table, floor and wall all carry 2K scans.
+          //
+          // The roughness map multiplies into material.roughness, so the
+          // material stays near 1 and the map carries the actual range: a
+          // painted shell somewhere between 0.29 and 0.49, never uniform, which
+          // is what breaks a highlight into something that reads as a surface.
+          n.material.map = tex.shell.map;
+          n.material.normalMap = tex.shell.normalMap;
+          n.material.normalScale = N(0.8);
+          n.material.roughnessMap = tex.shell.roughnessMap;
+          n.material.roughness = 0.95;
+          n.material.envMapIntensity = 0.95;
+          if (n.material.name === "Main") {
+            n.material.color.copy(accent).multiplyScalar(0.62);
+            // Sprayed paint over metal: enough metalness to pick up the hearth
+            // and the window as coloured reflections rather than grey ones.
+            n.material.metalness = 0.38;
+          } else if (n.material.name === "Grey") {
+            // The joints and fittings are bare metal, not painted.
+            n.material.color.setHex(0x7d838d);
+            n.material.metalness = 0.72;
+          }
+          // Cavity occlusion is written into a colour attribute below, once
+          // the figure is posed.
+          n.material.vertexColors = true;
+          n.material.needsUpdate = true;
         });
 
         const bone = (n) => root.getObjectByName(n);
@@ -851,6 +883,14 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
         root.traverse((n) => {
           if (n.isSkinnedMesh) n.bind(n.skeleton, n.matrixWorld);
         });
+
+        // Crease darkening, baked now that the figure is sitting the way it
+        // will stay — the pose is what decides which surfaces are near each
+        // other, and an armpit is only an armpit once the arm is down. The
+        // geometry is shared by all four players, so this runs once and the
+        // other three get it for free; bakeCavityAO marks what it has done.
+        const cavityVerts = bakeCavityAO(root, { radius: 0.19, strength: 1.45, floor: 0.4 });
+        if (DEBUG_ROBOT && cavityVerts) console.debug(`PROBE cavity AO ${cavityVerts} verts`);
 
         const tv = buildTvHead(a, robotTrim, { neck: false });
         tv.scale.setScalar(ROBOT_HEAD);

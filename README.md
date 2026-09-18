@@ -40,6 +40,43 @@ then painted: a watercolour pass lays paper grain over the image, pools pigment 
 the edges and lets the washes bleed, while the sheet itself stays crisp.
 No build step, no framework: plain ES modules served as static files.
 
+## The players' surface
+
+RobotExpressive ships with **no maps and no UVs**: four flat colours at roughness
+0.9 and metalness 0.1. That is a matte chalk which takes light the same way from
+every direction, and in a room where the table, the floor and the wall all carry 2K
+scans they were the only things in frame with no surface on them. It showed.
+
+Nothing could be mapped until there was somewhere to put it, so `boxProjectUVs`
+writes a box projection: each vertex takes the two axes its normal is *least*
+aligned with, so no face samples the texture edge-on. The cost is a seam wherever
+neighbouring faces choose different axes — invisible on a grain with no direction,
+and unusable for anything with a pattern.
+
+On top of that, one shared `paintedShell` set — the orange peel of sprayed paint, a
+brushed pass under it, specks and scuffs — driving albedo, normal and roughness. It
+is near-white, so it multiplies into each player's own accent and one texture serves
+all four. The roughness map carries a deliberately narrow band, 0.29 to 0.49: that
+is one finish, not two materials, and its job is only to stop a highlight being a
+clean oval. Metalness goes to 0.38 on the shell and 0.72 on the joints, which is
+what lets them pick up the hearth and the windows as *coloured* reflections.
+
+The first pass got the grain scale wrong — a tile of 10 cm on a 70 cm figure, so at
+the distance the players are actually seen from it averaged out to a flat field. The
+texture was there and invisible, which is the worst of both. It is 2.5× coarser now
+and there is large-scale patina under it.
+
+Finally, **cavity occlusion baked into vertex colours**. An armpit, a neck, the gap
+between a finger and a palm are darker in life, and a renderer with no AO has no
+idea. Ray casting 7,200 vertices against 7,200 triangles on the main thread is not
+affordable, so this uses the standard cheap estimate: for each vertex, how many of
+its neighbours within a small radius sit *in front of* its tangent plane. None, on a
+flat panel or a convex edge. Most, in a crease. Every part is pooled into one space
+first so a crease *between* two parts is found as readily as one within a part, and
+it runs after the figure is posed — an armpit is only an armpit once the arm is
+down. It comes out at 0.4 to 1.0, and the shoulders and torso are the darkest, which
+is where the creases are.
+
 ## Ambient light
 
 Reworked against a histogram of the finished frame rather than by eye, because
@@ -295,7 +332,7 @@ js/merge.js       baking small static pieces into single meshes
 js/palette.js     collapsing duplicate materials once the scene is built
 js/occlusion.js   the floor's ambient occlusion, baked from above at load
 js/environment.js the ambient light, as a box of the room's own sources
-js/shapes.js      rounded boxes — nothing in a room has a knife edge
+js/shapes.js      rounded boxes, and box-projected UVs for models that have none
 js/plants.js      houseplants: procedural leaves, one merged mesh per plant
 js/room.js        the room around it: posters, fireplace, sofa, television, windows
 js/watercolour.js the painted look: post-processing chain and its shader

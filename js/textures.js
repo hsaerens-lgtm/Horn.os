@@ -1975,3 +1975,93 @@ export function wetGlass({ size = 512, seed = 311 } = {}) {
   // normalFrom hands back a canvas, not a texture.
   return toTexture(normalFrom(c, 1.6), { repeat: [1, 1] });
 }
+
+/* ------------------------------------------------------------------ *
+ *  Painted shell
+ *
+ *  For the players. RobotExpressive ships with no maps at all and no UVs
+ *  to put any on — four flat colours at roughness 0.9, which is a matte
+ *  chalk that takes light the same way from every direction. In a room
+ *  where the table, the floor and the wall all carry 2K scans, they were
+ *  the only things in frame with no surface on them, and it showed.
+ *
+ *  Kept near-white: this multiplies into each player's own colour, so
+ *  one texture serves all four and the accent still comes from the
+ *  material. What it adds is the orange peel of sprayed paint, the
+ *  brushed pass under it, and the specks and scuffs that stop a
+ *  highlight being a clean oval.
+ * ------------------------------------------------------------------ */
+export function paintedShell({ size = 512, seed = 401, repeat = [4, 4] } = {}) {
+  const [c, ctx] = canvas(size);
+  const rand = rng(seed);
+
+  ctx.fillStyle = "#ececec";
+  ctx.fillRect(0, 0, size, size);
+
+  // Large-scale patina first. The first version of this had only fine grain,
+  // which at the distance the players are actually seen from averaged out to a
+  // flat field — the texture was there and invisible, which is the worst of
+  // both. Big soft variation is what reads at arm's length.
+  for (let i = 0; i < 26; i++) {
+    const x = rand() * size;
+    const y = rand() * size;
+    const r = size * (0.12 + rand() * 0.22);
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    const up = rand() < 0.45;
+    g.addColorStop(0, `rgba(${up ? 255 : 74},${up ? 255 : 74},${up ? 250 : 78},0.1)`);
+    g.addColorStop(1, "rgba(128,128,128,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+
+  // Orange peel: overlapping soft blobs at two scales. Sprayed paint is not
+  // smooth, and the unevenness is what breaks a specular into something that
+  // looks like a surface rather than a lens flare.
+  for (const [count, r, a] of [[900, 11, 0.05], [2600, 4.5, 0.045]]) {
+    for (let i = 0; i < count; i++) {
+      const x = rand() * size;
+      const y = rand() * size;
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      const up = rand() < 0.5;
+      g.addColorStop(0, `rgba(${up ? 255 : 90},${up ? 255 : 90},${up ? 255 : 90},${a})`);
+      g.addColorStop(1, "rgba(128,128,128,0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+  }
+
+  // A brushed pass, faint and horizontal. Wraps, so it tiles.
+  for (let i = 0; i < 420; i++) {
+    const y = rand() * size;
+    ctx.strokeStyle = `rgba(${rand() < 0.5 ? 255 : 96},${rand() < 0.5 ? 255 : 96},200,${(0.02 + rand() * 0.04).toFixed(3)})`;
+    ctx.lineWidth = 0.6 + rand() * 1.4;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.bezierCurveTo(size * 0.33, y + (rand() - 0.5) * 3, size * 0.66, y + (rand() - 0.5) * 3, size, y);
+    ctx.stroke();
+  }
+
+  // Scuffs, on the scale of a thing that has been carried about.
+  for (let i = 0; i < 60; i++) {
+    const x = rand() * size;
+    const y = rand() * size;
+    const len = 4 + rand() * 26;
+    const a = rand() * Math.PI * 2;
+    ctx.strokeStyle = `rgba(255,255,255,${(0.05 + rand() * 0.16).toFixed(3)})`;
+    ctx.lineWidth = 0.7 + rand();
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + Math.cos(a) * len, y + Math.sin(a) * len);
+    ctx.stroke();
+  }
+
+  speckle(ctx, size, 2200, rand, 0.05, false);
+
+  return {
+    map: toTexture(c, { repeat, srgb: true }),
+    normalMap: toTexture(normalFrom(c, 1.15), { repeat }),
+    // A narrow band: this is one finish, not two materials. Wide roughness
+    // variation on a single painted shell reads as dirt, not as paint.
+    roughnessMap: toTexture(roughnessFrom(c, 0.3, 0.52), { repeat }),
+  };
+}

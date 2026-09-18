@@ -224,3 +224,142 @@ export function bakeFloorOcclusion(
 
   return { mesh, ms: Math.round(performance.now() - t0), size: [W, H] };
 }
+
+/* ------------------------------------------------------------------ *
+ *  Cavity occlusion, for the players
+ *
+ *  The floor bake above answers "what is above this point". This answers
+ *  a different question — "is this vertex in a crease" — and it is the
+ *  one that makes a model stop looking like parts pushed together. An
+ *  armpit, a neck, the gap between a finger and a palm: in life those
+ *  are darker than the surfaces beside them, and a renderer with no
+ *  ambient occlusion has no idea.
+ *
+ *  Ray casting is the honest way and it is not affordable here: twenty
+ *  nine thousand vertices against twenty nine thousand triangles, on the
+ *  main thread, without a spatial index. So this uses the standard cheap
+ *  estimate instead. For each vertex, look at its neighbours within a
+ *  small radius and ask how many of them sit *in front of* its tangent
+ *  plane. On a flat panel, none do. On a convex edge, none do. In a
+ *  crease, most of them do — which is exactly the shape of the thing
+ *  being measured.
+ *
+ *  It is an approximation of occlusion, not a measurement of it. It
+ *  cannot see an occluder that is out of radius, so a robot does not
+ *  shade itself under the chin from across the head. What it gets right
+ *  is every crease, which is what was missing.
+ * ------------------------------------------------------------------ */
+
+/**
+ * Writes cavity occlusion into a `color` attribute on every mesh under `root`,
+ * and returns how many vertices were touched.
+ *
+ * Everything is pooled into one space first, so a crease *between* two parts —
+ * the shoulder against the torso — is found as readily as one within a part.
+ * Call it after the model has been posed: the pose is what decides which
+ * surfaces are actually near each other.
+ */
+export function bakeCavityAO(root, { radius = 0.17, strength = 1.5, floor = 0.42 } = {}) {
+  root.updateWorldMatrix(true, true);
+  const toRoot = root.matrixWorld.clone().invert();
+
+  const parts = [];
+  root.traverse((o) => {
+    if (!o.isMesh || !o.geometry.attributes.position || !o.geometry.attributes.normal) return;
+    if (o.geometry.userData.cavityBaked) return;
+    parts.push(o);
+  });
+  if (!parts.length) return 0;
+
+  // Pool every vertex into the root's space.
+  let total = 0;
+  for (const p of parts) total += p.geometry.attributes.position.count;
+  const px = new Float32Array(total);
+  const py = new Float32Array(total);
+  const pz = new Float32Array(total);
+  const nx = new Float32Array(total);
+  const ny = new Float32Array(total);
+  const nz = new Float32Array(total);
+
+  const m = new THREE.Matrix4();
+  const nm = new THREE.Matrix3();
+  const v = new THREE.Vector3();
+  const offsets = [];
+  let w = 0;
+  for (const part of parts) {
+    m.multiplyMatrices(toRoot, part.matrixWorld);
+    nm.getNormalMatrix(m);
+    const pos = part.geometry.attributes.position;
+    const nor = part.geometry.attributes.normal;
+    offsets.push(w);
+    for (let i = 0; i < pos.count; i++, w++) {
+      v.fromBufferAttribute(pos, i).applyMatrix4(m);
+      px[w] = v.x;
+      py[w] = v.y;
+      pz[w] = v.z;
+      v.fromBufferAttribute(nor, i).applyMatrix3(nm).normalize();
+      nx[w] = v.x;
+      ny[w] = v.y;
+      nz[w] = v.z;
+    }
+  }
+
+  // A uniform grid at the search radius, so a neighbour query touches 27 cells.
+  const cell = radius;
+  const key = (x, y, z) => `${Math.floor(x / cell)},${Math.floor(y / cell)},${Math.floor(z / cell)}`;
+  const grid = new Map();
+  for (let i = 0; i < total; i++) {
+    const k = key(px[i], py[i], pz[i]);
+    let bucket = grid.get(k);
+    if (!bucket) grid.set(k, (bucket = []));
+    bucket.push(i);
+  }
+
+  const occ = new Float32Array(total);
+  const r2 = radius * radius;
+  for (let i = 0; i < total; i++) {
+    const cxi = Math.floor(px[i] / cell);
+    const cyi = Math.floor(py[i] / cell);
+    const czi = Math.floor(pz[i] / cell);
+    let sum = 0;
+    let weight = 0;
+    for (let a = -1; a <= 1; a++) {
+      for (let b = -1; b <= 1; b++) {
+        for (let c = -1; c <= 1; c++) {
+          const bucket = grid.get(`${cxi + a},${cyi + b},${czi + c}`);
+          if (!bucket) continue;
+          for (const j of bucket) {
+            if (j === i) continue;
+            const dx = px[j] - px[i];
+            const dy = py[j] - py[i];
+            const dz = pz[j] - pz[i];
+            const d2 = dx * dx + dy * dy + dz * dz;
+            if (d2 > r2 || d2 < 1e-10) continue;
+            const d = Math.sqrt(d2);
+            // How far in front of the tangent plane the neighbour sits, faded
+            // with distance so a far neighbour counts for less than a near one.
+            const front = (dx * nx[i] + dy * ny[i] + dz * nz[i]) / d;
+            const fade = 1 - d / radius;
+            if (front > 0) sum += front * fade;
+            weight += fade;
+          }
+        }
+      }
+    }
+    occ[i] = weight > 0 ? sum / weight : 0;
+  }
+
+  // Write it out, one mesh at a time.
+  parts.forEach((part, k) => {
+    const n = part.geometry.attributes.position.count;
+    const col = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) {
+      const a = Math.max(floor, 1 - occ[offsets[k] + i] * strength);
+      col[i * 3] = col[i * 3 + 1] = col[i * 3 + 2] = a;
+    }
+    part.geometry.setAttribute("color", new THREE.BufferAttribute(col, 3));
+    part.geometry.userData.cavityBaked = true;
+  });
+
+  return total;
+}
