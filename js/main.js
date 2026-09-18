@@ -48,10 +48,11 @@ async function start3D() {
     sheetRoot: root,
     agentRoots,
     agents: content.party,
-    // ?players=robot swaps the hand-built figures for three.js's CC0
-    // RobotExpressive, seated. Kept as a switch so the two can be compared
-    // side by side rather than one replacing the other on a hunch.
-    players: params.get("players") === "robot" ? "robot" : "suit",
+    // The party is three.js's CC0 RobotExpressive, seated. ?players=suit brings
+    // back the hand-built suited figures, which are kept because they were the
+    // first version of this table and are one URL away if the tone ever wants
+    // to be a straighter one.
+    players: params.get("players") === "suit" ? "suit" : "robot",
     onEnter() {
       hint.classList.add("hidden");
       back.classList.remove("hidden");
@@ -71,6 +72,9 @@ async function start3D() {
   const sheet = createSheet(root, content);
   hint.addEventListener("click", () => scene.enter());
   back.addEventListener("click", () => scene.exit());
+  // The players load after the room does. Waiting for them costs a moment on
+  // the loader and saves the table visibly filling up with people.
+  await scene.ready;
   loader.classList.add("hidden");
   hint.classList.remove("hidden");
 }

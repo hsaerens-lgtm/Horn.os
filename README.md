@@ -3,9 +3,9 @@
 A 3D table set for a D&D session, in somebody's living room: a fire going, a
 television left on, posters that have been up since about 2003. I am the DM; the
 players are the AI agents I actually run — **Perseus**, **Hermes**, **Odysseus** and
-**Codex**. They sit around the table on chairs, suited figures with a television for
-a head, each screen showing that agent's mark: two opposite, one at each end, the DM
-where the camera is. In front of every player lies their character sheet.
+**Codex**. They sit around the table on chairs, one colour each, each wearing a
+television for a head with that agent's mark on the screen: two opposite, one at each
+end, the DM where the camera is. In front of every player lies their character sheet.
 
 Three things are clickable:
 
@@ -39,8 +39,8 @@ no-cache headers, so edited ES modules are actually re-fetched on reload.
 Add `?fallback=1` to read the sheet without the 3D table — this is also what phones
 and non-WebGL browsers get.
 
-Add `?players=robot` to seat three.js's CC0 RobotExpressive at the table instead of
-the hand-built suited figures. See **The players** below.
+Add `?players=suit` to swap the robots for the hand-built suited figures the table
+started with. See **The players** below.
 
 ## Structure
 
@@ -103,31 +103,35 @@ The sofa, the fireplace, the television and its console are built from primitive
 
 `assets/models/RobotExpressive/` is [RobotExpressive](https://github.com/mrdoob/three.js/tree/dev/examples/models/gltf/RobotExpressive)
 by [Tomás Laulhé](https://www.patreon.com/quaternius), CC0, with modifications by
-[Don McCurdy](https://donmccurdy.com/). It is only fetched on `?players=robot`.
+[Don McCurdy](https://donmccurdy.com/) — 464 KB, and the only model the page loads
+for the party.
 
 ## The players
 
-The four agents are hand-built out of primitives: a jacket extruded from a profile,
-a television for a head with that agent's mark on the screen. Each has its own cloth
-colour, lean, head turn and reach across the table, which does more to stop four
-figures reading as four copies than extra geometry would.
+The party is RobotExpressive, seated, one colour each, each wearing a television for
+a head with that agent's mark on the screen. It is the **only rigged character
+three.js ships that is actually CC0** — Soldier, Michelle and Xbot are Mixamo, and
+readyplayer.me carries its own terms.
 
-`?players=robot` swaps them for RobotExpressive, seated. It is worth knowing what
-that costs, because the answer was not obvious until it was tried:
+Three things about that rig are worth knowing, because none of them was obvious
+until the robot was in the scene:
 
-- It is the **only rigged character three.js ships that is actually CC0**. Soldier,
-  Michelle and Xbot are Mixamo; readyplayer.me carries its own terms.
 - Its `Sitting` clip is **not a seated pose**. It is a 0.42 s crouch: the hips drop a
   sixth of the body height, and the feet do not move at all. The chair pose in
-  `ROBOT_POSE` is authored here, bone by bone.
-- The **feet are not attached to the legs** — they hang off the root bone as siblings
-  of the body — so bending the knees leaves them standing where they were, and they
-  have to be moved by hand as well.
-- `Box3.setFromObject` reports it as 4.8 units tall when its head is at 3.0, because
-  two of its meshes are skinned and get measured in their bind pose. It is scaled off
-  the distance between two landmark bones instead.
-- And it is a cartoon robot, which costs the suit — the thing the whole metaphor of a
-  consultant's agents sitting at his table rests on.
+  `ROBOT_POSE` is authored here, bone by bone, with the bend axes read off the rest
+  rotations — the knee sits at a plain 0.72 about local X and nothing else.
+- The **feet are not attached to the legs**. They hang off the root bone as siblings
+  of the body, so bending the knees leaves them standing where they were; they are
+  placed under the knees by hand.
+- `Box3.setFromObject` reports the model as 4.8 units tall when its head is at 3.0,
+  because two of its meshes are skinned and a bounding box measures those in their
+  bind pose. Scaling off that box produced four robots the size of the table. It
+  scales off the distance between two landmark bones instead.
+
+`?players=suit` brings back the figures this table started with: a jacket extruded
+from a profile, each with its own cloth colour, lean, head turn and reach across the
+table. They are kept because they are one URL away if the tone ever wants to be a
+straighter one.
 
 Art direction is a modern-retro living room, not a fantasy tavern: polished
 herringbone, painted plaster and walnut, a pendant over the table with a hearth and a

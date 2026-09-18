@@ -29,7 +29,7 @@ const SHEET_H = 1180 * SHEET_SCALE;
 const TABLE_Y = 0.76;
 const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
-export function createScene({ container, sheetRoot, agentRoots, agents, players = "suit", onEnter, onExit, onAgent }) {
+export function createScene({ container, sheetRoot, agentRoots, agents, players = "robot", onEnter, onExit, onAgent }) {
   const width = () => container.clientWidth;
   const height = () => container.clientHeight;
 
@@ -656,6 +656,10 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
    *  the light and the click box are built immediately and only the body
    *  arrives late. Clicking a player before it lands still works.
    * ------------------------------------------------------------------ */
+  // Every player that is still on its way. The caller holds the loader until
+  // they have all arrived, rather than revealing a table of empty chairs that
+  // fill in a second later.
+  const pending = [];
   let robotAsset = null;
   const loadRobot = () => (robotAsset ??= gltfLoader.loadAsync("assets/models/RobotExpressive/RobotExpressive.glb"));
 
@@ -666,7 +670,7 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
     lowerLeg: 1.28, //  knee: drop the shin back to vertical
     abdomen: 0.1, //    a slight lean towards the table
     upperArm: 1.3, //   bring the arms down along the body
-    lowerArm: 0.25, //  and the forearms forward towards the table
+    lowerArm: 0.65, //  and the forearms down, hands tucked in at the table edge
     footZ: 0.28, //     the feet are not attached to the legs; they are placed
     footY: 0.02, //     under the knees by hand
   };
@@ -682,7 +686,7 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
     makeChair(g);
     finishAgent(g, a, seat);
 
-    loadRobot()
+    const arriving = loadRobot()
       .then((gltf) => {
         // SkeletonUtils.clone, not Object3D.clone: the hands are skinned, and a
         // plain clone would leave all four robots sharing one skeleton.
@@ -764,6 +768,7 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
         }
       })
       .catch((err) => console.warn("robot player not loaded:", err));
+    pending.push(arriving);
 
     return g;
   };
@@ -1263,5 +1268,5 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
     cssRenderer.render(scene, camera);
   });
 
-  return { enter, exit, isFocused: () => mode === "focused" };
+  return { enter, exit, isFocused: () => mode === "focused", ready: Promise.all(pending) };
 }
