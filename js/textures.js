@@ -131,51 +131,404 @@ export function parchment({ size = 512, seed = 21 } = {}) {
   };
 }
 
-/** A square-grid battle map with a rough dungeon floor plan drawn on it. */
-export function battleMap({ size = 1024, seed = 33 } = {}) {
+/* ------------------------------------------------------------------ *
+ *  The board
+ *
+ *  One plan, two consumers. MAP_PLAN describes the region in normalised
+ *  coordinates; the drawing below turns it into the printed map, and
+ *  js/board.js stands the terrain pieces on the same coordinates. That
+ *  is the whole trick: the trees are in the forest and the bridge is on
+ *  the river because both read the same numbers, not because the two
+ *  were nudged into agreement by hand.
+ * ------------------------------------------------------------------ */
+
+export const MAP_PLAN = {
+  // The coastline runs from the top-left edge down to the bottom; the sea is
+  // everything to the left of it.
+  coast: [
+    [-0.03, 0.16], [0.06, 0.28], [0.03, 0.4], [0.13, 0.5], [0.11, 0.62],
+    [0.21, 0.72], [0.19, 0.84], [0.3, 0.93], [0.28, 1.03],
+  ],
+  mountains: [
+    [0.6, 0.12], [0.68, 0.09], [0.75, 0.14], [0.82, 0.11], [0.88, 0.17], [0.94, 0.14],
+    [0.71, 0.2], [0.79, 0.23], [0.87, 0.26],
+  ],
+  hills: [[0.5, 0.26], [0.57, 0.31], [0.44, 0.34], [0.9, 0.42], [0.84, 0.36]],
+  forests: [
+    { at: [0.3, 0.29], r: 0.115 },
+    { at: [0.72, 0.71], r: 0.135 },
+    { at: [0.52, 0.85], r: 0.085 },
+  ],
+  lake: { at: [0.54, 0.48], r: [0.072, 0.05] },
+  river: [[0.74, 0.24], [0.63, 0.38], [0.54, 0.48], [0.455, 0.615], [0.34, 0.77], [0.24, 0.88]],
+  roads: [
+    [[0.26, 0.18], [0.3, 0.34], [0.33, 0.52], [0.38, 0.7]],
+    [[0.38, 0.7], [0.455, 0.615], [0.56, 0.52], [0.645, 0.36]],
+  ],
+  bridge: [0.455, 0.615],
+  towns: [
+    { at: [0.385, 0.705], name: "Ravensmoor", kind: "town" },
+    { at: [0.645, 0.35], name: "Highmark", kind: "keep" },
+    { at: [0.26, 0.17], name: "Tallow", kind: "village" },
+  ],
+  ruin: [0.55, 0.19],
+  stones: [0.85, 0.55],
+  marsh: [0.82, 0.9],
+  // where the party stands, and what is waiting for them
+  party: [[0.345, 0.55], [0.315, 0.6], [0.365, 0.63], [0.3, 0.5]],
+  foes: [[0.52, 0.23], [0.58, 0.26], [0.49, 0.28]],
+};
+
+const INK_MAP = "#4a3520";
+const SEA = "#9fb3bd";
+
+/** Jitter a polyline so nothing on the map looks ruled with a straight edge. */
+function inkPath(ctx, pts, w, h, rand, amp = 3) {
+  ctx.beginPath();
+  pts.forEach(([u, v], i) => {
+    const x = u * w + (rand() - 0.5) * amp;
+    const y = v * h + (rand() - 0.5) * amp;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+}
+
+/** One hand-drawn mountain: a chevron with hatching down its shaded side. */
+function drawMountain(ctx, x, y, s) {
+  ctx.lineWidth = 2.4;
+  ctx.strokeStyle = INK_MAP;
+  ctx.beginPath();
+  ctx.moveTo(x - s, y);
+  ctx.lineTo(x - s * 0.25, y - s * 1.15);
+  ctx.lineTo(x + s * 0.1, y - s * 0.7);
+  ctx.lineTo(x + s * 0.45, y - s * 1.3);
+  ctx.lineTo(x + s * 1.1, y);
+  ctx.stroke();
+  ctx.lineWidth = 1.1;
+  for (let i = 1; i < 6; i++) {
+    ctx.beginPath();
+    ctx.moveTo(x + s * (0.45 + i * 0.1), y - s * (1.3 - i * 0.2));
+    ctx.lineTo(x + s * (0.55 + i * 0.12), y);
+    ctx.stroke();
+  }
+}
+
+function drawTreeGlyph(ctx, x, y, s) {
+  ctx.strokeStyle = INK_MAP;
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x, y - s * 0.4);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x - s * 0.5, y - s * 0.35);
+  ctx.lineTo(x, y - s * 1.35);
+  ctx.lineTo(x + s * 0.5, y - s * 0.35);
+  ctx.closePath();
+  ctx.stroke();
+}
+
+function drawCompass(ctx, x, y, r) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.strokeStyle = INK_MAP;
+  ctx.fillStyle = INK_MAP;
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.76, 0, Math.PI * 2);
+  ctx.stroke();
+  for (let i = 0; i < 4; i++) {
+    ctx.rotate(Math.PI / 2);
+    ctx.beginPath();
+    ctx.moveTo(0, -r * 1.1);
+    ctx.lineTo(r * 0.17, 0);
+    ctx.lineTo(0, r * 0.17);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(0, -r * 1.1);
+    ctx.lineTo(-r * 0.17, 0);
+    ctx.lineTo(0, r * 0.17);
+    ctx.closePath();
+    ctx.stroke();
+  }
+  for (let i = 0; i < 4; i++) {
+    ctx.rotate(Math.PI / 2);
+    ctx.beginPath();
+    ctx.moveTo(0, -r * 0.72);
+    ctx.lineTo(r * 0.1, 0);
+    ctx.lineTo(0, r * 0.1);
+    ctx.closePath();
+    ctx.stroke();
+  }
+  ctx.restore();
+  ctx.fillStyle = INK_MAP;
+  ctx.font = "bold 22px Georgia, serif";
+  ctx.textAlign = "center";
+  ctx.fillText("N", x, y - r * 1.25);
+}
+
+/**
+ * The printed map: a region drawn in ink on parchment, in the idiom of the
+ * fold-out map at the front of a fantasy novel. Everything is placed from
+ * MAP_PLAN, which the 3D terrain reads too.
+ */
+export function fantasyMap({ w = 1024, h = 731, seed = 33 } = {}) {
   const rand = rng(seed);
-  const [c, ctx] = canvas(size);
-  ctx.fillStyle = "#2b2a33";
-  ctx.fillRect(0, 0, size, size);
+  const [c, ctx] = canvas(w, h);
+  const X = (u) => u * w;
+  const Y = (v) => v * h;
 
-  // stone-floored rooms and the corridors between them
-  const rooms = [
-    [90, 110, 300, 250], [470, 80, 260, 200], [180, 470, 340, 300],
-    [600, 420, 320, 260], [430, 330, 120, 140],
-  ];
-  ctx.fillStyle = "#6f6a60";
-  for (const [x, y, w, h] of rooms) ctx.fillRect(x, y, w, h);
-  ctx.fillStyle = "#5e594f";
-  for (const [ax, ay, bx, by, t] of [[390, 210, 470, 210, 46], [330, 360, 330, 470, 44], [550, 280, 550, 420, 42], [520, 560, 600, 560, 44]]) {
-    ctx.fillRect(Math.min(ax, bx) - (ax === bx ? t / 2 : 0), Math.min(ay, by) - (ay === by ? t / 2 : 0),
-      ax === bx ? t : Math.abs(bx - ax), ay === by ? t : Math.abs(by - ay));
+  // ---- parchment ground ----
+  ctx.fillStyle = "#d9c69b";
+  ctx.fillRect(0, 0, w, h);
+  for (let i = 0; i < 320; i++) {
+    const x = rand() * w, y = rand() * h, r = 24 + rand() * 130;
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, rand() > 0.42 ? "rgba(120,84,36,0.055)" : "rgba(255,246,216,0.09)");
+    g.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(x - r, y - r, r * 2, r * 2);
   }
 
-  // flagstone mottling inside the lit areas
-  for (let i = 0; i < 5200; i++) {
-    const x = rand() * size, y = rand() * size;
-    ctx.fillStyle = rand() > 0.5 ? "rgba(255,250,235,0.05)" : "rgba(0,0,0,0.07)";
-    ctx.fillRect(x, y, 2 + rand() * 6, 2 + rand() * 6);
+  // ---- sea ----
+  ctx.save();
+  ctx.beginPath();
+  MAP_PLAN.coast.forEach(([u, v], i) => (i ? ctx.lineTo(X(u), Y(v)) : ctx.moveTo(X(u), Y(v))));
+  ctx.lineTo(X(-0.05), Y(1.05));
+  ctx.closePath();
+  ctx.fillStyle = "rgba(120,150,165,0.28)";
+  ctx.fill();
+  ctx.clip();
+  // the swell: long horizontal strokes, the way an engraver would fill water
+  ctx.strokeStyle = "rgba(60,90,105,0.32)";
+  ctx.lineWidth = 1.2;
+  for (let y = 0; y < h; y += 13) {
+    ctx.beginPath();
+    for (let x = -10; x < w * 0.5; x += 8) {
+      const yy = y + Math.sin(x * 0.05 + y * 0.1) * 2.2;
+      x === -10 ? ctx.moveTo(x, yy) : ctx.lineTo(x, yy);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // the coast itself, then three fading echoes of it out to sea
+  for (let k = 0; k < 4; k++) {
+    ctx.strokeStyle = k === 0 ? INK_MAP : `rgba(74,53,32,${0.3 - k * 0.07})`;
+    ctx.lineWidth = k === 0 ? 3 : 1.3;
+    inkPath(ctx, MAP_PLAN.coast.map(([u, v]) => [u - k * 0.016, v + k * 0.006]), w, h, rand, k ? 4 : 2.5);
+    ctx.stroke();
   }
 
-  // the grid every DM argues about
-  ctx.strokeStyle = "rgba(20,18,16,0.38)";
-  ctx.lineWidth = 1.5;
-  const step = size / 24;
-  for (let i = 0; i <= 24; i++) {
-    ctx.beginPath(); ctx.moveTo(i * step, 0); ctx.lineTo(i * step, size); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(0, i * step); ctx.lineTo(size, i * step); ctx.stroke();
+  // ---- a faint league grid, so it still reads as something you play on ----
+  ctx.strokeStyle = "rgba(74,53,32,0.11)";
+  ctx.lineWidth = 1;
+  for (let i = 1; i < 16; i++) {
+    ctx.beginPath(); ctx.moveTo((i * w) / 16, 0); ctx.lineTo((i * w) / 16, h); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, (i * h) / 11); ctx.lineTo(w, (i * h) / 11); ctx.stroke();
   }
 
-  // room outlines, drawn in ink over the grid
-  ctx.strokeStyle = "rgba(15,13,12,0.75)";
-  ctx.lineWidth = 4;
-  for (const [x, y, w, h] of rooms) ctx.strokeRect(x, y, w, h);
+  // ---- lake and river ----
+  const { lake } = MAP_PLAN;
+  ctx.beginPath();
+  ctx.ellipse(X(lake.at[0]), Y(lake.at[1]), X(lake.r[0]), Y(lake.r[1]), 0.3, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(120,150,165,0.32)";
+  ctx.fill();
+  ctx.strokeStyle = INK_MAP;
+  ctx.lineWidth = 2.4;
+  ctx.stroke();
+
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = "rgba(80,110,125,0.85)";
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  MAP_PLAN.river.forEach(([u, v], i) => (i ? ctx.lineTo(X(u), Y(v)) : ctx.moveTo(X(u), Y(v))));
+  ctx.stroke();
+  ctx.strokeStyle = INK_MAP;
+  ctx.lineWidth = 1.4;
+  ctx.stroke();
+
+  // ---- mountains, tallest first so the near ones overlap the far ones ----
+  for (const [u, v] of MAP_PLAN.mountains) drawMountain(ctx, X(u), Y(v), 26 + rand() * 12);
+  for (const [u, v] of MAP_PLAN.hills) {
+    ctx.strokeStyle = INK_MAP;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(X(u) - 20, Y(v));
+    ctx.quadraticCurveTo(X(u), Y(v) - 22, X(u) + 20, Y(v));
+    ctx.stroke();
+  }
+
+  // ---- forests ----
+  for (const f of MAP_PLAN.forests) {
+    const n = Math.round(f.r * 260);
+    for (let i = 0; i < n; i++) {
+      const a = rand() * Math.PI * 2;
+      const d = Math.sqrt(rand()) * f.r;
+      drawTreeGlyph(ctx, X(f.at[0] + Math.cos(a) * d), Y(f.at[1] + Math.sin(a) * d * 1.25), 11 + rand() * 6);
+    }
+  }
+
+  // ---- marsh ----
+  for (let i = 0; i < 40; i++) {
+    const x = X(MAP_PLAN.marsh[0]) + (rand() - 0.5) * 130;
+    const y = Y(MAP_PLAN.marsh[1]) + (rand() - 0.5) * 80;
+    ctx.strokeStyle = "rgba(74,53,32,0.5)";
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + 12 + rand() * 10, y);
+    ctx.stroke();
+  }
+
+  // ---- roads ----
+  ctx.setLineDash([9, 7]);
+  ctx.strokeStyle = "rgba(74,53,32,0.8)";
+  ctx.lineWidth = 2.2;
+  for (const road of MAP_PLAN.roads) {
+    ctx.beginPath();
+    road.forEach(([u, v], i) => (i ? ctx.lineTo(X(u), Y(v)) : ctx.moveTo(X(u), Y(v))));
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  // ---- ruin and standing stones ----
+  const [ru, rv] = MAP_PLAN.ruin;
+  ctx.strokeStyle = INK_MAP;
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 4; i++) {
+    ctx.strokeRect(X(ru) - 18 + i * 11, Y(rv) - 8 - (i % 2) * 7, 8, 14 + (i % 2) * 7);
+  }
+  const [su, sv] = MAP_PLAN.stones;
+  for (let i = 0; i < 7; i++) {
+    const a = (i / 7) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.arc(X(su) + Math.cos(a) * 18, Y(sv) + Math.sin(a) * 14, 3.4, 0, Math.PI * 2);
+    ctx.fillStyle = INK_MAP;
+    ctx.fill();
+  }
+
+  // ---- settlements ----
+  ctx.textAlign = "left";
+  for (const t of MAP_PLAN.towns) {
+    const x = X(t.at[0]);
+    const y = Y(t.at[1]);
+    ctx.strokeStyle = INK_MAP;
+    ctx.fillStyle = INK_MAP;
+    ctx.lineWidth = 2.2;
+    if (t.kind === "town") {
+      ctx.beginPath();
+      ctx.arc(x, y, 13, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(x, y, 5, 0, Math.PI * 2);
+      ctx.fill();
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(x + Math.cos(a) * 13, y + Math.sin(a) * 13);
+        ctx.lineTo(x + Math.cos(a) * 17, y + Math.sin(a) * 17);
+        ctx.stroke();
+      }
+    } else if (t.kind === "keep") {
+      ctx.strokeRect(x - 10, y - 12, 20, 22);
+      ctx.fillRect(x - 12, y - 18, 5, 8);
+      ctx.fillRect(x + 7, y - 18, 5, 8);
+      ctx.fillRect(x - 3, y - 20, 6, 10);
+    } else {
+      for (let i = 0; i < 3; i++) ctx.strokeRect(x - 14 + i * 11, y - 6 + (i % 2) * 5, 8, 8);
+    }
+    ctx.font = "italic 21px Georgia, 'Times New Roman', serif";
+    ctx.fillText(t.name, x + 22, y + 6);
+  }
+
+  // ---- sea dressing ----
+  drawCompass(ctx, X(0.1), Y(0.82), 30);
+  ctx.save();
+  ctx.translate(X(0.07), Y(0.46));
+  ctx.strokeStyle = "rgba(50,80,95,0.75)";
+  ctx.lineWidth = 2.4;
+  ctx.beginPath();
+  ctx.moveTo(-34, 0);
+  for (let i = 0; i <= 8; i++) ctx.lineTo(-34 + i * 9, Math.sin(i * 1.1) * 9);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(-38, -3, 6, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+  ctx.fillStyle = "rgba(50,80,95,0.8)";
+  ctx.font = "italic 19px Georgia, serif";
+  ctx.textAlign = "center";
+  ctx.fillText("Here be scope creep", X(0.11), Y(0.63));
+
+  // ---- cartouche ----
+  ctx.save();
+  ctx.translate(X(0.82), Y(0.06));
+  ctx.rotate(-0.02);
+  ctx.fillStyle = "rgba(255,248,226,0.4)";
+  ctx.fillRect(-140, -26, 280, 54);
+  ctx.strokeStyle = INK_MAP;
+  ctx.lineWidth = 2.4;
+  ctx.strokeRect(-140, -26, 280, 54);
+  ctx.lineWidth = 1;
+  ctx.strokeRect(-134, -20, 268, 42);
+  ctx.fillStyle = INK_MAP;
+  ctx.textAlign = "center";
+  ctx.font = "bold 24px Georgia, serif";
+  ctx.fillText("THE BACKLOG MARCHES", 0, 2);
+  ctx.font = "italic 16px Georgia, serif";
+  ctx.fillText("surveyed in the fourth year", 0, 20);
+  ctx.restore();
+
+  // ---- age: fold creases, then stains, then a scorched border ----
+  ctx.strokeStyle = "rgba(90,66,34,0.16)";
+  ctx.lineWidth = 2;
+  for (const fx of [0.34, 0.67]) {
+    ctx.beginPath();
+    ctx.moveTo(X(fx), 0);
+    ctx.lineTo(X(fx), h);
+    ctx.stroke();
+  }
+  ctx.beginPath();
+  ctx.moveTo(0, Y(0.5));
+  ctx.lineTo(w, Y(0.5));
+  ctx.stroke();
+
+  for (let i = 0; i < 26; i++) {
+    const x = rand() * w, y = rand() * h, r = 14 + rand() * 46;
+    const g = ctx.createRadialGradient(x, y, r * 0.4, x, y, r);
+    g.addColorStop(0, "rgba(120,80,30,0.05)");
+    g.addColorStop(1, "rgba(120,80,30,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+
+  const edge = ctx.createLinearGradient(0, 0, 0, h);
+  edge.addColorStop(0, "rgba(86,54,18,0.35)");
+  edge.addColorStop(0.12, "rgba(86,54,18,0)");
+  edge.addColorStop(0.88, "rgba(86,54,18,0)");
+  edge.addColorStop(1, "rgba(86,54,18,0.35)");
+  ctx.fillStyle = edge;
+  ctx.fillRect(0, 0, w, h);
+  const edge2 = ctx.createLinearGradient(0, 0, w, 0);
+  edge2.addColorStop(0, "rgba(86,54,18,0.35)");
+  edge2.addColorStop(0.1, "rgba(86,54,18,0)");
+  edge2.addColorStop(0.9, "rgba(86,54,18,0)");
+  edge2.addColorStop(1, "rgba(86,54,18,0.35)");
+  ctx.fillStyle = edge2;
+  ctx.fillRect(0, 0, w, h);
+
+  speckle(ctx, Math.max(w, h), 5000, rand, 0.06, false);
 
   return {
     map: toTexture(c, { srgb: true }),
-    normalMap: toTexture(normalFrom(c, 0.5)),
-    roughnessMap: toTexture(roughnessFrom(c, 0.6, 0.92)),
+    normalMap: toTexture(normalFrom(c, 0.4)),
+    roughnessMap: toTexture(roughnessFrom(c, 0.66, 0.94)),
   };
 }
 

@@ -10,7 +10,7 @@ where the camera is. In front of every player lies their character sheet.
 Three things are clickable:
 
 - **The DM's sheet**, beside the screen — the camera drops overhead and the CV reads
-  as the Dungeon Master's character sheet.
+  as the Dungeon Master's character sheet. Scroll or drag it to read on.
 - **Any player**, or the sheet in front of them — their sheet lifts off the table,
   turns to face you and grows, and it holds what that agent actually is: how it is
   deployed, its stack, and the project it maps to.
@@ -47,6 +47,7 @@ css/sheet.css     parchment character sheet + page UI
 js/content.js     all CV text, as sheet data — edit this to update the résumé
 js/sheet.js       renders the DM's sheet and each player's sheet
 js/scene.js       3D table, camera states, sheet projection and raising
+js/board.js       the board: the tray, and the terrain standing on the map
 js/room.js        the room around it: posters, fireplace, sofa, television, lamp
 js/watercolour.js the painted look: post-processing chain and its shader
 js/textures.js    every drawn surface: battle map, DM screen, posters, cloth, marks
@@ -106,6 +107,14 @@ boxes, and the icosahedron and dodecahedron come straight out of Three.js.
 The posters are original artwork in the visual language of the early 2000s — code
 rain, Y2K chrome, a pixel arcade screen, a LAN party flyer, a skate print. None of
 them reproduces a real poster, which would be someone else's copyright.
+
+The board in the middle is drawn and built from one description. `MAP_PLAN` in
+`js/textures.js` says where the coast, the forests, the mountains, the river, the
+roads and the three settlements are, in normalised coordinates; the map is drawn
+from it, and `js/board.js` stands the terrain on the same numbers. That is why the
+trees are inside the forest and the bridge is on the river — not because the two
+were nudged into agreement by hand. Anything repeated on the board is an
+`InstancedMesh`, so sixty trees cost two draw calls rather than sixty.
 
 Every texture is downscaled to 512px and re-encoded, which keeps the whole site near
 2 MB rather than 15 MB at the original 1K. Models load asynchronously and only in 3D

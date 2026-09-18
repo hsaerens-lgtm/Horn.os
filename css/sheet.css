@@ -54,6 +54,25 @@ html, body {
 
 .hint.hidden, .back.hidden { opacity: 0; pointer-events: none; }
 
+/* The sheet scrolls, and nothing about a page lying on a table says so. */
+.scroll-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  padding: 7px 16px;
+  border-radius: 3px;
+  background: rgba(24, 18, 12, 0.7);
+  border: 1px solid rgba(200, 170, 120, 0.28);
+  color: #d8cbb2;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  pointer-events: none !important;
+  transition: opacity 0.4s;
+}
+
+.scroll-hint.hidden { opacity: 0; }
+
 #loader {
   position: fixed;
   inset: 0;
@@ -122,9 +141,11 @@ body.fallback .sheet {
 
 .sheet > * { position: relative; }
 
-.sheet::-webkit-scrollbar { width: 9px; }
-.sheet::-webkit-scrollbar-track { background: rgba(120, 90, 50, 0.08); }
-.sheet::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 5px; }
+/* Wider and darker than a page would normally want: at this scale on the table
+   it is the only thing telling you there are two more pages below. */
+.sheet::-webkit-scrollbar { width: 14px; }
+.sheet::-webkit-scrollbar-track { background: rgba(120, 90, 50, 0.14); }
+.sheet::-webkit-scrollbar-thumb { background: var(--ink-soft); border: 3px solid transparent; background-clip: content-box; border-radius: 7px; }
 
 /* ---------- Header ---------- */
 .hdr { border-bottom: 1px solid var(--rule); padding-bottom: 18px; margin-bottom: 24px; }

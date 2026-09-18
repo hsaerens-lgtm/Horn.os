@@ -5,6 +5,7 @@ const root = document.getElementById("sheet-root");
 const loader = document.getElementById("loader");
 const hint = document.querySelector(".hint");
 const back = document.querySelector(".back");
+const scrollHint = document.querySelector(".scroll-hint");
 const params = new URLSearchParams(location.search);
 
 const questOf = (agent) => content.quests.find((q) => q.name === agent.quest);
@@ -50,6 +51,7 @@ async function start3D() {
     onEnter() {
       hint.classList.add("hidden");
       back.classList.remove("hidden");
+      scrollHint.classList.remove("hidden");
       sheet.scrollTop();
     },
     onAgent() {
@@ -58,6 +60,7 @@ async function start3D() {
     },
     onExit() {
       back.classList.add("hidden");
+      scrollHint.classList.add("hidden");
       hint.classList.remove("hidden");
     },
   });

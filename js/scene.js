@@ -5,7 +5,6 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import {
   plasticGrain,
   parchment,
-  battleMap,
   agentScreen,
   agentFace,
   suitFabric,
@@ -18,6 +17,7 @@ import {
 } from "./textures.js";
 import { createWatercolour } from "./watercolour.js";
 import { createRoom } from "./room.js";
+import { createBoard } from "./board.js";
 
 // The sheet is 860x1180 CSS px, laid flat on the table at this physical width.
 const SHEET_W = 0.34;
@@ -78,7 +78,6 @@ export function createScene({ container, sheetRoot, agentRoots, agents, onEnter,
     wall: plaster(),
     plastic: plasticGrain(),
     parchment: parchment(),
-    map: battleMap(),
   };
 
   const N = (x, y = x) => new THREE.Vector2(x, y);
@@ -90,7 +89,6 @@ export function createScene({ container, sheetRoot, agentRoots, agents, onEnter,
     wood: new THREE.MeshStandardMaterial({ ...tex.table, color: 0xb8855a, normalScale: N(0.5), envMapIntensity: 0.9 }),
     woodDark: new THREE.MeshStandardMaterial({ ...tex.tableEdge, color: 0x6b4a30, normalScale: N(0.4), envMapIntensity: 0.6 }),
     parchment: new THREE.MeshStandardMaterial({ ...tex.parchment, normalScale: N(0.4), envMapIntensity: 0.5, side: THREE.DoubleSide }),
-    map: new THREE.MeshStandardMaterial({ ...tex.map, normalScale: N(0.25), envMapIntensity: 0.4 }),
     dice: new THREE.MeshStandardMaterial({ color: 0xc8342a, roughness: 0.22, metalness: 0.1, envMapIntensity: 1.5 }),
     dicePale: new THREE.MeshStandardMaterial({ color: 0xe8dcc0, roughness: 0.3, envMapIntensity: 1.2 }),
     metal: new THREE.MeshStandardMaterial({ color: 0x8a8f99, roughness: 0.3, metalness: 0.85, envMapIntensity: 1.6 }),
@@ -148,14 +146,10 @@ export function createScene({ container, sheetRoot, agentRoots, agents, onEnter,
     box(0.08, TABLE_Y - 0.05, 0.08, mat.woodDark, x, (TABLE_Y - 0.05) / 2, z);
   }
 
-  // ---------- Battle map ----------
-  // Smaller than it was: every player now has their own sheet in front of them,
-  // and the map has to leave room for four of them.
-  const mapMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.84, 0.6), mat.map);
-  mapMesh.rotation.x = -Math.PI / 2;
-  mapMesh.position.set(0.1, TABLE_Y + 0.002, -0.05);
-  mapMesh.receiveShadow = true;
-  scene.add(mapMesh);
+  // ---------- The board ----------
+  // A printed region map in a shallow wooden tray, with terrain standing on it.
+  // Sized to leave room for the four players' own sheets around it.
+  const board = createBoard(scene, { cx: 0.1, cz: -0.05, w: 0.84, d: 0.6, y: TABLE_Y });
 
   // ---------- DM screen: three panels, hinged, printed on both sides ----------
   // A real screen carries artwork on the players' face and the tables the DM
@@ -312,32 +306,9 @@ export function createScene({ container, sheetRoot, agentRoots, agents, onEnter,
     }
   };
 
-  // ---------- Miniatures: one per agent on the map, plus what they are fighting ----------
-  const mini = (colour, x, z, tall = 0.052) => {
-    const g = new THREE.Group();
-    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.019, 0.021, 0.006, 20), mat.dark);
-    base.castShadow = true;
-    g.add(base);
-    const bodyMat = new THREE.MeshStandardMaterial({ color: colour, roughness: 0.35, metalness: 0.15, envMapIntensity: 1.3 });
-    const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.011, tall * 0.55, 4, 12), bodyMat);
-    body.position.y = 0.006 + tall * 0.5;
-    body.castShadow = true;
-    g.add(body);
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.0115, 14, 12), bodyMat);
-    head.position.y = 0.006 + tall * 0.95;
-    head.castShadow = true;
-    g.add(head);
-    g.position.set(x, TABLE_Y + 0.004, z);
-    scene.add(g);
-    return g;
-  };
-
+  // The miniatures stand on the board, placed from the same map plan.
   const party = agents ?? [];
-  const miniSpots = [[-0.12, -0.16], [-0.04, -0.05], [0.05, -0.18], [0.14, -0.06]];
-  party.slice(0, 4).forEach((a, i) => mini(a.colour, miniSpots[i][0], miniSpots[i][1]));
-  // the encounter on the far side of the map
-  mini(0x8c2f22, 0.34, -0.3, 0.07);
-  mini(0x8c2f22, 0.44, -0.2, 0.062);
+  board.populate(party);
 
   // ---------- The party ----------
   // Each agent is a suited figure with a television for a head, its mark on the
@@ -347,10 +318,15 @@ export function createScene({ container, sheetRoot, agentRoots, agents, onEnter,
   const twill = suitFabric({ repeat: [2.6, 2.6] });
   const pin = suitFabric({ pinstripe: true, seed: 47, repeat: [2.6, 2.6] });
   const poplin = shirtFabric();
-  const suitOf = (striped) =>
-    new THREE.MeshStandardMaterial({ ...(striped ? pin : twill), color: 0x1c2130, normalScale: N(0.55), envMapIntensity: 0.3 });
-  const suitDarkOf = (striped) =>
-    new THREE.MeshStandardMaterial({ ...(striped ? pin : twill), color: 0x141826, normalScale: N(0.45), envMapIntensity: 0.25 });
+  const suitOf = (striped, colour) =>
+    new THREE.MeshStandardMaterial({ ...(striped ? pin : twill), color: colour, normalScale: N(0.55), envMapIntensity: 0.34 });
+  const suitDarkOf = (striped, colour) =>
+    new THREE.MeshStandardMaterial({
+      ...(striped ? pin : twill),
+      color: new THREE.Color(colour).multiplyScalar(0.7),
+      normalScale: N(0.45),
+      envMapIntensity: 0.28,
+    });
   const shirtMat = new THREE.MeshStandardMaterial({ ...poplin, color: 0x8f96a6, normalScale: N(0.35), envMapIntensity: 0.3 });
   const cuffMat = new THREE.MeshStandardMaterial({ color: 0x6e7484, roughness: 0.78, envMapIntensity: 0.25 });
   const hitMat = new THREE.MeshBasicMaterial({ visible: false });
@@ -368,8 +344,8 @@ export function createScene({ container, sheetRoot, agentRoots, agents, onEnter,
   // a profile with a bevel gives soft edges without the balloon look of stacked spheres.
   const jacketShape = (() => {
     const s = new THREE.Shape();
-    const SH = 0.168; // half-width at the shoulder
-    const WA = 0.118; // half-width at the waist
+    const SH = 0.184; // half-width at the shoulder
+    const WA = 0.126; // half-width at the waist
     s.moveTo(-SH, 0.2);
     s.lineTo(SH, 0.2); // straight shoulder line
     s.bezierCurveTo(SH + 0.008, 0.06, WA + 0.03, -0.1, WA, -0.26);
@@ -416,10 +392,17 @@ export function createScene({ container, sheetRoot, agentRoots, agents, onEnter,
     }
   };
 
-  const makeAgent = (a, x, z, rotY, { striped = false } = {}) => {
+  // Everything above the hip lives in its own group, so a single rotation leans
+  // the whole upper body forward without having to re-place twenty parts. That
+  // lean, a turn of the head and how far each one reaches across the table are
+  // the three numbers that stop four identical figures reading as four copies
+  // of one figure — far more than any amount of extra geometry would.
+  const makeAgent = (a, seat) => {
+    const { rot: rotY, striped = false, suit, lean = 0, turn = 0, tilt = 0, reach = 0 } = seat;
+    const [x, z] = seat.fig;
     const accent = new THREE.Color(a.colour);
-    const suitMat = suitOf(striped);
-    const suitDark = suitDarkOf(striped);
+    const suitMat = suitOf(striped, suit);
+    const suitDark = suitDarkOf(striped, suit);
     const g = new THREE.Group();
     g.position.set(x, 0, z);
     g.rotation.y = rotY;
@@ -451,26 +434,33 @@ export function createScene({ container, sheetRoot, agentRoots, agents, onEnter,
       g.add(shoe);
     }
 
+    const upper = new THREE.Group();
+    upper.position.set(0, HIP_Y, 0);
+    upper.rotation.x = lean;
+    g.add(upper);
+    const put = (mesh, px, py, pz) => {
+      mesh.position.set(px, py, pz);
+      upper.add(mesh);
+      return mesh;
+    };
+
     // ----- jacket -----
     const torso = new THREE.Mesh(
       new THREE.ExtrudeGeometry(jacketShape, {
-        depth: 0.17,
+        depth: 0.19,
         bevelEnabled: true,
-        bevelSize: 0.018,
-        bevelThickness: 0.018,
-        bevelSegments: 4,
-        curveSegments: 16,
+        bevelSize: 0.024,
+        bevelThickness: 0.022,
+        bevelSegments: 5,
+        curveSegments: 18,
       }),
       suitMat
     );
-    torso.position.set(0, HIP_Y + 0.34, -0.085);
     torso.castShadow = true;
     torso.receiveShadow = true;
-    g.add(torso);
+    put(torso, 0, 0.34, -0.095);
 
-    const opening = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.26, 0.02), suitDark);
-    opening.position.set(0, HIP_Y + 0.43, 0.117);
-    g.add(opening);
+    put(new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.26, 0.02), suitDark), 0, 0.43, 0.117);
 
     for (const s of [-1, 1]) {
       const lapel = new THREE.Mesh(
@@ -478,93 +468,117 @@ export function createScene({ container, sheetRoot, agentRoots, agents, onEnter,
         suitDark
       );
       lapel.scale.x = s;
-      lapel.position.set(0, HIP_Y + 0.34, 0.108);
-      g.add(lapel);
+      put(lapel, 0, 0.34, 0.112);
 
       // ----- arm: shoulder, upper arm down, forearm forward onto the table -----
-      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.055, 16, 12), suitMat);
-      cap.position.set(s * 0.176, HIP_Y + 0.515, -0.005);
-      cap.scale.set(1, 0.85, 0.95);
+      // Sunk into the jacket rather than perched on it: a sphere sitting proud
+      // of the shoulder line reads as a ball joint, which is the single detail
+      // that made these look like mannequins.
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.053, 16, 12), suitMat);
+      cap.scale.set(1, 0.8, 0.95);
       cap.castShadow = true;
-      g.add(cap);
+      put(cap, s * 0.166, 0.508, -0.005);
 
-      const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.05, 0.16, 4, 14), suitMat);
-      upper.position.set(s * 0.198, HIP_Y + 0.41, 0.035);
-      upper.rotation.set(0.42, 0, s * 0.14);
-      upper.castShadow = true;
-      g.add(upper);
+      const upperArm = new THREE.Mesh(new THREE.CapsuleGeometry(0.052, 0.16, 4, 14), suitMat);
+      upperArm.rotation.set(0.42, 0, s * 0.14);
+      upperArm.castShadow = true;
+      put(upperArm, s * 0.188, 0.408, 0.035);
 
-      const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.048, 14, 12), suitMat);
-      elbow.position.set(s * 0.216, HIP_Y + 0.305, 0.115);
-      g.add(elbow);
+      put(new THREE.Mesh(new THREE.SphereGeometry(0.048, 14, 12), suitMat), s * 0.216, 0.305, 0.115);
 
       const fore = new THREE.Mesh(new THREE.CapsuleGeometry(0.045, 0.21, 4, 14), suitMat);
-      fore.position.set(s * 0.214, HIP_Y + 0.215, 0.255);
       fore.rotation.set(1.31, 0, s * 0.05);
       fore.castShadow = true;
-      g.add(fore);
+      put(fore, s * 0.214, 0.215, 0.255 + reach * 0.5);
 
       const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.047, 0.047, 0.014, 16), cuffMat);
-      cuff.position.set(s * 0.212, HIP_Y + 0.185, 0.365);
       cuff.rotation.x = 1.31;
-      g.add(cuff);
+      put(cuff, s * 0.212, 0.185, 0.365 + reach * 0.8);
 
       const hand = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.03, 0.13), handMat);
-      hand.position.set(s * 0.212, TABLE_Y + 0.022, 0.43);
       hand.rotation.set(0.05, s * -0.12, 0);
       hand.castShadow = true;
-      g.add(hand);
+      put(hand, s * 0.212, TABLE_Y + 0.022 - HIP_Y, 0.43 + reach);
     }
 
     // ----- shirt, collar, tie -----
-    const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.078, 0.04, 18), shirtMat);
-    collar.position.set(0, HIP_Y + 0.535, 0.012);
-    g.add(collar);
+    put(new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.078, 0.04, 18), shirtMat), 0, 0.535, 0.012);
+    put(new THREE.Mesh(new THREE.BoxGeometry(0.085, 0.13, 0.014), shirtMat), 0, 0.475, 0.124);
 
-    const shirt = new THREE.Mesh(new THREE.BoxGeometry(0.085, 0.13, 0.014), shirtMat);
-    shirt.position.set(0, HIP_Y + 0.475, 0.124);
-    g.add(shirt);
-
-    const knot = new THREE.Mesh(new THREE.BoxGeometry(0.036, 0.034, 0.018), new THREE.MeshStandardMaterial({ color: accent, roughness: 0.36, envMapIntensity: 1.4 }));
-    knot.position.set(0, HIP_Y + 0.518, 0.132);
-    g.add(knot);
-
-    const tie = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.165, 0.014), new THREE.MeshStandardMaterial({ color: accent, roughness: 0.38, envMapIntensity: 1.3 }));
-    tie.position.set(0, HIP_Y + 0.418, 0.132);
-    g.add(tie);
-
-    const pocket = new THREE.Mesh(new THREE.BoxGeometry(0.042, 0.014, 0.012), new THREE.MeshStandardMaterial({ color: accent, roughness: 0.5, envMapIntensity: 1.2 }));
-    pocket.position.set(-0.104, HIP_Y + 0.44, 0.118);
-    g.add(pocket);
+    const accentMat = (rough) => new THREE.MeshStandardMaterial({ color: accent, roughness: rough, envMapIntensity: 1.4 });
+    put(new THREE.Mesh(new THREE.BoxGeometry(0.036, 0.034, 0.018), accentMat(0.36)), 0, 0.518, 0.132);
+    put(new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.165, 0.014), accentMat(0.38)), 0, 0.418, 0.132);
+    put(new THREE.Mesh(new THREE.BoxGeometry(0.042, 0.014, 0.012), accentMat(0.5)), -0.104, 0.44, 0.118);
 
     // ----- television head -----
     const head = new THREE.Group();
-    head.position.set(0, HIP_Y + 0.69, 0.012);
-    g.add(head);
+    head.position.set(0, 0.69, 0.012);
+    head.rotation.set(tilt, turn, 0);
+    upper.add(head);
 
     const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.044, 0.056, 0.1, 16), suitDark);
     neck.position.y = -0.125;
     head.add(neck);
 
-    const shell = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.235, 0.22), caseMat);
+    // The shell is an extruded rounded rectangle rather than a box: the soft
+    // corner is most of what separates a television set from a crate.
+    const shellShape = (() => {
+      const s = new THREE.Shape();
+      const w = 0.122, h = 0.104, r = 0.02;
+      s.moveTo(-w + r, -h);
+      s.lineTo(w - r, -h);
+      s.quadraticCurveTo(w, -h, w, -h + r);
+      s.lineTo(w, h - r);
+      s.quadraticCurveTo(w, h, w - r, h);
+      s.lineTo(-w + r, h);
+      s.quadraticCurveTo(-w, h, -w, h - r);
+      s.lineTo(-w, -h + r);
+      s.quadraticCurveTo(-w, -h, -w + r, -h);
+      return s;
+    })();
+    const shell = new THREE.Mesh(
+      new THREE.ExtrudeGeometry(shellShape, {
+        depth: 0.172,
+        bevelEnabled: true,
+        bevelSize: 0.008,
+        bevelThickness: 0.008,
+        bevelSegments: 3,
+        curveSegments: 10,
+      }),
+      caseMat
+    );
+    // Front of the glass ends up at -0.086 + 0.172 + 0.008 = 0.094; everything
+    // below is placed just proud of that.
+    shell.position.z = -0.086;
     shell.castShadow = true;
     head.add(shell);
 
-    const bezel = new THREE.Mesh(new THREE.BoxGeometry(0.262, 0.218, 0.02), caseMat);
-    bezel.position.z = 0.112;
-    head.add(bezel);
-
     const face = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.222, 0.166),
+      new THREE.PlaneGeometry(0.194, 0.146),
       new THREE.MeshBasicMaterial({ map: agentFace(a, { seed: party.indexOf(a) + 2 }), toneMapped: false })
     );
-    face.position.set(0, 0.008, 0.124);
+    face.position.set(0, 0.008, 0.0975);
     head.add(face);
 
+    // a brand strip under the screen, and the vents every set of this era had
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(0.086, 0.011, 0.006), suitDark);
+    strip.position.set(-0.042, -0.086, 0.0955);
+    head.add(strip);
+    for (let i = 0; i < 5; i++) {
+      const vent = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.004, 0.006), suitDark);
+      vent.position.set(0, 0.114, -0.014 - i * 0.015);
+      head.add(vent);
+    }
+    for (const s of [-1, 1]) {
+      const foot = new THREE.Mesh(new THREE.BoxGeometry(0.026, 0.013, 0.045), suitDark);
+      foot.position.set(s * 0.078, -0.118, -0.016);
+      head.add(foot);
+    }
     for (let k = 0; k < 2; k++) {
-      const knob = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.012, 12), suitDark);
-      knob.position.set(0.142, 0.048 - k * 0.052, 0.05);
-      knob.rotation.z = Math.PI / 2;
+      const knob = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.012, 12), accentMat(0.4));
+      knob.position.set(0.094, -0.085, 0.0955);
+      knob.position.x -= k * 0.03;
+      knob.rotation.x = Math.PI / 2;
       head.add(knob);
     }
 
@@ -594,10 +608,17 @@ export function createScene({ container, sheetRoot, agentRoots, agents, onEnter,
   // is, two players opposite, one at each end. In front of each seat lies that
   // player's character sheet, with their laptop pushed off to one side.
   const SEATS = [
-    { fig: [-0.46, -1.08], rot: 0.1, sheet: [-0.46, -0.49], lap: [-0.78, -0.5], striped: false },
-    { fig: [0.46, -1.08], rot: -0.1, sheet: [0.46, -0.49], lap: [0.78, -0.5], striped: true },
-    { fig: [-1.42, 0.0], rot: Math.PI / 2, sheet: [-0.8, 0.0], lap: [-0.8, -0.32], striped: true },
-    { fig: [1.42, 0.0], rot: -Math.PI / 2, sheet: [0.8, 0.0], lap: [0.8, -0.32], striped: false },
+    // suit / lean / turn / tilt / reach: the posture of one player at the table.
+    // The one leaning furthest in is looking at the board; the one sitting back
+    // with their head turned is looking at whoever is talking.
+    { fig: [-0.46, -1.08], rot: 0.1, sheet: [-0.46, -0.49], lap: [-0.78, -0.5],
+      striped: false, suit: 0x232a3a, lean: 0.1, turn: -0.22, tilt: 0.06, reach: 0.03 },
+    { fig: [0.46, -1.08], rot: -0.1, sheet: [0.46, -0.49], lap: [0.78, -0.5],
+      striped: true, suit: 0x33302c, lean: 0.02, turn: 0.3, tilt: -0.04, reach: -0.03 },
+    { fig: [-1.42, 0.0], rot: Math.PI / 2, sheet: [-0.8, 0.0], lap: [-0.8, -0.32],
+      striped: true, suit: 0x2b3330, lean: 0.16, turn: 0.12, tilt: 0.1, reach: 0.06 },
+    { fig: [1.42, 0.0], rot: -Math.PI / 2, sheet: [0.8, 0.0], lap: [0.8, -0.32],
+      striped: false, suit: 0x2f2833, lean: -0.04, turn: -0.34, tilt: -0.02, reach: -0.05 },
   ];
 
   party.slice(0, 4).forEach((a, i) => {
@@ -634,7 +655,7 @@ export function createScene({ container, sheetRoot, agentRoots, agents, onEnter,
   });
 
   // The figures sit behind their laptops, on the far side of the table.
-  party.slice(0, 4).forEach((a, i) => makeAgent(a, SEATS[i].fig[0], SEATS[i].fig[1], SEATS[i].rot, { striped: SEATS[i].striped }));
+  party.slice(0, 4).forEach((a, i) => makeAgent(a, SEATS[i]));
 
   // ---------- Each player's character sheet ----------
   // The sheet lies face-up on the table in front of its player, the way a sheet
@@ -953,8 +974,53 @@ export function createScene({ container, sheetRoot, agentRoots, agents, onEnter,
     const a = hitAgent(e);
     if (a) enterAgent(a);
   });
+  // ---------- Reading the sheet ----------
+  // The sheet is a real scrollable element, but a browser will not route wheel
+  // scrolling into a node that sits under a 3D transform: the click hit-test
+  // finds it, the scroll hit-test does not. So the scrolling is driven here
+  // instead, from the container, which sees the event whatever it landed on.
+  const SHEET_LINE = 90;
+  const scrollSheet = (dy) => {
+    sheetRoot.scrollTop = Math.max(0, Math.min(sheetRoot.scrollHeight - sheetRoot.clientHeight, sheetRoot.scrollTop + dy));
+  };
+
+  container.addEventListener(
+    "wheel",
+    (e) => {
+      if (mode !== "focused") return;
+      e.preventDefault();
+      scrollSheet(e.deltaMode === 1 ? e.deltaY * SHEET_LINE : e.deltaY);
+    },
+    { passive: false }
+  );
+
+  // Dragging the page is the other half of it: on a trackpad or a touchscreen
+  // that is what people reach for before they look for a scrollbar.
+  let drag = null;
+  container.addEventListener("pointerdown", (e) => {
+    if (mode !== "focused") return;
+    drag = { y: e.clientY, top: sheetRoot.scrollTop, moved: false };
+    container.setPointerCapture?.(e.pointerId);
+  });
+  container.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    const d = e.clientY - drag.y;
+    if (Math.abs(d) > 3) drag.moved = true;
+    sheetRoot.scrollTop = Math.max(0, Math.min(sheetRoot.scrollHeight - sheetRoot.clientHeight, drag.top - d * 1.6));
+  });
+  const endDrag = () => (drag = null);
+  container.addEventListener("pointerup", endDrag);
+  container.addEventListener("pointercancel", endDrag);
+
   window.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") exit();
+    if (e.key === "Escape") return exit();
+    if (mode !== "focused") return;
+    const step = { ArrowDown: SHEET_LINE, ArrowUp: -SHEET_LINE, PageDown: 900, PageUp: -900, " ": 900 }[e.key];
+    if (step !== undefined) {
+      e.preventDefault();
+      scrollSheet(step);
+    } else if (e.key === "Home") sheetRoot.scrollTop = 0;
+    else if (e.key === "End") sheetRoot.scrollTop = sheetRoot.scrollHeight;
   });
 
   window.addEventListener("resize", () => {
