@@ -48,6 +48,7 @@ js/content.js     all CV text, as sheet data — edit this to update the résum�
 js/sheet.js       renders the DM's sheet and each player's sheet
 js/scene.js       3D table, camera states, sheet projection and raising
 js/board.js       the board: the tray, and the terrain standing on the map
+js/shapes.js      rounded boxes — nothing in a room has a knife edge
 js/room.js        the room around it: posters, fireplace, sofa, television, lamp
 js/watercolour.js the painted look: post-processing chain and its shader
 js/textures.js    every drawn surface: battle map, DM screen, posters, cloth, marks
@@ -107,6 +108,12 @@ boxes, and the icosahedron and dodecahedron come straight out of Three.js.
 The posters are original artwork in the visual language of the early 2000s — code
 rain, Y2K chrome, a pixel arcade screen, a LAN party flyer, a skate print. None of
 them reproduces a real poster, which would be someone else's copyright.
+
+Every noticeable slab in the scene is a rounded box rather than a `BoxGeometry`:
+corners are the first thing the eye uses to tell a model from an object, and a
+room made of knife edges reads as blocked-out. The radius is capped rather than
+proportional — a proportional radius on a 74 cm television gives a 12 cm corner,
+which stops being a rounded edge and starts being a bar of soap.
 
 The board in the middle is drawn and built from one description. `MAP_PLAN` in
 `js/textures.js` says where the coast, the forests, the mountains, the river, the

@@ -25,7 +25,7 @@ const WatercolourShader = {
     uPaperScale: { value: new THREE.Vector2(3, 2) },
     uBleed: { value: 1.45 },
     uEdge: { value: 1.4 },
-    uGrain: { value: 0.3 },
+    uGrain: { value: 0.2 },
     uExposure: { value: 0.88 },
   },
 

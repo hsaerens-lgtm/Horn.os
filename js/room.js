@@ -11,6 +11,7 @@
 
 import * as THREE from "three";
 import { poster, brick, weave, tvScreen, flame } from "./textures.js";
+import { roundedBox } from "./shapes.js";
 
 const N = (x, y = x) => new THREE.Vector2(x, y);
 
@@ -26,7 +27,11 @@ export function createRoom(scene, { wallZ = -2.1 } = {}) {
     parent.add(m);
     return m;
   };
-  const B = (w, h, d) => new THREE.BoxGeometry(w, h, d);
+  // Radius scales with the piece but is capped: a proportional radius on a 74 cm
+  // television gives a 12 cm corner, which stops being a rounded edge and starts
+  // being a bar of soap. Real manufactured corners are a centimetre or two
+  // whatever the object's size, and upholstery asks for its radius explicitly.
+  const B = (w, h, d, r) => roundedBox(w, h, d, r ?? Math.min(0.016, Math.min(w, h, d) * 0.22));
 
   // ---------- Materials ----------
   const brickTex = brick();
@@ -68,7 +73,7 @@ export function createRoom(scene, { wallZ = -2.1 } = {}) {
   for (const p of POSTERS) {
     const art = poster(p.kind, { seed: p.x * 100 + 40 });
     const sheet = add(
-      B(PW, PH, 0.006),
+      B(PW, PH, 0.006, 0.0015),
       // Lit rooms are dark; an emissive copy of the map keeps the print legible
       // without adding a lamp for every poster.
       new THREE.MeshStandardMaterial({
@@ -127,14 +132,14 @@ export function createRoom(scene, { wallZ = -2.1 } = {}) {
   const BREAST_W = PIER * 2 + OPEN_W;
 
   for (const s of [-1, 1]) {
-    add(B(PIER, OPEN_H, DEPTH), mat.brick, (s * (OPEN_W + PIER)) / 2, OPEN_H / 2, DEPTH / 2, { parent: fire });
+    add(B(PIER, OPEN_H, DEPTH, 0.008), mat.brick, (s * (OPEN_W + PIER)) / 2, OPEN_H / 2, DEPTH / 2, { parent: fire });
   }
-  add(B(BREAST_W, 0.3, DEPTH), mat.brick, 0, OPEN_H + 0.15, DEPTH / 2, { parent: fire });
-  add(B(BREAST_W - 0.3, 0.86, DEPTH - 0.06), mat.brick, 0, OPEN_H + 0.73, DEPTH / 2, { parent: fire });
+  add(B(BREAST_W, 0.3, DEPTH, 0.008), mat.brick, 0, OPEN_H + 0.15, DEPTH / 2, { parent: fire });
+  add(B(BREAST_W - 0.3, 0.86, DEPTH - 0.06, 0.008), mat.brick, 0, OPEN_H + 0.73, DEPTH / 2, { parent: fire });
   add(B(OPEN_W, OPEN_H, 0.02), mat.soot, 0, OPEN_H / 2, 0.02, { parent: fire, cast: false });
   add(B(OPEN_W, 0.05, DEPTH), mat.soot, 0, 0.025, DEPTH / 2, { parent: fire, cast: false });
-  add(B(BREAST_W + 0.16, 0.07, DEPTH + 0.1), mat.mantel, 0, OPEN_H + 0.335, DEPTH / 2 + 0.03, { parent: fire });
-  add(B(BREAST_W + 0.16, 0.06, 0.58), mat.stone, 0, 0.03, DEPTH + 0.26, { parent: fire });
+  add(B(BREAST_W + 0.16, 0.07, DEPTH + 0.1, 0.01), mat.mantel, 0, OPEN_H + 0.335, DEPTH / 2 + 0.03, { parent: fire });
+  add(B(BREAST_W + 0.16, 0.06, 0.58, 0.01), mat.stone, 0, 0.03, DEPTH + 0.26, { parent: fire });
 
   // logs and the grate under them
   for (const s of [-1, 1]) {
@@ -213,21 +218,21 @@ export function createRoom(scene, { wallZ = -2.1 } = {}) {
   sofa.rotation.y = Math.PI + 0.22; // back to the table, facing the television
   group.add(sofa);
 
-  add(B(1.75, 0.2, 0.86), mat.sofaDark, 0, 0.26, 0, { parent: sofa });
+  add(B(1.75, 0.2, 0.86, 0.05), mat.sofaDark, 0, 0.26, 0, { parent: sofa });
   for (const s of [-1, 1]) {
-    add(B(0.2, 0.34, 0.88), mat.sofa, s * 0.775, 0.47, 0, { parent: sofa });
-    const seat = add(B(0.76, 0.17, 0.74), mat.sofa, s * 0.39, 0.44, 0.04, { parent: sofa });
+    add(B(0.2, 0.34, 0.88, 0.075), mat.sofa, s * 0.775, 0.47, 0, { parent: sofa });
+    const seat = add(B(0.76, 0.17, 0.74, 0.055), mat.sofa, s * 0.39, 0.44, 0.04, { parent: sofa });
     seat.rotation.x = 0.02;
-    const back = add(B(0.76, 0.42, 0.18), mat.sofa, s * 0.39, 0.66, -0.31, { parent: sofa });
+    const back = add(B(0.76, 0.42, 0.18, 0.06), mat.sofa, s * 0.39, 0.66, -0.31, { parent: sofa });
     back.rotation.x = 0.16;
     for (const [lx, lz] of [[s * 0.76, 0.34], [s * 0.76, -0.34]]) {
       add(new THREE.CylinderGeometry(0.022, 0.016, 0.16, 10), mat.woodLeg, lx, 0.08, lz, { parent: sofa });
     }
   }
-  add(B(1.75, 0.5, 0.16), mat.sofaDark, 0, 0.7, -0.4, { parent: sofa });
-  const pillow = add(B(0.3, 0.3, 0.11), mat.cushion, -0.5, 0.6, -0.16, { parent: sofa });
+  add(B(1.75, 0.5, 0.16, 0.05), mat.sofaDark, 0, 0.7, -0.4, { parent: sofa });
+  const pillow = add(B(0.3, 0.3, 0.11, 0.045), mat.cushion, -0.5, 0.6, -0.16, { parent: sofa });
   pillow.rotation.set(0.3, 0.2, 0.4);
-  const pillow2 = add(B(0.28, 0.28, 0.1), mat.cushion, 0.56, 0.58, -0.18, { parent: sofa });
+  const pillow2 = add(B(0.28, 0.28, 0.1, 0.042), mat.cushion, 0.56, 0.58, -0.18, { parent: sofa });
   pillow2.rotation.set(-0.2, -0.3, -0.5);
 
   // a floor lamp at the end of the sofa, because one warm source is never enough
@@ -273,8 +278,8 @@ export function createRoom(scene, { wallZ = -2.1 } = {}) {
   const CRT_W = 0.74;
   const CRT_H = 0.58;
   const CRT_Y = DECK + 0.03 + CRT_H / 2;
-  add(B(CRT_W, CRT_H, 0.56), mat.plasticPale, 0, CRT_Y, -0.02, { parent: tv });
-  add(B(CRT_W - 0.03, CRT_H - 0.03, 0.02), mat.plastic, 0, CRT_Y, 0.265, { parent: tv });
+  add(B(CRT_W, CRT_H, 0.56, 0.038), mat.plasticPale, 0, CRT_Y, -0.02, { parent: tv });
+  add(B(CRT_W - 0.03, CRT_H - 0.03, 0.02, 0.03), mat.plastic, 0, CRT_Y, 0.265, { parent: tv });
   const screen = add(
     new THREE.PlaneGeometry(CRT_W - 0.14, CRT_H - 0.19),
     new THREE.MeshBasicMaterial({ map: tvScreen(), toneMapped: false }),

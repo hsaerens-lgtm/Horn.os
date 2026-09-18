@@ -12,6 +12,7 @@
 
 import * as THREE from "three";
 import { MAP_PLAN, fantasyMap } from "./textures.js";
+import { roundedBox } from "./shapes.js";
 
 const N = (x, y = x) => new THREE.Vector2(x, y);
 
@@ -38,7 +39,7 @@ export function createBoard(scene, { cx = 0.1, cz = -0.05, w = 0.84, d = 0.6, y 
   const felt = new THREE.MeshStandardMaterial({ color: 0x2c2118, roughness: 0.95, envMapIntensity: 0.2 });
 
   const rail = (rw, rd, rx, rz) => {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(rw, 0.014, rd), wood);
+    const m = new THREE.Mesh(roundedBox(rw, 0.014, rd, 0.004), wood);
     m.position.set(rx, y + 0.007, rz);
     m.castShadow = true;
     m.receiveShadow = true;
@@ -52,7 +53,7 @@ export function createBoard(scene, { cx = 0.1, cz = -0.05, w = 0.84, d = 0.6, y 
   // Its top sits half a millimetre under the map. Centred on y + 0.003 with a
   // 6 mm box, as it was first written, the felt's top face lands above the map
   // and hides it completely.
-  const base = new THREE.Mesh(new THREE.BoxGeometry(w + LIP * 2, 0.005, d + LIP * 2), felt);
+  const base = new THREE.Mesh(roundedBox(w + LIP * 2, 0.005, d + LIP * 2, 0.002), felt);
   base.position.set(cx, y + 0.001, cz);
   base.receiveShadow = true;
   group.add(base);
@@ -157,7 +158,7 @@ export function createBoard(scene, { cx = 0.1, cz = -0.05, w = 0.84, d = 0.6, y 
   for (let i = 0; i < 8; i++) {
     const a = (i / 8) * Math.PI * 2;
     solid(
-      new THREE.BoxGeometry(0.007, 0.009, 0.007),
+      roundedBox(0.007, 0.009, 0.007, 0.0015, 2),
       stoneMat,
       kx + Math.cos(a) * 0.021,
       SURFACE + 0.0745,
@@ -175,7 +176,7 @@ export function createBoard(scene, { cx = 0.1, cz = -0.05, w = 0.84, d = 0.6, y 
     const a = (i / 12) * Math.PI * 2;
     if (i === 3) continue; // the gate
     solid(
-      new THREE.BoxGeometry(0.014, 0.018, 0.006),
+      roundedBox(0.014, 0.018, 0.006, 0.0015, 2),
       stoneMat,
       tx + Math.cos(a) * 0.028,
       SURFACE + 0.009,
@@ -193,7 +194,7 @@ export function createBoard(scene, { cx = 0.1, cz = -0.05, w = 0.84, d = 0.6, y 
   for (let i = 0; i < 3; i++) {
     const vx = X(vil.at[0]) + (i - 1) * 0.014;
     const vz = Z(vil.at[1]) + (i % 2) * 0.011;
-    solid(new THREE.BoxGeometry(0.012, 0.01, 0.012), plankMat, vx, SURFACE + 0.005, vz);
+    solid(roundedBox(0.012, 0.01, 0.012, 0.0015, 2), plankMat, vx, SURFACE + 0.005, vz);
     solid(new THREE.ConeGeometry(0.0105, 0.008, 4), roofMat, vx, SURFACE + 0.014, vz, Math.PI / 4);
   }
 
@@ -216,10 +217,10 @@ export function createBoard(scene, { cx = 0.1, cz = -0.05, w = 0.84, d = 0.6, y 
     bridge.add(m);
     return m;
   };
-  part(new THREE.BoxGeometry(0.052, 0.004, 0.018), plankMat, 0, 0.008, 0);
+  part(roundedBox(0.052, 0.004, 0.018, 0.0015, 2), plankMat, 0, 0.008, 0);
   for (const s of [-1, 1]) {
-    part(new THREE.BoxGeometry(0.05, 0.005, 0.002), plankMat, 0, 0.0125, s * 0.008);
-    part(new THREE.BoxGeometry(0.009, 0.009, 0.022), stoneMat, s * 0.026, 0.004, 0);
+    part(roundedBox(0.05, 0.005, 0.002, 0.0015, 2), plankMat, 0, 0.0125, s * 0.008);
+    part(roundedBox(0.009, 0.009, 0.022, 0.0015, 2), stoneMat, s * 0.026, 0.004, 0);
   }
 
   // standing stones, and the ruin the party is presumably headed for
@@ -227,7 +228,7 @@ export function createBoard(scene, { cx = 0.1, cz = -0.05, w = 0.84, d = 0.6, y 
   for (let i = 0; i < 7; i++) {
     const a = (i / 7) * Math.PI * 2;
     solid(
-      new THREE.BoxGeometry(0.005, 0.019, 0.004),
+      roundedBox(0.005, 0.019, 0.004, 0.0015, 2),
       stoneMat,
       X(su) + Math.cos(a) * 0.017,
       SURFACE + 0.0095,

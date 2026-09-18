@@ -10,7 +10,7 @@ import {
   suitFabric,
   shirtFabric,
   scoreLabel,
-  plaster,
+  wallpaper,
   dmScreenTables,
   dmScreenArt,
   screenFace,
@@ -18,6 +18,7 @@ import {
 import { createWatercolour } from "./watercolour.js";
 import { createRoom } from "./room.js";
 import { createBoard } from "./board.js";
+import { roundedBox } from "./shapes.js";
 
 // The sheet is 860x1180 CSS px, laid flat on the table at this physical width.
 const SHEET_W = 0.34;
@@ -75,7 +76,7 @@ export function createScene({ container, sheetRoot, agentRoots, agents, onEnter,
     table: loadPBR("american_walnut_veneer", [1.4, 0.9]),
     tableEdge: loadPBR("american_walnut_veneer", [4, 0.4]),
     floor: loadPBR("herringbone_parquet", [2.2, 2.2]),
-    wall: plaster(),
+    wall: wallpaper(),
     plastic: plasticGrain(),
     parchment: parchment(),
   };
@@ -85,7 +86,7 @@ export function createScene({ container, sheetRoot, agentRoots, agents, onEnter,
     floor: new THREE.MeshStandardMaterial({ ...tex.floor, color: 0x8a7258, normalScale: N(0.35), roughness: 0.55, envMapIntensity: 0.7 }),
     // A warm grey rather than the blue-grey it was: the blue was what made the
     // room read as a basement even before the lighting got involved.
-    wall: new THREE.MeshStandardMaterial({ ...tex.wall, color: 0xa79a86, normalScale: N(0.35), envMapIntensity: 0.75 }),
+    wall: new THREE.MeshStandardMaterial({ ...tex.wall, color: 0xcdc6b8, normalScale: N(0.18), envMapIntensity: 0.95 }),
     wood: new THREE.MeshStandardMaterial({ ...tex.table, color: 0xb8855a, normalScale: N(0.5), envMapIntensity: 0.9 }),
     woodDark: new THREE.MeshStandardMaterial({ ...tex.tableEdge, color: 0x6b4a30, normalScale: N(0.4), envMapIntensity: 0.6 }),
     parchment: new THREE.MeshStandardMaterial({ ...tex.parchment, normalScale: N(0.4), envMapIntensity: 0.5, side: THREE.DoubleSide }),
@@ -96,8 +97,8 @@ export function createScene({ container, sheetRoot, agentRoots, agents, onEnter,
     cutout: new THREE.MeshBasicMaterial({ color: 0x000000, blending: THREE.NoBlending, opacity: 0, transparent: true }),
   };
 
-  const box = (w, h, d, m, x, y, z, { cast = true, receive = true } = {}) => {
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
+  const box = (w, h, d, m, x, y, z, { cast = true, receive = true, r = 0.01 } = {}) => {
+    const mesh = new THREE.Mesh(roundedBox(w, h, d, r), m);
     mesh.position.set(x, y, z);
     mesh.castShadow = cast;
     mesh.receiveShadow = receive;
@@ -139,7 +140,7 @@ export function createScene({ container, sheetRoot, agentRoots, agents, onEnter,
   // ---------- Table ----------
   const TABLE_W = 2.1;
   const TABLE_D = 1.35;
-  box(TABLE_W, 0.05, TABLE_D, mat.wood, 0, TABLE_Y - 0.025, 0);
+  box(TABLE_W, 0.05, TABLE_D, mat.wood, 0, TABLE_Y - 0.025, 0, { r: 0.016 });
   box(TABLE_W + 0.04, 0.05, 0.04, mat.woodDark, 0, TABLE_Y - 0.06, TABLE_D / 2);
   box(TABLE_W + 0.04, 0.05, 0.04, mat.woodDark, 0, TABLE_Y - 0.06, -TABLE_D / 2);
   for (const [x, z] of [[-0.94, -0.56], [0.94, -0.56], [-0.94, 0.56], [0.94, 0.56]]) {
@@ -219,8 +220,8 @@ export function createScene({ container, sheetRoot, agentRoots, agents, onEnter,
     [new THREE.DodecahedronGeometry(0.022), mat.dicePale, 0.13, 0.42, 12],
     [new THREE.OctahedronGeometry(0.02), mat.dice, -0.02, 0.46, 8],
     [new THREE.TetrahedronGeometry(0.022), mat.dicePale, 0.1, 0.19, 4],
-    [new THREE.BoxGeometry(0.03, 0.03, 0.03), mat.dice, 0.19, 0.3, 6],
-    [new THREE.BoxGeometry(0.028, 0.028, 0.028), mat.dicePale, 0.24, 0.42, 6],
+    [roundedBox(0.03, 0.03, 0.03, 0.006, 4), mat.dice, 0.19, 0.3, 6],
+    [roundedBox(0.028, 0.028, 0.028, 0.0055, 4), mat.dicePale, 0.24, 0.42, 6],
   ];
   const dice = [];
   for (const [geo, m, x, z, sides] of diceSpecs) {
@@ -372,13 +373,13 @@ export function createScene({ container, sheetRoot, agentRoots, agents, onEnter,
   const HIP_Y = SEAT_Y + 0.05;
 
   const makeChair = (g) => {
-    const seat = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.045, 0.42), chairMat);
+    const seat = new THREE.Mesh(roundedBox(0.44, 0.045, 0.42, 0.014), chairMat);
     seat.position.set(0, SEAT_Y, 0.06);
     seat.castShadow = true;
     seat.receiveShadow = true;
     g.add(seat);
 
-    const back = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.44, 0.04), chairMat);
+    const back = new THREE.Mesh(roundedBox(0.42, 0.44, 0.04, 0.013), chairMat);
     back.position.set(0, SEAT_Y + 0.24, -0.13);
     back.rotation.x = -0.12;
     back.castShadow = true;
@@ -428,7 +429,7 @@ export function createScene({ container, sheetRoot, agentRoots, agents, onEnter,
       shin.castShadow = true;
       g.add(shin);
 
-      const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.05, 0.19), shoeMat);
+      const shoe = new THREE.Mesh(roundedBox(0.09, 0.05, 0.19, 0.016), shoeMat);
       shoe.position.set(s * 0.105, 0.028, 0.385);
       shoe.castShadow = true;
       g.add(shoe);
@@ -460,7 +461,7 @@ export function createScene({ container, sheetRoot, agentRoots, agents, onEnter,
     torso.receiveShadow = true;
     put(torso, 0, 0.34, -0.095);
 
-    put(new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.26, 0.02), suitDark), 0, 0.43, 0.117);
+    put(new THREE.Mesh(roundedBox(0.13, 0.26, 0.02, 0.006), suitDark), 0, 0.43, 0.117);
 
     for (const s of [-1, 1]) {
       const lapel = new THREE.Mesh(
@@ -495,7 +496,7 @@ export function createScene({ container, sheetRoot, agentRoots, agents, onEnter,
       cuff.rotation.x = 1.31;
       put(cuff, s * 0.212, 0.185, 0.365 + reach * 0.8);
 
-      const hand = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.03, 0.13), handMat);
+      const hand = new THREE.Mesh(roundedBox(0.075, 0.03, 0.13, 0.01), handMat);
       hand.rotation.set(0.05, s * -0.12, 0);
       hand.castShadow = true;
       put(hand, s * 0.212, TABLE_Y + 0.022 - HIP_Y, 0.43 + reach);
@@ -503,12 +504,12 @@ export function createScene({ container, sheetRoot, agentRoots, agents, onEnter,
 
     // ----- shirt, collar, tie -----
     put(new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.078, 0.04, 18), shirtMat), 0, 0.535, 0.012);
-    put(new THREE.Mesh(new THREE.BoxGeometry(0.085, 0.13, 0.014), shirtMat), 0, 0.475, 0.124);
+    put(new THREE.Mesh(roundedBox(0.085, 0.13, 0.014, 0.005), shirtMat), 0, 0.475, 0.124);
 
     const accentMat = (rough) => new THREE.MeshStandardMaterial({ color: accent, roughness: rough, envMapIntensity: 1.4 });
-    put(new THREE.Mesh(new THREE.BoxGeometry(0.036, 0.034, 0.018), accentMat(0.36)), 0, 0.518, 0.132);
-    put(new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.165, 0.014), accentMat(0.38)), 0, 0.418, 0.132);
-    put(new THREE.Mesh(new THREE.BoxGeometry(0.042, 0.014, 0.012), accentMat(0.5)), -0.104, 0.44, 0.118);
+    put(new THREE.Mesh(roundedBox(0.036, 0.034, 0.018, 0.006), accentMat(0.36)), 0, 0.518, 0.132);
+    put(new THREE.Mesh(roundedBox(0.03, 0.165, 0.014, 0.004), accentMat(0.38)), 0, 0.418, 0.132);
+    put(new THREE.Mesh(roundedBox(0.042, 0.014, 0.012, 0.004), accentMat(0.5)), -0.104, 0.44, 0.118);
 
     // ----- television head -----
     const head = new THREE.Group();
@@ -561,16 +562,16 @@ export function createScene({ container, sheetRoot, agentRoots, agents, onEnter,
     head.add(face);
 
     // a brand strip under the screen, and the vents every set of this era had
-    const strip = new THREE.Mesh(new THREE.BoxGeometry(0.086, 0.011, 0.006), suitDark);
+    const strip = new THREE.Mesh(roundedBox(0.086, 0.011, 0.006, 0.002), suitDark);
     strip.position.set(-0.042, -0.086, 0.0955);
     head.add(strip);
     for (let i = 0; i < 5; i++) {
-      const vent = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.004, 0.006), suitDark);
+      const vent = new THREE.Mesh(roundedBox(0.1, 0.004, 0.006, 0.0015), suitDark);
       vent.position.set(0, 0.114, -0.014 - i * 0.015);
       head.add(vent);
     }
     for (const s of [-1, 1]) {
-      const foot = new THREE.Mesh(new THREE.BoxGeometry(0.026, 0.013, 0.045), suitDark);
+      const foot = new THREE.Mesh(roundedBox(0.026, 0.013, 0.045, 0.004), suitDark);
       foot.position.set(s * 0.078, -0.118, -0.016);
       head.add(foot);
     }
@@ -633,11 +634,11 @@ export function createScene({ container, sheetRoot, agentRoots, agents, onEnter,
     stand.castShadow = true;
     g.add(stand);
 
-    const neck = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.05, 0.012), mat.metal);
+    const neck = new THREE.Mesh(roundedBox(0.012, 0.05, 0.012, 0.003), mat.metal);
     neck.position.y = 0.035;
     g.add(neck);
 
-    const shell = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.14, 0.014), mat.dark);
+    const shell = new THREE.Mesh(roundedBox(0.2, 0.14, 0.014, 0.006), mat.dark);
     shell.position.set(0, 0.125, 0);
     shell.rotation.x = -0.22;
     shell.castShadow = true;

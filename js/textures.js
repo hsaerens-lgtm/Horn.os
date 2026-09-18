@@ -1559,53 +1559,75 @@ export function screenFace(c) {
 }
 
 /**
- * Painted plaster.
+ * Wallpaper.
  *
- * This replaces a photographed concrete scan that was doing real damage: its
- * blotches are metres across at wall scale, and under a warm tint they read as
- * damp rather than as paint. A wall is the largest surface in frame, so its
- * texture sets the mood of everything in front of it — and a wall wants almost
- * no texture at all, just enough roller mottling not to be a flat fill.
+ * Two earlier attempts read as dirty, and for the same reason both times: the
+ * things that make a surface look *used* — blotches, scuffs, heavy speckle, a
+ * normal map derived from that speckle — are exactly the things that make it
+ * look unwashed when it covers fourteen metres of wall behind a dim room. So
+ * there is almost nothing here: fine stripes, a low-contrast motif on a lattice,
+ * and just enough grain to stop the flat areas banding. Clean is a choice you
+ * make by leaving things out.
  */
-export function plaster({ size = 512, seed = 88, repeat = [3, 1.1] } = {}) {
+export function wallpaper({ size = 512, seed = 88, repeat = [12, 4.5] } = {}) {
   const rand = rng(seed);
   const [c, ctx] = canvas(size);
-  ctx.fillStyle = "#b9b2a6";
+  ctx.fillStyle = "#bdbdbd";
   ctx.fillRect(0, 0, size, size);
 
-  // roller passes: broad, very low contrast, mostly vertical
-  for (let i = 0; i < 90; i++) {
-    const x = rand() * size;
-    const y = rand() * size;
-    const w = 18 + rand() * 46;
-    const h = 90 + rand() * 260;
-    const g = ctx.createLinearGradient(x, y, x + w, y);
-    const light = rand() > 0.5;
-    g.addColorStop(0, "rgba(0,0,0,0)");
-    g.addColorStop(0.5, light ? "rgba(255,252,246,0.07)" : "rgba(92,84,74,0.07)");
-    g.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = g;
-    ctx.fillRect(x, y, w, h);
+  // fine vertical stripes, about 7 cm apart at the scale this is applied
+  const STRIPE = 32;
+  for (let x = 0; x < size; x += STRIPE * 2) {
+    ctx.fillStyle = "rgba(255,255,255,0.035)";
+    ctx.fillRect(x, 0, STRIPE, size);
+  }
+  for (let x = 0; x < size; x += STRIPE) {
+    ctx.fillStyle = "rgba(0,0,0,0.02)";
+    ctx.fillRect(x, 0, 1, size);
   }
 
-  // the odd scuff, low down where furniture has been moved
-  for (let i = 0; i < 14; i++) {
-    const x = rand() * size;
-    const y = size * 0.6 + rand() * size * 0.4;
-    ctx.strokeStyle = "rgba(86,76,66,0.1)";
-    ctx.lineWidth = 1 + rand() * 2;
+  // a small four-petal motif on a staggered lattice — the quietest pattern that
+  // still says "this wall was papered" rather than "this wall is a flat fill"
+  const CELL = 128;
+  const petal = (cx, cy, r) => {
     ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(x + (rand() - 0.5) * 70, y + (rand() - 0.5) * 16);
-    ctx.stroke();
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * Math.PI * 2;
+      const px = cx + Math.cos(a) * r;
+      const py = cy + Math.sin(a) * r;
+      ctx.moveTo(cx, cy);
+      ctx.quadraticCurveTo(px + Math.cos(a + 1.2) * r * 0.7, py + Math.sin(a + 1.2) * r * 0.7, px, py);
+      ctx.quadraticCurveTo(px + Math.cos(a - 1.2) * r * 0.7, py + Math.sin(a - 1.2) * r * 0.7, cx, cy);
+    }
+    ctx.closePath();
+  };
+  for (let row = 0; row * CELL < size + CELL; row++) {
+    for (let col = -1; col * CELL < size + CELL; col++) {
+      const cx = col * CELL + (row % 2) * (CELL / 2);
+      const cy = row * CELL;
+      ctx.fillStyle = "rgba(255,255,255,0.055)";
+      petal(cx, cy, 20);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(0,0,0,0.025)";
+      ctx.lineWidth = 1;
+      petal(cx, cy, 20);
+      ctx.stroke();
+      ctx.fillStyle = "rgba(0,0,0,0.02)";
+      ctx.beginPath();
+      ctx.arc(cx, cy, 2.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
-  speckle(ctx, size, 14000, rand, 0.05, false);
-  speckle(ctx, size, 10000, rand, 0.05, true);
+  // barely any grain: enough to break up flat gradients, not enough to be dirt
+  speckle(ctx, size, 2600, rand, 0.018, false);
+  speckle(ctx, size, 2600, rand, 0.018, true);
 
   return {
     map: toTexture(c, { repeat, srgb: true }),
-    normalMap: toTexture(normalFrom(c, 0.45), { repeat }),
-    roughnessMap: toTexture(roughnessFrom(c, 0.8, 0.95), { repeat }),
+    // Weak, and derived from the pattern rather than from noise: a normal map
+    // built off speckle is what made the last two walls look like old plaster.
+    normalMap: toTexture(normalFrom(c, 0.22), { repeat }),
+    roughnessMap: toTexture(roughnessFrom(c, 0.86, 0.94), { repeat }),
   };
 }
