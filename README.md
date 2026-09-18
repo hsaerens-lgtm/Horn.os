@@ -23,7 +23,7 @@ The wheel pulls the camera in and out of the room, and scrolls the sheet once yo
 are reading it: the same gesture moves you through whatever you are looking at.
 
 Left alone, the party breathes — each on its own rhythm, none of them on the same
-one — and talks. The lines are the corporate world read as a dungeon, and they live
+one — and talks: ten lines each. The lines are the corporate world read as a dungeon, and they live
 in `content.js` with everything else that is words. One bubble at a time, and only in
 the wide shot: a table where everyone speaks at once is noise, and every closer view
 already has something of its own to read.
@@ -165,6 +165,12 @@ corners are the first thing the eye uses to tell a model from an object, and a
 room made of knife edges reads as blocked-out. The radius is capped rather than
 proportional — a proportional radius on a 74 cm television gives a 12 cm corner,
 which stops being a rounded edge and starts being a bar of soap.
+
+Everything that lies flat on the table owns its own patch of it, and the layout is
+checked rather than eyeballed. Two flat things at the same height in the same place
+do not layer, they fight: the depth buffer picks a winner per pixel per frame and the
+result flickers. The board was overlapping the DM's sheet by 21 x 14 cm and one
+player's by 19 x 5 cm.
 
 The board in the middle is drawn and built from one description. `MAP_PLAN` in
 `js/textures.js` says where the coast, the forests, the mountains, the river, the

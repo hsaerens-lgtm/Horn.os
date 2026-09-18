@@ -155,8 +155,14 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
 
   // ---------- The board ----------
   // A printed region map in a shallow wooden tray, with terrain standing on it.
-  // Sized to leave room for the four players' own sheets around it.
-  const board = createBoard(scene, { cx: 0.1, cz: -0.05, w: 0.84, d: 0.6, y: TABLE_Y });
+  //
+  // Everything that lies flat on this table has to own its own patch of it. Two
+  // flat things at the same height in the same place do not layer, they fight —
+  // the depth buffer picks a winner per pixel per frame and the result flickers.
+  // The board was overlapping the DM's sheet by 21 x 14 cm and one player's by
+  // 19 x 5 cm, which is exactly what that looked like. It is smaller now, and
+  // the sheets have moved, so no two footprints touch.
+  const board = createBoard(scene, { cx: 0.1, cz: -0.1, w: 0.7, d: 0.5, y: TABLE_Y });
 
   // ---------- DM screen: three panels, hinged, printed on both sides ----------
   // A real screen carries artwork on the players' face and the tables the DM
@@ -165,7 +171,7 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
   // dragon on +Z and the reference tables on -Z.
   const PANEL_H = 0.3;
   const dmScreen = new THREE.Group();
-  dmScreen.position.set(-0.78, TABLE_Y, 0.46);
+  dmScreen.position.set(-0.72, TABLE_Y, 0.46);
   dmScreen.rotation.y = Math.PI;
   scene.add(dmScreen);
 
@@ -190,15 +196,17 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
   };
   // The wings hinge back around the DM, so their inner edges meet the centre
   // panel's corners exactly instead of intersecting it.
+  // Narrower than it was: folded out at the old width the wings reached 11 cm
+  // past the end of the table.
   const HINGE = 0.5;
-  const wingX = 0.15 + (0.26 / 2) * Math.cos(HINGE);
-  const wingZ = -(0.26 / 2) * Math.sin(HINGE);
-  panel(0.26, -wingX, wingZ, -HINGE, 0);
-  panel(0.3, 0, 0, 0, 1);
-  panel(0.26, wingX, wingZ, HINGE, 2);
+  const wingX = 0.13 + (0.22 / 2) * Math.cos(HINGE);
+  const wingZ = -(0.22 / 2) * Math.sin(HINGE);
+  panel(0.22, -wingX, wingZ, -HINGE, 0);
+  panel(0.26, 0, 0, 0, 1);
+  panel(0.22, wingX, wingZ, HINGE, 2);
 
   // ---------- Character sheet, lying flat in front of the DM ----------
-  const SHEET_POS = new THREE.Vector3(-0.3, TABLE_Y + 0.004, 0.36);
+  const SHEET_POS = new THREE.Vector3(-0.22, TABLE_Y + 0.004, 0.44);
   const sheetObject = new CSS3DObject(sheetRoot);
   sheetObject.scale.setScalar(SHEET_SCALE);
   sheetObject.rotation.x = -Math.PI / 2;
@@ -823,9 +831,9 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
     // suit / lean / turn / tilt / reach: the posture of one player at the table.
     // The one leaning furthest in is looking at the board; the one sitting back
     // with their head turned is looking at whoever is talking.
-    { fig: [-0.46, -1.08], rot: 0.1, sheet: [-0.46, -0.49], lap: [-0.78, -0.5], prop: [-0.2, -0.56],
+    { fig: [-0.46, -1.08], rot: 0.1, sheet: [-0.46, -0.52], lap: [-0.78, -0.5], prop: [-0.2, -0.58],
       striped: false, suit: 0x232a3a, lean: 0.1, turn: -0.22, tilt: 0.06, reach: 0.03 },
-    { fig: [0.46, -1.08], rot: -0.1, sheet: [0.46, -0.49], lap: [0.78, -0.5], prop: [0.66, -0.56],
+    { fig: [0.46, -1.08], rot: -0.1, sheet: [0.46, -0.52], lap: [0.78, -0.5], prop: [0.22, -0.58],
       striped: true, suit: 0x33302c, lean: 0.02, turn: 0.3, tilt: -0.04, reach: -0.03 },
     { fig: [-1.42, 0.0], rot: Math.PI / 2, sheet: [-0.8, 0.0], lap: [-0.8, -0.32], prop: [-0.84, 0.24],
       striped: true, suit: 0x2b3330, lean: 0.16, turn: 0.12, tilt: 0.1, reach: 0.06 },
@@ -884,7 +892,7 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
   // prop, and the whole point is that you can read what the agent actually is.
   const AS_W = 480; // the sheet's own CSS pixel size
   const AS_H = 740;
-  const AS_FLAT = 0.22 / AS_W; // lying on the table
+  const AS_FLAT = 0.19 / AS_W; // lying on the table, about the size of a sheet of A4
   const AS_RAISED = 0.42 / AS_W; // held up in front of you
 
   const agentSheets = [];
@@ -980,7 +988,7 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
 
   addModel("modern_arm_chair_01", { position: [-2.62, 0, -0.52], rotationY: 2.5, tint: 0.85 });
   addModel("potted_plant_04", { position: [0.9, TABLE_Y, 0.46], rotationY: -0.6 });
-  addModel("alarm_clock_01", { position: [0.26, TABLE_Y, 0.5], rotationY: -2.5 });
+  addModel("alarm_clock_01", { position: [0.34, TABLE_Y, 0.54], rotationY: -2.5 });
 
   // ---------- Lighting ----------
   // A pendant lamp over the table is the key light: it puts the map and the sheet
@@ -1086,7 +1094,7 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
 
   // Framing the board: low and close, tilted just enough that the terrain stands
   // up off the map instead of being read from directly above like a plan.
-  const BOARD_AT = new THREE.Vector3(0.1, TABLE_Y, -0.05);
+  const BOARD_AT = new THREE.Vector3(0.1, TABLE_Y, -0.1);
   const boardPose = (out) => {
     const d = camera.aspect > 1.4 ? 0.95 : 0.95 * (1.4 / camera.aspect);
     out.pos.set(BOARD_AT.x, TABLE_Y + 0.69, BOARD_AT.z + d);

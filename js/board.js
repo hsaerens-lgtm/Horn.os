@@ -24,7 +24,10 @@ export function createBoard(scene, { cx = 0.1, cz = -0.05, w = 0.84, d = 0.6, y 
   // the direction of increasing z once the map is laid flat, so no flip.
   const X = (u) => cx + (u - 0.5) * w;
   const Z = (v) => cz + (v - 0.5) * d;
-  const SURFACE = y + 0.004;
+  // A millimetre and a half above the tray's felt, which is itself below the
+  // lip. Flat surfaces on this table are spaced deliberately, not stacked at
+  // whatever height each one happened to be written at.
+  const SURFACE = y + 0.005;
 
   const rand = (() => {
     let s = 20260918 >>> 0;
@@ -86,7 +89,7 @@ export function createBoard(scene, { cx = 0.1, cz = -0.05, w = 0.84, d = 0.6, y 
 
   const spots = [];
   for (const f of MAP_PLAN.forests) {
-    const n = Math.round(f.r * 135);
+    const n = Math.round(f.r * 115);
     for (let i = 0; i < n; i++) {
       const a = rand() * Math.PI * 2;
       const dd = Math.sqrt(rand()) * f.r * 0.92;
