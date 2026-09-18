@@ -23,7 +23,8 @@ The wheel pulls the camera in and out of the room, and scrolls the sheet once yo
 are reading it: the same gesture moves you through whatever you are looking at.
 
 Left alone, the party breathes — each on its own rhythm, none of them on the same
-one — and talks: ten lines each. The lines are the corporate world read as a dungeon, and they live
+one — and talks: ten lines each, one every four to seven seconds, drawn from a
+shuffled bag so nobody repeats themselves before they have said everything once. The lines are the corporate world read as a dungeon, and they live
 in `content.js` with everything else that is words. One bubble at a time, and only in
 the wide shot: a table where everyone speaks at once is noise, and every closer view
 already has something of its own to read.

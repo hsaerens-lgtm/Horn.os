@@ -28,26 +28,47 @@ export function createChatter(scene, speakers, { width = 1.02 } = {}) {
   scene.add(sprite);
 
   const HEIGHT = width * (260 / 640);
-  const SHOW = 5200; // long enough to read twice if you are slow
-  const GAP_MIN = 5000;
-  const GAP_MAX = 9500;
+  // One line every four to seven seconds, measured trigger to trigger. The
+  // bubble holds for three and a half of those, so at the fastest there is
+  // still half a second of quiet between one player and the next.
+  const SHOW = 3500;
+  const EVERY_MIN = 4000;
+  const EVERY_MAX = 7000;
 
   let current = null;
-  let nextAt = performance.now() + 3500; // let the room settle before anyone speaks
+  let nextAt = performance.now() + 3000; // let the room settle before anyone speaks
   let lastSpeaker = -1;
   const anchor = new THREE.Vector3();
 
+  /**
+   * A shuffled bag: draw without replacement, reshuffle when it runs dry.
+   *
+   * Drawing at random each time is random, but it does not look it — with ten
+   * lines it repeats one within the first few draws often enough that the table
+   * seems to be stuck. A bag is just as random over any stretch and never says
+   * the same thing twice before it has said everything once.
+   */
+  const draw = (owner, key, n) => {
+    let bag = owner[key];
+    if (!bag?.length) {
+      bag = [...Array(n).keys()];
+      for (let i = bag.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [bag[i], bag[j]] = [bag[j], bag[i]];
+      }
+      owner[key] = bag;
+    }
+    return bag.pop();
+  };
+
   const pick = (pool) => {
-    // Never the same player twice running, so the eye moves around the table.
+    // Speaker at random, never the same one twice running so the eye moves
+    // around the table rather than settling on whoever spoke last.
     let i = Math.floor(Math.random() * pool.length);
     if (pool.length > 1 && i === lastSpeaker) i = (i + 1 + Math.floor(Math.random() * (pool.length - 1))) % pool.length;
     lastSpeaker = i;
     const s = pool[i];
-    const lines = s.agent.lines;
-    // Walk each speaker's lines rather than picking at random: with five lines,
-    // random repeats itself often enough to notice.
-    s.next = ((s.next ?? Math.floor(Math.random() * lines.length)) + 1) % lines.length;
-    return { speaker: s, text: lines[s.next] };
+    return { speaker: s, text: s.agent.lines[draw(s, "bag", s.agent.lines.length)] };
   };
 
   const speak = (now, pool) => {
@@ -58,6 +79,9 @@ export function createChatter(scene, speakers, { width = 1.02 } = {}) {
     sprite.material.needsUpdate = true;
     sprite.visible = true;
     current = { speaker, t0: now };
+    // Scheduled from this trigger, not from when the bubble clears, so the
+    // cadence is the one the interval actually names.
+    nextAt = now + EVERY_MIN + Math.random() * (EVERY_MAX - EVERY_MIN);
   };
 
   return {
@@ -70,7 +94,7 @@ export function createChatter(scene, speakers, { width = 1.02 } = {}) {
       if (quiet) {
         sprite.visible = false;
         current = null;
-        nextAt = Math.max(nextAt, now + 2500);
+        nextAt = Math.max(nextAt, now + 2000);
         return;
       }
 
@@ -85,12 +109,12 @@ export function createChatter(scene, speakers, { width = 1.02 } = {}) {
       if (k >= 1) {
         sprite.visible = false;
         current = null;
-        nextAt = now + GAP_MIN + Math.random() * (GAP_MAX - GAP_MIN);
         return;
       }
 
-      // in over the first fifth, out over the last quarter, still in between
-      const fade = k < 0.2 ? EASE(k / 0.2) : k > 0.76 ? 1 - EASE((k - 0.76) / 0.24) : 1;
+      // in quickly, out over the last fifth, and still for the two and a half
+      // seconds in between — which is the part you actually read
+      const fade = k < 0.12 ? EASE(k / 0.12) : k > 0.82 ? 1 - EASE((k - 0.82) / 0.18) : 1;
       sprite.material.opacity = fade;
 
       current.speaker.mount.getWorldPosition(anchor);
