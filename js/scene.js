@@ -380,9 +380,13 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
   // measured in the browser and written down rather than guessed: how tall the
   // seated robot should end up, how far back on the seat it sits, and how far
   // the television rides above where its own head was.
-  const ROBOT_SEATED_H = 1.02;
   const ROBOT_Z = 0.02;
-  const ROBOT_HEAD_LIFT = 0.04;
+  const ROBOT_HEAD_LIFT = 0.02;
+  // The robot was drawn around a head half the size of its body. Swapping that
+  // head for a television leaves the body looking oversized, so the body comes
+  // down and the set goes up until the two read as one creature.
+  const ROBOT_BODY = 0.78;
+  const ROBOT_HEAD = 1.15;
   const DEBUG_ROBOT = new URLSearchParams(location.search).has("debug");
   const robotTrim = new THREE.MeshStandardMaterial({ color: 0x1b1f27, roughness: 0.55, envMapIntensity: 0.5 });
 
@@ -734,8 +738,7 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
 
         const holder = new THREE.Group();
         holder.add(root);
-        holder.rotation.y = Math.PI; // the model faces -Z; the table is at +Z
-        g.add(holder);
+        g.add(holder); // the model already faces +Z, which is where the table is
         root.updateMatrixWorld(true);
 
         // Scale off two landmarks rather than off a bounding box: two of the
@@ -744,12 +747,23 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
         // is at 3.0.
         const hips = bone("Hips").getWorldPosition(new THREE.Vector3());
         const headAt = headBone.getWorldPosition(new THREE.Vector3());
-        const scale = (HIP_Y + 0.69 - SEAT_Y - 0.05) / Math.max(0.001, headAt.y - hips.y);
+        const scale = (ROBOT_BODY * (HIP_Y + 0.69 - SEAT_Y - 0.05)) / Math.max(0.001, headAt.y - hips.y);
         holder.scale.setScalar(scale);
         holder.position.set(0, SEAT_Y + 0.05 - hips.y * scale, ROBOT_Z);
         holder.updateMatrixWorld(true);
 
+        // Rebind the skinned meshes now that the body sits where it will stay.
+        // A SkinnedMesh keeps the world matrix it was bound with; reparenting
+        // and scaling it leaves that matrix stale, so the holder's transform is
+        // applied twice — once through the bones and once through the model
+        // matrix. The two hands are the only skinned parts here, and untreated
+        // they render as slabs the size of the torso.
+        root.traverse((n) => {
+          if (n.isSkinnedMesh) n.bind(n.skeleton, n.matrixWorld);
+        });
+
         const tv = buildTvHead(a, robotTrim, { neck: false });
+        tv.scale.setScalar(ROBOT_HEAD);
         const p = headBone.getWorldPosition(new THREE.Vector3());
         g.worldToLocal(p);
         tv.position.copy(p).add(new THREE.Vector3(0, ROBOT_HEAD_LIFT, 0));
