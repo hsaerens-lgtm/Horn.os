@@ -14,8 +14,13 @@ Three things are clickable:
 - **Any player**, or the sheet in front of them — their sheet lifts off the table,
   turns to face you and grows, and it holds what that agent actually is: how it is
   deployed, its stack, and the project it maps to.
+- **The board** — the camera drops to the table and leans in over the map, close
+  enough to read the settlement names and the tables printed on the DM screen.
 - **Any die** — it tumbles and a score floats up: gold on a natural 20, red on a
   natural 1.
+
+The wheel pulls the camera in and out of the room, and scrolls the sheet once you
+are reading it: the same gesture moves you through whatever you are looking at.
 
 The metaphor is the job. An AI Solutions Consultant sets the scope, writes the rules,
 hands the agents their tools, and makes sure what happens at the table is something

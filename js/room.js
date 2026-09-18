@@ -32,6 +32,11 @@ export function createRoom(scene, { wallZ = -2.1 } = {}) {
   // being a bar of soap. Real manufactured corners are a centimetre or two
   // whatever the object's size, and upholstery asks for its radius explicitly.
   const B = (w, h, d, r) => roundedBox(w, h, d, r ?? Math.min(0.016, Math.min(w, h, d) * 0.22));
+  // Seeded, so the books are in the same disorder on every load.
+  const rand = (() => {
+    let s = 20260918 >>> 0;
+    return () => ((s = (s * 1664525 + 1013904223) >>> 0), s / 4294967296);
+  })();
 
   // ---------- Materials ----------
   const brickTex = brick();
@@ -62,12 +67,14 @@ export function createRoom(scene, { wallZ = -2.1 } = {}) {
    * ------------------------------------------------------------------ */
   const PH = 0.66;
   const PW = PH * 0.707;
+  // Spaced clear of the chimney breast, which stands 28 cm proud of the wall and
+  // was hiding the left-hand poster behind it.
   const POSTERS = [
-    { kind: "code", x: -1.72, y: 1.94, tilt: 0.015, framed: true },
-    { kind: "y2k", x: -0.86, y: 1.99, tilt: -0.03, framed: false },
-    { kind: "arcade", x: 0.02, y: 1.92, tilt: 0.022, framed: false },
-    { kind: "lan", x: 0.88, y: 1.99, tilt: -0.014, framed: true },
-    { kind: "skate", x: 1.76, y: 1.93, tilt: 0.034, framed: false },
+    { kind: "code", x: -1.2, y: 1.94, tilt: 0.015, framed: true },
+    { kind: "y2k", x: -0.42, y: 1.99, tilt: -0.03, framed: false },
+    { kind: "arcade", x: 0.36, y: 1.92, tilt: 0.022, framed: false },
+    { kind: "lan", x: 1.14, y: 1.99, tilt: -0.014, framed: true },
+    { kind: "skate", x: 1.92, y: 1.93, tilt: 0.034, framed: false },
   ];
 
   for (const p of POSTERS) {
@@ -309,6 +316,181 @@ export function createRoom(scene, { wallZ = -2.1 } = {}) {
   );
   rug.rotation.x = -Math.PI / 2;
   rug.rotation.z = 0.08;
+
+
+  /* ------------------------------------------------------------------ *
+   *  Dressing
+   *  The furniture says what the room is for; this says somebody lives
+   *  in it. All of it sits inside the band the camera actually sweeps —
+   *  roughly three metres either side of the table — because a detail
+   *  outside the frame is only a draw call.
+   * ------------------------------------------------------------------ */
+
+  const shelfMat = new THREE.MeshStandardMaterial({ color: 0x5b4634, roughness: 0.62, envMapIntensity: 0.7 });
+  const fittingMat = new THREE.MeshStandardMaterial({ color: 0xd8d2c6, roughness: 0.45, envMapIntensity: 1.1 });
+  const paleMat = new THREE.MeshStandardMaterial({ color: 0xe9e3d4, roughness: 0.5, envMapIntensity: 1.1 });
+  const BOOK_COLOURS = [0x7a3b2c, 0x2f5f8c, 0x3f6b46, 0xb08a2a, 0x5c3f70, 0x8c4a2f, 0x36505e, 0x8a7a4a];
+
+  // A bookcase in the corner past the hearth.
+  const bookcase = new THREE.Group();
+  bookcase.position.set(-3.3, 0, wallZ + 0.17);
+  bookcase.rotation.y = 0.07;
+  group.add(bookcase);
+  add(B(0.92, 0.04, 0.32), shelfMat, 0, 1.14, 0, { parent: bookcase });
+  add(B(0.92, 0.04, 0.32), shelfMat, 0, 0.05, 0, { parent: bookcase });
+  for (const s of [-1, 1]) add(B(0.04, 1.14, 0.32), shelfMat, s * 0.44, 0.57, 0, { parent: bookcase });
+  for (let shelf = 0; shelf < 3; shelf++) {
+    const y = 0.07 + shelf * 0.345;
+    add(B(0.86, 0.025, 0.3), shelfMat, 0, y + 0.31, 0, { parent: bookcase });
+    let x = -0.4;
+    while (x < 0.34) {
+      const w = 0.018 + rand() * 0.024;
+      const h = 0.18 + rand() * 0.095;
+      const book = add(
+        B(w, h, 0.2 + rand() * 0.07, 0.003),
+        new THREE.MeshStandardMaterial({
+          color: BOOK_COLOURS[Math.floor(rand() * BOOK_COLOURS.length)],
+          roughness: 0.72,
+          envMapIntensity: 0.6,
+        }),
+        x + w / 2,
+        y + h / 2,
+        0.01,
+        { parent: bookcase }
+      );
+      // one row has given up and started to lean
+      if (shelf === 1 && x > 0.18) book.rotation.z = 0.24;
+      x += w + 0.004;
+    }
+  }
+
+  // The stack of boxes every table accumulates, on the floor beside it.
+  const BOX_TOPS = [0x8c2f22, 0x2f5f8c, 0xb08a2a, 0x3f6b46];
+  BOX_TOPS.forEach((col, i) => {
+    const box = add(
+      B(0.31 - i * 0.014, 0.055, 0.31 - i * 0.014),
+      new THREE.MeshStandardMaterial({ color: col, roughness: 0.55, envMapIntensity: 0.7 }),
+      -3.04,
+      0.029 + i * 0.056,
+      wallZ + 0.58,
+      { receive: false }
+    );
+    box.rotation.y = 0.12 + i * 0.14;
+  });
+
+  // A clock on the chimney breast, reading twenty past eleven — which is when
+  // a session is actually running.
+  const clock = new THREE.Group();
+  clock.position.set(FIRE_X, 1.96, wallZ + 0.35);
+  group.add(clock);
+  add(new THREE.CylinderGeometry(0.15, 0.15, 0.04, 26), mat.frame, 0, 0, 0, { parent: clock }).rotation.x = Math.PI / 2;
+  add(new THREE.CircleGeometry(0.132, 26), paleMat, 0, 0, 0.021, { parent: clock, cast: false });
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    const tick = add(B(0.008, 0.019, 0.003), mat.frame, Math.sin(a) * 0.112, Math.cos(a) * 0.112, 0.023, {
+      parent: clock,
+      cast: false,
+    });
+    tick.rotation.z = -a;
+  }
+  add(B(0.009, 0.086, 0.004), mat.frame, 0.012, 0.037, 0.026, { parent: clock, cast: false }).rotation.z = -0.3;
+  add(B(0.007, 0.112, 0.004), mat.frame, 0.048, -0.03, 0.028, { parent: clock, cast: false }).rotation.z = 2.1;
+
+  // A dartboard beside the television, two darts still in it.
+  const darts = new THREE.Group();
+  darts.position.set(2.62, 1.76, wallZ + 0.02);
+  group.add(darts);
+  add(new THREE.CylinderGeometry(0.24, 0.24, 0.045, 28), mat.frame, 0, 0, 0, { parent: darts }).rotation.x = Math.PI / 2;
+  const ring = (r, col, z) =>
+    add(new THREE.CircleGeometry(r, 28), new THREE.MeshStandardMaterial({ color: col, roughness: 0.8 }), 0, 0, z, {
+      parent: darts,
+      cast: false,
+    });
+  ring(0.215, 0x1d1a16, 0.024);
+  ring(0.15, 0xc9b68a, 0.0255);
+  ring(0.09, 0x8c2f22, 0.027);
+  ring(0.028, 0x1d1a16, 0.0285);
+  for (const [dx, dy, col] of [[0.06, 0.09, 0xc8342a], [-0.11, -0.05, 0x3fc4ff]]) {
+    const dart = new THREE.Group();
+    dart.position.set(dx, dy, 0.03);
+    dart.rotation.set(0.35, 0.2, 0);
+    darts.add(dart);
+    add(new THREE.CylinderGeometry(0.004, 0.004, 0.07, 8), mat.metal, 0, 0, 0.035, { parent: dart }).rotation.x =
+      Math.PI / 2;
+    add(B(0.026, 0.026, 0.002), new THREE.MeshStandardMaterial({ color: col, roughness: 0.6 }), 0, 0, 0.073, {
+      parent: dart,
+    });
+  }
+
+  // A switch and a socket. Nobody looks at these; a wall without them is
+  // nonetheless a wall in a rendering rather than a wall in a house.
+  add(B(0.09, 0.13, 0.014), fittingMat, -1.06, 1.16, wallZ + 0.012, { cast: false });
+  add(B(0.03, 0.05, 0.009), fittingMat, -1.06, 1.185, wallZ + 0.021, { cast: false });
+  add(B(0.11, 0.08, 0.014), fittingMat, -0.62, 0.21, wallZ + 0.012, { cast: false });
+
+  // The cable run from the television down to it, never quite tidy.
+  for (const [cx, drop, tilt] of [[1.93, 0.52, 0.07], [2.0, 0.44, -0.05]]) {
+    const cable = add(new THREE.CylinderGeometry(0.006, 0.006, drop, 6), mat.plastic, cx, drop / 2, wallZ + 0.06, {
+      cast: false,
+      receive: false,
+    });
+    cable.rotation.z = tilt;
+  }
+
+  // Last night, on the floor by the sofa.
+  const pizza = add(
+    B(0.42, 0.055, 0.42, 0.01),
+    new THREE.MeshStandardMaterial({ color: 0xc8a978, roughness: 0.85, envMapIntensity: 0.5 }),
+    1.6,
+    0.028,
+    -0.66,
+    { receive: false }
+  );
+  pizza.rotation.y = -0.4;
+  const lid = add(
+    B(0.42, 0.045, 0.42, 0.01),
+    new THREE.MeshStandardMaterial({ color: 0xbe9e6d, roughness: 0.85, envMapIntensity: 0.5 }),
+    1.63,
+    0.062,
+    -0.63,
+    { receive: false }
+  );
+  lid.rotation.set(0, -0.32, 0.05);
+  for (const [cx, cz, col] of [[1.34, -0.44, 0x2f5f8c], [1.45, -0.78, 0x8c2f22]]) {
+    add(
+      new THREE.CylinderGeometry(0.033, 0.033, 0.12, 14),
+      new THREE.MeshStandardMaterial({ color: col, roughness: 0.3, metalness: 0.6, envMapIntensity: 1.5 }),
+      cx,
+      0.06,
+      cz,
+      { receive: false }
+    );
+  }
+
+  // A bin by the table, and two attempts that did not go in.
+  add(
+    new THREE.CylinderGeometry(0.11, 0.085, 0.26, 14, 1, true),
+    new THREE.MeshStandardMaterial({
+      color: 0x4a4640,
+      roughness: 0.5,
+      metalness: 0.5,
+      side: THREE.DoubleSide,
+      envMapIntensity: 1.2,
+    }),
+    -1.66,
+    0.13,
+    0.46
+  );
+  for (const [px, pz] of [[-1.46, 0.32], [-1.82, 0.6]]) {
+    add(
+      new THREE.DodecahedronGeometry(0.036, 0),
+      new THREE.MeshStandardMaterial({ color: 0xded5bf, roughness: 0.95, envMapIntensity: 0.4 }),
+      px,
+      0.033,
+      pz,
+      { receive: false }
+    );
+  }
 
   /* ------------------------------------------------------------------ *
    *  Animation

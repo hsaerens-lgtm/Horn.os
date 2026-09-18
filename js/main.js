@@ -63,6 +63,10 @@ async function start3D() {
       hint.classList.add("hidden");
       back.classList.remove("hidden");
     },
+    onBoard() {
+      hint.classList.add("hidden");
+      back.classList.remove("hidden");
+    },
     onExit() {
       back.classList.add("hidden");
       scrollHint.classList.add("hidden");
@@ -70,6 +74,8 @@ async function start3D() {
     },
   });
   const sheet = createSheet(root, content);
+  // A handle for tuning from the console; ?debug only, never on the live page.
+  if (params.has("debug")) window.__scene = scene;
   hint.addEventListener("click", () => scene.enter());
   back.addEventListener("click", () => scene.exit());
   // The players load after the room does. Waiting for them costs a moment on

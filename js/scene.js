@@ -30,7 +30,7 @@ const SHEET_H = 1180 * SHEET_SCALE;
 const TABLE_Y = 0.76;
 const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
-export function createScene({ container, sheetRoot, agentRoots, agents, players = "robot", onEnter, onExit, onAgent }) {
+export function createScene({ container, sheetRoot, agentRoots, agents, players = "robot", onEnter, onExit, onAgent, onBoard }) {
   const width = () => container.clientWidth;
   const height = () => container.clientHeight;
 
@@ -947,7 +947,7 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
       })
       .catch((err) => console.warn(`model "${name}" not loaded:`, err));
 
-  addModel("modern_arm_chair_01", { position: [-3.45, 0, -1.62], rotationY: 1.3, tint: 0.85 });
+  addModel("modern_arm_chair_01", { position: [-2.62, 0, -0.52], rotationY: 2.5, tint: 0.85 });
   addModel("potted_plant_04", { position: [0.9, TABLE_Y, 0.46], rotationY: -0.6 });
   addModel("alarm_clock_01", { position: [0.26, TABLE_Y, 0.5], rotationY: -2.5 });
 
@@ -1027,10 +1027,17 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
   const idleTarget = new THREE.Vector3(-0.05, TABLE_Y + 0.2, -0.05);
   const pointer = { x: 0, y: 0 };
 
+  // How far in the wheel has pulled the idle camera. 1 is the wide shot.
+  let idleZoom = 1;
+
   const idlePose = (t, out) => {
     const angle = Math.sin(t * 0.1) * 0.3 + pointer.x * 0.16;
-    const radius = camera.aspect > 1.4 ? 2.5 : 2.5 * (1.4 / camera.aspect);
-    out.pos.set(Math.sin(angle) * radius, 1.62 + pointer.y * 0.1, Math.cos(angle) * radius + 0.25);
+    const wide = camera.aspect > 1.4 ? 2.5 : 2.5 * (1.4 / camera.aspect);
+    const radius = wide * idleZoom;
+    // Coming in also means coming down: holding the height while closing the
+    // distance would tip the view into a plan of the table.
+    const height = 0.94 + 0.68 * idleZoom + pointer.y * 0.1;
+    out.pos.set(Math.sin(angle) * radius, height, Math.cos(angle) * radius + 0.25 * idleZoom);
     out.target.copy(idleTarget);
     return out;
   };
@@ -1043,6 +1050,16 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
     const d = Math.max(dH, dW);
     out.pos.set(SHEET_POS.x, TABLE_Y + d, SHEET_POS.z);
     out.target.copy(SHEET_POS);
+    return out;
+  };
+
+  // Framing the board: low and close, tilted just enough that the terrain stands
+  // up off the map instead of being read from directly above like a plan.
+  const BOARD_AT = new THREE.Vector3(0.1, TABLE_Y, -0.05);
+  const boardPose = (out) => {
+    const d = camera.aspect > 1.4 ? 0.95 : 0.95 * (1.4 / camera.aspect);
+    out.pos.set(BOARD_AT.x, TABLE_Y + 0.69, BOARD_AT.z + d);
+    out.target.set(BOARD_AT.x, TABLE_Y + 0.02, BOARD_AT.z);
     return out;
   };
 
@@ -1104,6 +1121,16 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
     onAgent?.(hit.userData.agent);
   }
 
+  function enterBoard() {
+    if (mode !== "idle") return;
+    from.pos.copy(camera.position);
+    from.target.copy(lookAt);
+    from.up.copy(camUp);
+    mode = "toBoard";
+    tweenStart = performance.now();
+    onBoard?.();
+  }
+
   function exit() {
     if (mode === "idle" || mode === "toIdle") return;
     for (const s of agentSheets) s.target = 0;
@@ -1145,12 +1172,18 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
     const hits = raycaster.intersectObjects(dice, false);
     return hits.length ? hits[0].object : null;
   };
+  const hitBoard = (e) => {
+    aim(e);
+    return raycaster.intersectObject(board.mapMesh, false).length > 0;
+  };
 
   container.addEventListener("pointermove", (e) => {
     const r = container.getBoundingClientRect();
     pointer.x = ((e.clientX - r.left) / r.width) * 2 - 1;
     pointer.y = -((e.clientY - r.top) / r.height) * 2 + 1;
-    if (mode === "idle") container.style.cursor = hitDie(e) || hitSheet(e) || hitAgent(e) ? "pointer" : "grab";
+    if (mode === "idle") {
+      container.style.cursor = hitDie(e) || hitSheet(e) || hitAgent(e) || hitBoard(e) ? "pointer" : "grab";
+    }
   });
   container.addEventListener("pointerdown", (e) => {
     if (mode !== "idle") return;
@@ -1160,7 +1193,10 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
     if (d) return rollDie(d);
     if (hitSheet(e)) return enter();
     const a = hitAgent(e);
-    if (a) enterAgent(a);
+    if (a) return enterAgent(a);
+    // Last, because it is the biggest target on the table by a long way and
+    // would otherwise swallow everything standing on it.
+    if (hitBoard(e)) enterBoard();
   });
   // ---------- Reading the sheet ----------
   // The sheet is a real scrollable element, but a browser will not route wheel
@@ -1175,9 +1211,15 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
   container.addEventListener(
     "wheel",
     (e) => {
-      if (mode !== "focused") return;
-      e.preventDefault();
-      scrollSheet(e.deltaMode === 1 ? e.deltaY * SHEET_LINE : e.deltaY);
+      if (mode === "focused") {
+        e.preventDefault();
+        scrollSheet(e.deltaMode === 1 ? e.deltaY * SHEET_LINE : e.deltaY);
+      } else if (mode === "idle") {
+        // The same gesture does the obvious thing in both places: moves you
+        // through what you are looking at.
+        e.preventDefault();
+        idleZoom = THREE.MathUtils.clamp(idleZoom + e.deltaY * 0.0013, 0.42, 1.3);
+      }
     },
     { passive: false }
   );
@@ -1259,12 +1301,18 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
       camera.position.copy(pose.pos);
       lookAt.copy(pose.target);
       camUp.copy(UP_IDLE);
+    } else if (mode === "board") {
+      boardPose(pose);
+      camera.position.copy(pose.pos);
+      lookAt.copy(pose.target);
+      camUp.copy(UP_IDLE);
     } else {
       const k = Math.min(1, (performance.now() - tweenStart) / TWEEN_MS);
       const e = easeInOutCubic(k);
       const targetUp = mode === "toFocus" ? UP_FOCUS : UP_IDLE;
       if (mode === "toFocus") focusPose(to);
       else if (mode === "toAgent") agentPose(to);
+      else if (mode === "toBoard") boardPose(to);
       else idlePose(t, to);
       camera.position.lerpVectors(from.pos, to.pos, e);
       lookAt.lerpVectors(from.target, to.target, e);
@@ -1274,6 +1322,7 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
           mode = "focused";
           setInteractive(true);
         } else if (mode === "toAgent") mode = "agent";
+        else if (mode === "toBoard") mode = "board";
         else {
           mode = "idle";
           focusedAgent = null;
@@ -1287,5 +1336,5 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
     cssRenderer.render(scene, camera);
   });
 
-  return { enter, exit, isFocused: () => mode === "focused", ready: Promise.all(pending) };
+  return { enter, exit, enterBoard, isFocused: () => mode === "focused", ready: Promise.all(pending) };
 }
