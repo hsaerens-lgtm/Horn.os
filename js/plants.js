@@ -19,7 +19,7 @@
 // rather than as a green cloud.
 
 import * as THREE from "three";
-import { mergeParts } from "./merge.js";
+import { mergeParts, at } from "./merge.js";
 
 /* ------------------------------------------------------------------ *
  *  Leaves
@@ -93,6 +93,7 @@ function leafGeometry({ kind = "oval", len = 0.2, wid = 0.1, split = false, step
 // brighter than the paper on the table.
 const GREENS = [0x30552c, 0x3b6136, 0x274525, 0x446d3b, 0x213d21, 0x365730];
 const STEM = new THREE.Color(0x4a6b3a);
+const SOIL = new THREE.Color(0x241c15);
 
 // One material for every canopy in the room. Leaves are thin enough to be lit
 // from the wrong side, so they are double-sided; the deduplication pass would
@@ -110,7 +111,6 @@ const POTS = {
   slate: new THREE.MeshStandardMaterial({ color: 0x555b5e, roughness: 0.6, envMapIntensity: 0.8 }),
   brass: new THREE.MeshStandardMaterial({ color: 0x8a6a34, roughness: 0.38, metalness: 0.7, envMapIntensity: 1.4 }),
 };
-const soilMat = new THREE.MeshStandardMaterial({ color: 0x2a211a, roughness: 0.98, envMapIntensity: 0.2 });
 
 /* ------------------------------------------------------------------ *
  *  Plants
@@ -133,20 +133,26 @@ export function plant(
   const g = new THREE.Group();
   const parts = [];
 
-  /* --- the pot --- */
+  /* --- the pot: body and rim baked together, one mesh --- */
+  // Two dozen plants at four meshes each is a hundred draw calls for the pots
+  // alone. Body and rim share a material so they merge; the soil does not, so
+  // it rides along in the canopy merge with a brown vertex colour instead of
+  // costing a mesh of its own. Two meshes a plant, whatever is growing in it.
   if (pot !== "none") {
-    const body = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 0.76, h, 18), POTS[pot] ?? POTS.terracotta);
-    body.position.y = h / 2;
-    body.castShadow = body.receiveShadow = true;
-    g.add(body);
-    const rim = new THREE.Mesh(new THREE.CylinderGeometry(r * 1.07, r * 1.07, h * 0.12, 18), POTS[pot] ?? POTS.terracotta);
-    rim.position.y = h * 0.94;
-    rim.castShadow = true;
-    g.add(rim);
-    const soil = new THREE.Mesh(new THREE.CircleGeometry(r * 0.95, 18), soilMat);
-    soil.rotation.x = -Math.PI / 2;
-    soil.position.y = h * 0.97;
-    g.add(soil);
+    const shell = new THREE.Mesh(
+      mergeParts([
+        { geometry: new THREE.CylinderGeometry(r, r * 0.76, h, 18), matrix: at(0, h / 2, 0) },
+        { geometry: new THREE.CylinderGeometry(r * 1.07, r * 1.07, h * 0.12, 18), matrix: at(0, h * 0.94, 0) },
+      ]),
+      POTS[pot] ?? POTS.terracotta
+    );
+    shell.castShadow = shell.receiveShadow = true;
+    g.add(shell);
+    parts.push({
+      geometry: new THREE.CircleGeometry(r * 0.95, 18).rotateX(-Math.PI / 2),
+      matrix: at(0, h * 0.97, 0),
+      colour: SOIL,
+    });
   }
   const base = pot === "none" ? 0 : h * 0.96;
 

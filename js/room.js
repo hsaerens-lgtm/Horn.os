@@ -663,7 +663,7 @@ export function createRoom(scene, { wallZ = -2.1 } = {}) {
   potted("monstera", -0.92, 0, -1.72, { r: 0.155, h: 0.21, scale: 1.05, seed: 11, sway: 0.012 });
   potted("palm", -1.86, 0, -0.66, { r: 0.155, h: 0.22, pot: "slate", scale: 0.72, seed: 23, sway: 0.01 });
   potted("fern", 1.32, 0, -1.74, { r: 0.14, h: 0.17, scale: 0.92, seed: 37, sway: 0.014 });
-  potted("fern", 0.32, 0, -1.82, { r: 0.16, h: 0.2, pot: "cream", scale: 1.0, seed: 53, sway: 0.012 });
+  potted("fern", 0.18, 0, -1.75, { r: 0.16, h: 0.2, pot: "cream", scale: 1.0, seed: 53, sway: 0.012 });
 
   // On the hearth, where a plant has no business being and always ends up.
   potted("herb", -1.62, 0.062, -1.44, { r: 0.075, h: 0.095, pot: "brass", scale: 0.85, seed: 67 });
@@ -692,6 +692,57 @@ export function createRoom(scene, { wallZ = -2.1 } = {}) {
       potted("succulent", s.x + 0.3, s.y, s.z + 0.02, { r: 0.06, h: 0.07, pot: "slate", scale: 0.95, seed: 163 });
     }
   });
+
+
+  // Hung from the ceiling, which is above the top of frame — the cord runs up
+  // out of shot. Three strings to a ring and then one cord up, which is how a
+  // macramé hanger is actually made and the only version that reads at a
+  // glance. These two matter more than their size: foliage in the top corners
+  // is what stops the wide shot looking like a diorama with nothing above it.
+  const cordMat = new THREE.MeshStandardMaterial({ color: 0x8a7a5e, roughness: 0.93, envMapIntensity: 0.4 });
+  const hung = (kind, x, y, z, opts = {}) => {
+    const p = potted(kind, x, y, z, opts);
+    const rad = (opts.r ?? 0.08) * 1.07;
+    const RING = 0.44;
+    const up = new THREE.Vector3(0, 1, 0);
+    for (let i = 0; i < 3; i++) {
+      const a = (i / 3) * Math.PI * 2 + 0.4;
+      const foot = new THREE.Vector3(Math.sin(a) * rad, (opts.h ?? 0.1) * 0.75, Math.cos(a) * rad);
+      const d = new THREE.Vector3(0, RING, 0).sub(foot);
+      const str = new THREE.Mesh(new THREE.CylinderGeometry(0.0035, 0.0035, d.length(), 5), cordMat);
+      str.position.copy(foot).addScaledVector(d, 0.5);
+      str.quaternion.setFromUnitVectors(up, d.clone().normalize());
+      p.add(str);
+    }
+    const rise = 2.9 - y - RING;
+    const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, rise, 6), cordMat);
+    stalk.position.y = RING + rise / 2;
+    p.add(stalk);
+    return p;
+  };
+
+  hung("pothos", -1.42, 1.94, -1.05, { r: 0.085, h: 0.1, pot: "terracotta", scale: 1.15, seed: 181, sway: 0.026 });
+  hung("pothos", 1.82, 2.0, -1.0, { r: 0.08, h: 0.095, pot: "cream", scale: 0.95, seed: 197, sway: 0.03 });
+
+  // On top of the television, which is where one always ends up, and on its
+  // lower shelf beside the discs.
+  potted("herb", -0.18, 1.25, -0.02, { r: 0.075, h: 0.09, pot: "terracotta", scale: 0.95, seed: 211, parent: tv });
+  potted("succulent", 0.42, 0.328, 0.05, { r: 0.05, h: 0.055, pot: "slate", scale: 0.8, seed: 223, parent: tv });
+
+  // A second one on the mantel, standing between the candles.
+  potted("succulent", -2.22, 1.472, wallZ + 0.2, { r: 0.06, h: 0.07, pot: "brass", scale: 0.9, seed: 229 });
+
+  // A third on the bookcase top, in front of the sill rather than under it.
+  potted("succulent", 0.02, 1.18, 0.06, { r: 0.06, h: 0.07, pot: "cream", scale: 0.95, seed: 233, parent: bookcase });
+
+  // Standing in the corner under the right-hand window, past the floor lamp.
+  potted("fern", 3.55, 0, -1.78, { r: 0.155, h: 0.19, scale: 1.0, seed: 239, sway: 0.013 });
+
+  // Two more on the floor behind the party: the wall between the fireplace and
+  // the television is the stretch the camera sweeps across most, and it was
+  // still the emptiest thing in the frame.
+  potted("herb", -0.42, 0, -1.94, { r: 0.115, h: 0.14, pot: "slate", scale: 1.3, seed: 251, sway: 0.016 });
+  potted("fern", 0.78, 0, -1.85, { r: 0.1, h: 0.125, pot: "brass", scale: 0.62, seed: 263, sway: 0.015 });
 
   /* ------------------------------------------------------------------ *
    *  Animation

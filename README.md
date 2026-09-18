@@ -110,19 +110,25 @@ an interior read as a place rather than a lit box, and daylight would wash the f
 out. Both windows use the same generator with a horizontal offset — two windows on
 one wall look onto the same street, not onto two.
 
-Fifteen plants, each one a pot plus exactly **one** canopy mesh. A monstera is eight
-leaves, a fern is a hundred and twenty leaflets, and the naive build would have cost
-four hundred draw calls; they go through the same merge path as the bookcase, with
-the colour variation between leaves carried on a vertex attribute. The leaves are
+Twenty-four plants — floor, mantel, hearth, bookcase, television, both sills, and two
+hung from the ceiling on macramé cords that run up out of frame. Each one is **two
+meshes**: a pot, and a canopy. A monstera is eight leaves and a fern a hundred and
+twenty leaflets, so the naive build would have cost several hundred draw calls; they
+go through the same merge path as the bookcase, with the colour variation between
+leaves carried on a vertex attribute. The pot's body and rim bake together, and the
+soil rides along in the canopy merge with a brown vertex colour rather than costing
+a mesh of its own — that alone took the room from 251 meshes back to 203. The leaves are
 flat outlines bent twice — down along their length and up along their width. A leaf
 modelled as a flat card vanishes edge-on and takes light as a single tone; the
 second bend is what makes a canopy read as many surfaces rather than a green cloud.
 
-Placements were measured, not eyeballed. The first pass put the monstera 8 cm inside
-the chimney breast, a fern 28 x 49 cm inside the sofa, the mantel plant's vines
-through the brickwork, and a pot on the bookcase 7 cm up through the window sill
-above it. None of that was visible in a screenshot at this distance; all of it was
-visible in a bounding-box sweep.
+Placements were measured, not eyeballed. Successive passes put the monstera 8 cm
+inside the chimney breast, a fern 28 x 49 cm inside the sofa, the mantel plant's
+vines through the brickwork, a pot on the bookcase 7 cm up through the window sill
+above it, and two ferns with their leaves 6 cm through the back wall. None of that
+was visible in a screenshot at this distance; all of it was visible in a
+bounding-box sweep, which is now the check every new plant goes through: canopy
+against canopy, canopy against the wall, canopy against the floor.
 
 ## Speech bubbles
 
