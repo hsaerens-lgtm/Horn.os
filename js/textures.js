@@ -496,3 +496,763 @@ export function paperGrain({ size = 512, seed = 71 } = {}) {
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
   return tex;
 }
+
+/* ------------------------------------------------------------------ *
+ *  Room dressing
+ *  Everything below is drawn rather than downloaded. The posters are
+ *  original artwork in the visual language of the early 2000s — code
+ *  rain, Y2K chrome, pixel arcade, LAN flyer, skate print — not
+ *  reproductions of real ones, which would be someone else's copyright.
+ * ------------------------------------------------------------------ */
+
+/** Offset dot screen, the printing artefact that dates an image to a cheap poster press. */
+function halftone(ctx, w, h, colour, step, radius, alpha) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = colour;
+  for (let y = 0, row = 0; y < h + step; y += step, row++) {
+    for (let x = (row % 2) * (step / 2); x < w + step; x += step) {
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
+/** Aerosol overspray: a cloud of soft dots around a point. */
+function spray(ctx, cx, cy, r, colour, count, rand) {
+  ctx.fillStyle = colour;
+  for (let i = 0; i < count; i++) {
+    const a = rand() * Math.PI * 2;
+    const d = Math.pow(rand(), 0.6) * r;
+    ctx.globalAlpha = 0.03 + rand() * 0.07;
+    ctx.beginPath();
+    ctx.arc(cx + Math.cos(a) * d, cy + Math.sin(a) * d, 0.5 + rand() * 1.8, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+/** Text with a hard offset shadow — the cheap way every 2000s flyer got depth. */
+function shadowText(ctx, text, x, y, font, fill, shadow, dx = 4, dy = 4) {
+  ctx.font = font;
+  ctx.fillStyle = shadow;
+  ctx.fillText(text, x + dx, y + dy);
+  ctx.fillStyle = fill;
+  ctx.fillText(text, x, y);
+}
+
+const PIXEL_HERO = [
+  "....GGGG....",
+  "...GGGGGG...",
+  "..GGWWGGWW..",
+  "..GGWWGGWW..",
+  "..GGGGGGGG..",
+  "...GGRRGG...",
+  "..CCGGGGCC..",
+  ".CCCGGGGCCC.",
+  "CC.CGGGGC.CC",
+  "....GGGG....",
+  "...CC..CC...",
+  "..CCC..CCC..",
+];
+
+/**
+ * One wall poster. `kind` selects the design; each is a self-contained little
+ * piece of art rather than a variation on a template, because a wall of five
+ * variations on one layout reads as wallpaper, not as a room someone lives in.
+ */
+export function poster(kind, { w = 512, h = 724, seed = 9 } = {}) {
+  const rand = rng(seed * 131 + kind.length);
+  const [c, ctx] = canvas(w, h);
+  ctx.textAlign = "center";
+
+  if (kind === "code") {
+    ctx.fillStyle = "#020604";
+    ctx.fillRect(0, 0, w, h);
+    const glyphs = "0123456789<>[]{}/\\|=+*#$%&@?!~^";
+    ctx.textAlign = "left";
+    ctx.font = "22px 'Courier New', monospace";
+    for (let x = 6; x < w; x += 21) {
+      const head = rand() * h * 1.4 - h * 0.2;
+      const len = 12 + Math.floor(rand() * 26);
+      for (let i = 0; i < len; i++) {
+        const y = head - i * 24;
+        if (y < -20 || y > h + 20) continue;
+        const fade = 1 - i / len;
+        ctx.fillStyle = i === 0 ? "rgba(215,255,225,0.95)" : `rgba(50,${Math.round(180 + fade * 60)},95,${0.1 + fade * 0.7})`;
+        ctx.fillText(glyphs[Math.floor(rand() * glyphs.length)], x, y);
+      }
+    }
+    ctx.textAlign = "center";
+    ctx.fillStyle = "rgba(0,0,0,0.72)";
+    ctx.fillRect(0, h * 0.63, w, h * 0.2);
+    shadowText(ctx, "THE SOURCE", w / 2, h * 0.735, "bold 78px 'Arial Black', Impact, sans-serif", "#d9ffe6", "#0a5f32", 3, 3);
+    ctx.font = "19px 'Courier New', monospace";
+    ctx.fillStyle = "rgba(120,240,170,0.75)";
+    ctx.fillText("THERE IS NO PROMPT", w / 2, h * 0.79);
+    ctx.fillStyle = "rgba(120,240,170,0.4)";
+    ctx.font = "15px 'Courier New', monospace";
+    ctx.fillText("REALITY  —  DIRECTOR'S CUT", w / 2, h * 0.94);
+  } else if (kind === "y2k") {
+    const g = ctx.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, "#0b2c5e");
+    g.addColorStop(0.45, "#2f8fd8");
+    g.addColorStop(0.72, "#bfe4ff");
+    g.addColorStop(1, "#134a86");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+
+    // starburst behind the title
+    ctx.save();
+    ctx.translate(w / 2, h * 0.38);
+    for (let i = 0; i < 28; i++) {
+      ctx.rotate((Math.PI * 2) / 28);
+      ctx.fillStyle = i % 2 ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.03)";
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(w * 0.9, -26);
+      ctx.lineTo(w * 0.9, 26);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // chrome bubble type: dark base, gradient core, white rim light
+    ctx.font = "bold 168px 'Arial Black', Impact, sans-serif";
+    ctx.fillStyle = "#06213f";
+    ctx.fillText("Y2K", w / 2 + 6, h * 0.44 + 7);
+    const chrome = ctx.createLinearGradient(0, h * 0.28, 0, h * 0.47);
+    chrome.addColorStop(0, "#ffffff");
+    chrome.addColorStop(0.44, "#8fc7f2");
+    chrome.addColorStop(0.5, "#0f3f73");
+    chrome.addColorStop(0.58, "#eaf6ff");
+    chrome.addColorStop(1, "#5d9ccd");
+    ctx.fillStyle = chrome;
+    ctx.fillText("Y2K", w / 2, h * 0.44);
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "rgba(255,255,255,0.8)";
+    ctx.strokeText("Y2K", w / 2, h * 0.44);
+
+    ctx.font = "bold 34px 'Trebuchet MS', sans-serif";
+    ctx.fillStyle = "#04203d";
+    ctx.fillText("THE FUTURE IS NOW", w / 2 + 2, h * 0.55 + 2);
+    ctx.fillStyle = "#f2fbff";
+    ctx.fillText("THE FUTURE IS NOW", w / 2, h * 0.55);
+
+    // the obligatory glossy capsule
+    ctx.beginPath();
+    ctx.ellipse(w / 2, h * 0.68, w * 0.32, h * 0.055, 0, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255,255,255,0.22)";
+    ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,0.65)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.font = "bold 26px 'Trebuchet MS', sans-serif";
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText("READY OR NOT", w / 2, h * 0.695);
+    halftone(ctx, w, h, "#ffffff", 7, 1.1, 0.05);
+  } else if (kind === "arcade") {
+    ctx.fillStyle = "#170a2b";
+    ctx.fillRect(0, 0, w, h);
+    // perspective floor grid
+    ctx.strokeStyle = "rgba(255,52,160,0.5)";
+    ctx.lineWidth = 2;
+    for (let i = -10; i <= 10; i++) {
+      ctx.beginPath();
+      ctx.moveTo(w / 2 + i * 18, h * 0.62);
+      ctx.lineTo(w / 2 + i * 190, h);
+      ctx.stroke();
+    }
+    for (let i = 0, y = h * 0.62; y < h; i++) {
+      y += 6 + i * i * 1.5;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(w, y);
+      ctx.stroke();
+    }
+    // sun
+    const sg = ctx.createLinearGradient(0, h * 0.2, 0, h * 0.62);
+    sg.addColorStop(0, "#ffe46b");
+    sg.addColorStop(1, "#ff2f7a");
+    ctx.fillStyle = sg;
+    ctx.beginPath();
+    ctx.arc(w / 2, h * 0.44, w * 0.27, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#170a2b";
+    for (let y = h * 0.46; y < h * 0.62; y += 13) ctx.fillRect(0, y, w, 5);
+
+    // the hero, drawn a pixel at a time
+    const px = 15;
+    const ox = w / 2 - (PIXEL_HERO[0].length * px) / 2;
+    const oy = h * 0.3;
+    const pal = { G: "#2fe08a", W: "#ffffff", R: "#ff3b3b", C: "#3fc4ff" };
+    PIXEL_HERO.forEach((row, ry) =>
+      [...row].forEach((ch, rx) => {
+        if (!pal[ch]) return;
+        ctx.fillStyle = pal[ch];
+        ctx.fillRect(ox + rx * px, oy + ry * px, px, px);
+      })
+    );
+
+    shadowText(ctx, "PRESS START", w / 2, h * 0.79, "bold 62px 'Courier New', monospace", "#ffe46b", "#ff2f7a", 5, 5);
+    ctx.font = "22px 'Courier New', monospace";
+    ctx.fillStyle = "rgba(255,255,255,0.7)";
+    ctx.fillText("INSERT COIN  ·  1 CREDIT  ·  2P", w / 2, h * 0.85);
+    ctx.fillStyle = "rgba(0,0,0,0.22)";
+    for (let y = 0; y < h; y += 5) ctx.fillRect(0, y, w, 2);
+  } else if (kind === "lan") {
+    ctx.fillStyle = "#05070c";
+    ctx.fillRect(0, 0, w, h);
+    // a network someone actually cabled, drawn as a node graph
+    const nodes = [];
+    for (let i = 0; i < 16; i++) nodes.push([40 + rand() * (w - 80), h * 0.2 + rand() * h * 0.42]);
+    ctx.strokeStyle = "rgba(60,220,190,0.35)";
+    ctx.lineWidth = 1.5;
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        if (Math.hypot(nodes[i][0] - nodes[j][0], nodes[i][1] - nodes[j][1]) > 150) continue;
+        ctx.beginPath();
+        ctx.moveTo(nodes[i][0], nodes[i][1]);
+        ctx.lineTo(nodes[j][0], nodes[j][1]);
+        ctx.stroke();
+      }
+    }
+    for (const [x, y] of nodes) {
+      ctx.fillStyle = "#3ff0c8";
+      ctx.shadowColor = "#3ff0c8";
+      ctx.shadowBlur = 14;
+      ctx.beginPath();
+      ctx.arc(x, y, 5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.shadowBlur = 0;
+
+    ctx.fillStyle = "rgba(5,7,12,0.82)";
+    ctx.fillRect(0, h * 0.62, w, h * 0.3);
+    shadowText(ctx, "LAN PARTY", w / 2, h * 0.72, "bold 74px 'Arial Black', Impact, sans-serif", "#3ff0c8", "#0d5a4c", 4, 4);
+    ctx.font = "bold 30px 'Courier New', monospace";
+    ctx.fillStyle = "#ff8a3d";
+    ctx.fillText("BYOC  ·  48 HOURS", w / 2, h * 0.775);
+    ctx.font = "19px 'Courier New', monospace";
+    ctx.fillStyle = "rgba(200,240,255,0.55)";
+    ctx.fillText("bring your own chair, cable and rig", w / 2, h * 0.815);
+    ctx.fillText("pizza at 02:00  ·  no respawn camping", w / 2, h * 0.845);
+    ctx.strokeStyle = "rgba(63,240,200,0.5)";
+    ctx.lineWidth = 6;
+    ctx.strokeRect(12, 12, w - 24, h - 24);
+  } else {
+    // skate print: one loud word, badly registered, sprayed over
+    ctx.fillStyle = "#e9e2d2";
+    ctx.fillRect(0, 0, w, h);
+    halftone(ctx, w, h, "#1a1714", 6, 1.4, 0.12);
+    ctx.save();
+    ctx.translate(w / 2, h * 0.42);
+    ctx.rotate(-0.09);
+    ctx.fillStyle = "#e4531f";
+    ctx.fillRect(-w * 0.44, -h * 0.13, w * 0.88, h * 0.26);
+    ctx.font = "bold 112px 'Arial Black', Impact, sans-serif";
+    ctx.fillStyle = "rgba(20,18,16,0.25)";
+    ctx.fillText("NO RULES", 7, 40);
+    ctx.fillStyle = "#faf6ea";
+    ctx.fillText("NO RULES", 0, 36);
+    ctx.restore();
+
+    // a deck, seen from below
+    ctx.save();
+    ctx.translate(w / 2, h * 0.68);
+    ctx.rotate(0.22);
+    ctx.fillStyle = "#1a1714";
+    ctx.beginPath();
+    ctx.ellipse(0, 0, w * 0.06, h * 0.17, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#e4531f";
+    ctx.beginPath();
+    ctx.ellipse(0, 0, w * 0.042, h * 0.14, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    spray(ctx, w * 0.24, h * 0.2, 130, "#1a1714", 1400, rand);
+    spray(ctx, w * 0.78, h * 0.85, 150, "#e4531f", 1400, rand);
+    ctx.textAlign = "center";
+    ctx.font = "bold 27px 'Trebuchet MS', sans-serif";
+    ctx.fillStyle = "#1a1714";
+    ctx.fillText("SKATE OR DON'T  ·  EST. 2001", w / 2, h * 0.94);
+    speckle(ctx, Math.max(w, h), 3000, rand, 0.09, false);
+  }
+
+  // every poster on a wall has been up a while
+  const vig = ctx.createRadialGradient(w / 2, h / 2, w * 0.3, w / 2, h / 2, w * 0.95);
+  vig.addColorStop(0, "rgba(0,0,0,0)");
+  vig.addColorStop(1, "rgba(0,0,0,0.3)");
+  ctx.fillStyle = vig;
+  ctx.fillRect(0, 0, w, h);
+  speckle(ctx, Math.max(w, h), 900, rand, 0.05, false);
+
+  return toTexture(c, { srgb: true });
+}
+
+/** Painted brick for the fireplace surround. */
+export function brick({ size = 512, seed = 63, repeat = [2, 1] } = {}) {
+  const rand = rng(seed);
+  const [c, ctx] = canvas(size);
+  ctx.fillStyle = "#4a3f3a";
+  ctx.fillRect(0, 0, size, size);
+  const rows = 12;
+  const rh = size / rows;
+  for (let r = 0; r < rows; r++) {
+    const offset = (r % 2) * (size / 8);
+    for (let b = -1; b < 8; b++) {
+      const x = offset + b * (size / 4) + 3;
+      const y = r * rh + 3;
+      const shade = 0.78 + rand() * 0.3;
+      ctx.fillStyle = `rgb(${Math.round(150 * shade)},${Math.round(112 * shade)},${Math.round(96 * shade)})`;
+      ctx.fillRect(x, y, size / 4 - 6, rh - 6);
+      // each brick is a little mottled, or the wall reads as tiling
+      for (let i = 0; i < 26; i++) {
+        ctx.fillStyle = rand() > 0.5 ? "rgba(255,240,225,0.08)" : "rgba(0,0,0,0.1)";
+        ctx.fillRect(x + rand() * (size / 4 - 6), y + rand() * (rh - 6), 3 + rand() * 9, 2 + rand() * 5);
+      }
+    }
+  }
+  speckle(ctx, size, 5000, rand, 0.09, false);
+  return {
+    map: toTexture(c, { repeat, srgb: true }),
+    normalMap: toTexture(normalFrom(c, 1.5), { repeat }),
+    roughnessMap: toTexture(roughnessFrom(c, 0.72, 0.96), { repeat }),
+  };
+}
+
+/** Flat-weave upholstery for the sofa. */
+export function weave({ size = 256, seed = 67, repeat = [3, 2] } = {}) {
+  const rand = rng(seed);
+  const [c, ctx] = canvas(size);
+  ctx.fillStyle = "#9e9e9e";
+  ctx.fillRect(0, 0, size, size);
+  for (let y = 0; y < size; y += 6) {
+    for (let x = 0; x < size; x += 6) {
+      const alt = ((x / 6 + y / 6) | 0) % 2;
+      ctx.fillStyle = alt ? "rgba(255,255,255,0.11)" : "rgba(0,0,0,0.11)";
+      ctx.fillRect(x, y, alt ? 6 : 3, alt ? 3 : 6);
+    }
+  }
+  speckle(ctx, size, 6000, rand, 0.12, false);
+  speckle(ctx, size, 4000, rand, 0.09, true);
+  return {
+    map: toTexture(c, { repeat, srgb: true }),
+    normalMap: toTexture(normalFrom(c, 1.1), { repeat }),
+    roughnessMap: toTexture(roughnessFrom(c, 0.74, 0.96), { repeat }),
+  };
+}
+
+/** The living-room television, left on with nobody watching. */
+export function tvScreen({ w = 512, h = 384, seed = 12 } = {}) {
+  const rand = rng(seed);
+  const [c, ctx] = canvas(w, h);
+  // colour bars: what a CRT shows once the night is over
+  const bars = ["#c0c0c0", "#c0c000", "#00c0c0", "#00c000", "#c000c0", "#c00000", "#0000c0"];
+  bars.forEach((col, i) => {
+    ctx.fillStyle = col;
+    ctx.fillRect((i * w) / bars.length, 0, w / bars.length + 1, h * 0.7);
+  });
+  ctx.fillStyle = "#101018";
+  ctx.fillRect(0, h * 0.7, w, h * 0.3);
+  ctx.textAlign = "center";
+  ctx.font = "bold 40px 'Courier New', monospace";
+  ctx.fillStyle = "#e8e8f0";
+  ctx.fillText("NO SIGNAL", w / 2, h * 0.86);
+  ctx.font = "18px 'Courier New', monospace";
+  ctx.fillStyle = "rgba(200,210,230,0.5)";
+  ctx.fillText("CH 03   ·   AV1", w / 2, h * 0.94);
+  ctx.fillStyle = "rgba(0,0,0,0.2)";
+  for (let y = 0; y < h; y += 4) ctx.fillRect(0, y, w, 2);
+  speckle(ctx, Math.max(w, h), 2200, rand, 0.14, true);
+  const v = ctx.createRadialGradient(w / 2, h / 2, w * 0.28, w / 2, h / 2, w * 0.66);
+  v.addColorStop(0, "rgba(0,0,0,0)");
+  v.addColorStop(1, "rgba(0,0,0,0.6)");
+  ctx.fillStyle = v;
+  ctx.fillRect(0, 0, w, h);
+  return toTexture(c, { srgb: true });
+}
+
+/**
+ * One tongue of flame, drawn once and stacked with additive blending.
+ *
+ * A radial blob was the first attempt and it read as a glow, not as fire: what
+ * makes a flame legible is the silhouette — wide and hot at the base, pinched
+ * to a tip. So this is an actual shape, filled with a vertical heat gradient
+ * and softened by drawing it three times at falling alpha.
+ */
+export function flame({ w = 128, h = 208 } = {}) {
+  const [c, ctx] = canvas(w, h);
+
+  const heat = ctx.createLinearGradient(0, h, 0, 0);
+  heat.addColorStop(0, "rgba(198, 74, 18, 0.55)");
+  heat.addColorStop(0.16, "rgba(255, 150, 44, 0.95)");
+  heat.addColorStop(0.42, "rgba(255, 206, 110, 0.95)");
+  heat.addColorStop(0.74, "rgba(255, 150, 50, 0.55)");
+  heat.addColorStop(1, "rgba(150, 40, 0, 0)");
+
+  const tongue = (spread, alpha) => {
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = heat;
+    ctx.beginPath();
+    ctx.moveTo(w / 2, h * 0.02);
+    ctx.bezierCurveTo(w / 2 + spread * 0.5, h * 0.3, w / 2 + spread, h * 0.6, w / 2 + spread * 0.75, h * 0.92);
+    ctx.quadraticCurveTo(w / 2, h * 1.02, w / 2 - spread * 0.75, h * 0.92);
+    ctx.bezierCurveTo(w / 2 - spread, h * 0.6, w / 2 - spread * 0.5, h * 0.3, w / 2, h * 0.02);
+    ctx.closePath();
+    ctx.fill();
+  };
+
+  tongue(w * 0.46, 0.45);
+  tongue(w * 0.34, 0.6);
+  tongue(w * 0.2, 0.85);
+
+  // the white heart at the base, where the gas is actually burning
+  ctx.globalAlpha = 1;
+  const core = ctx.createRadialGradient(w / 2, h * 0.84, 1, w / 2, h * 0.84, w * 0.3);
+  core.addColorStop(0, "rgba(255,248,224,0.95)");
+  core.addColorStop(1, "rgba(255,180,80,0)");
+  ctx.fillStyle = core;
+  ctx.fillRect(0, h * 0.5, w, h * 0.5);
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+/* ------------------------------------------------------------------ *
+ *  The DM screen
+ *  Three panels, printed on both sides: the players get the artwork,
+ *  the DM gets the tables they actually need mid-session. The camera
+ *  sits behind the DM, so the tables are the side it reads.
+ * ------------------------------------------------------------------ */
+
+/** Parchment ground shared by both faces of the screen. */
+function screenStock(ctx, w, h, rand) {
+  ctx.fillStyle = "#e3d4ae";
+  ctx.fillRect(0, 0, w, h);
+  for (let i = 0; i < 150; i++) {
+    const x = rand() * w, y = rand() * h, r = 20 + rand() * 90;
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, rand() > 0.5 ? "rgba(122,88,44,0.06)" : "rgba(255,248,226,0.12)");
+    g.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  speckle(ctx, Math.max(w, h), 2600, rand, 0.06, false);
+}
+
+const INK = "#3a2a18";
+const RED = "#8c2f22";
+
+/** A boxed table with a heading and rows, the unit every DM screen is built from. */
+function refTable(ctx, x, y, w, rows, title, rand) {
+  const rowH = 30;
+  const h = 40 + rows.length * rowH;
+  ctx.fillStyle = "rgba(255,250,236,0.5)";
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = 3;
+  ctx.strokeRect(x, y, w, h);
+
+  ctx.fillStyle = RED;
+  ctx.fillRect(x, y, w, 34);
+  ctx.fillStyle = "#f4ead2";
+  ctx.font = "bold 21px Georgia, serif";
+  ctx.textAlign = "left";
+  ctx.fillText(title, x + 12, y + 24);
+
+  ctx.font = "20px Georgia, serif";
+  rows.forEach(([left, right], i) => {
+    const ry = y + 40 + i * rowH;
+    if (i % 2) {
+      ctx.fillStyle = "rgba(122,88,44,0.09)";
+      ctx.fillRect(x + 2, ry - 4, w - 4, rowH);
+    }
+    ctx.fillStyle = INK;
+    ctx.textAlign = "left";
+    ctx.fillText(left, x + 12, ry + 17);
+    ctx.textAlign = "right";
+    ctx.fillStyle = RED;
+    ctx.font = "bold 20px Georgia, serif";
+    ctx.fillText(right, x + w - 12, ry + 17);
+    ctx.font = "20px Georgia, serif";
+  });
+  return y + h;
+}
+
+/**
+ * The DM's side of one panel. `index` picks which tables it carries, so the
+ * three panels together read as one reference spread rather than three copies.
+ */
+export function dmScreenTables(index, { w = 512, h = 430, seed = 81 } = {}) {
+  const rand = rng(seed + index * 17);
+  const [c, ctx] = canvas(w, h);
+  screenStock(ctx, w, h, rand);
+
+  const M = 22;
+  const iw = w - M * 2;
+
+  if (index === 0) {
+    let y = refTable(ctx, M, 20, iw, [
+      ["Trivial", "DC 5"],
+      ["Easy", "DC 10"],
+      ["Medium", "DC 15"],
+      ["Hard", "DC 20"],
+      ["Nearly impossible", "DC 30"],
+    ], "DIFFICULTY CLASS", rand);
+    refTable(ctx, M, y + 18, iw, [
+      ["Advantage", "roll 2, keep high"],
+      ["Disadvantage", "roll 2, keep low"],
+      ["Inspiration", "once per session"],
+    ], "THE DICE", rand);
+  } else if (index === 1) {
+    let y = refTable(ctx, M, 20, iw, [
+      ["Scope agreed", "+2"],
+      ["Data is clean", "+2"],
+      ["No owner named", "-4"],
+      ["Demo on Friday", "-2"],
+      ["Nobody asked for it", "auto-fail"],
+    ], "DELIVERY CHECKS", rand);
+    y = refTable(ctx, M, y + 16, iw, [
+      ["Blinded", "hallucinating"],
+      ["Charmed", "demo-driven"],
+      ["Exhausted", "context full"],
+    ], "CONDITIONS", rand);
+    ctx.fillStyle = INK;
+    ctx.font = "italic 19px Georgia, serif";
+    ctx.textAlign = "center";
+    ctx.fillText("the rules are a starting point", w / 2, y + 42);
+  } else {
+    // the initiative order, pencilled in and scratched out as a session does
+    let y = refTable(ctx, M, 20, iw, [
+      ["Perseus", "18"],
+      ["Codex", "15"],
+      ["Hermes", "12"],
+      ["Odysseus", "9"],
+      ["The backlog", "4"],
+    ], "INITIATIVE", rand);
+
+    ctx.strokeStyle = "rgba(60,44,26,0.55)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(M + 14, y - 22);
+    ctx.lineTo(M + iw - 60, y - 26);
+    ctx.stroke();
+
+    ctx.fillStyle = INK;
+    ctx.textAlign = "left";
+    ctx.font = "bold 19px Georgia, serif";
+    ctx.fillText("NOTES", M, y + 42);
+    ctx.font = "19px Georgia, serif";
+    ["ask what it is for, first", "ship it, then make it pretty", "the humans sign off"].forEach((t, i) => {
+      ctx.fillText("— " + t, M, y + 72 + i * 28);
+    });
+
+    // the ring every DM screen ends up with
+    ctx.strokeStyle = "rgba(122,78,32,0.3)";
+    ctx.lineWidth = 7;
+    ctx.beginPath();
+    ctx.arc(w - 92, h - 76, 46, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  speckle(ctx, Math.max(w, h), 1400, rand, 0.05, false);
+  return c;
+}
+
+/**
+ * The players' side: one long illustration split across the three panels, so
+ * they line up into a single creature rather than three unrelated pictures.
+ * A dragon made of circuitry — the thing this party is actually fighting.
+ */
+export function dmScreenArt(index, { w = 512, h = 430, seed = 91 } = {}) {
+  const rand = rng(seed + index * 23);
+  const [c, ctx] = canvas(w, h);
+  screenStock(ctx, w, h, rand);
+
+  // ink wash, darker towards the bottom, as if brushed
+  const wash = ctx.createLinearGradient(0, 0, 0, h);
+  wash.addColorStop(0, "rgba(40,52,64,0.05)");
+  wash.addColorStop(1, "rgba(28,36,48,0.34)");
+  ctx.fillStyle = wash;
+  ctx.fillRect(0, 0, w, h);
+
+  ctx.strokeStyle = INK;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  if (index === 0) {
+    // head and jaw
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(w * 0.12, h * 0.6);
+    ctx.bezierCurveTo(w * 0.2, h * 0.3, w * 0.55, h * 0.22, w * 0.9, h * 0.34);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(w * 0.14, h * 0.62);
+    ctx.bezierCurveTo(w * 0.3, h * 0.72, w * 0.6, h * 0.66, w * 0.92, h * 0.56);
+    ctx.stroke();
+    // horns
+    for (let i = 0; i < 3; i++) {
+      ctx.lineWidth = 5 - i;
+      ctx.beginPath();
+      ctx.moveTo(w * (0.34 + i * 0.16), h * 0.27);
+      ctx.quadraticCurveTo(w * (0.4 + i * 0.16), h * 0.06, w * (0.54 + i * 0.16), h * 0.04);
+      ctx.stroke();
+    }
+    // the eye, the one warm thing on the whole panel
+    ctx.fillStyle = RED;
+    ctx.beginPath();
+    ctx.ellipse(w * 0.33, h * 0.45, 20, 11, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = INK;
+    ctx.beginPath();
+    ctx.ellipse(w * 0.33, h * 0.45, 5, 10, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+    // teeth
+    ctx.lineWidth = 3;
+    for (let i = 0; i < 7; i++) {
+      const x = w * (0.22 + i * 0.1);
+      ctx.beginPath();
+      ctx.moveTo(x, h * 0.63);
+      ctx.lineTo(x + 9, h * 0.73);
+      ctx.lineTo(x + 18, h * 0.63);
+      ctx.stroke();
+    }
+  } else if (index === 1) {
+    // body, with a wing sweeping over it
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(0, h * 0.42);
+    ctx.bezierCurveTo(w * 0.35, h * 0.34, w * 0.7, h * 0.46, w, h * 0.4);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, h * 0.62);
+    ctx.bezierCurveTo(w * 0.3, h * 0.82, w * 0.72, h * 0.74, w, h * 0.66);
+    ctx.stroke();
+    ctx.lineWidth = 4;
+    for (let i = 0; i < 5; i++) {
+      ctx.beginPath();
+      ctx.moveTo(w * (0.1 + i * 0.2), h * 0.38);
+      ctx.quadraticCurveTo(w * (0.16 + i * 0.2), h * 0.1, w * (0.3 + i * 0.2), h * 0.06);
+      ctx.stroke();
+    }
+    // scales as circuit pads
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 46; i++) {
+      const x = rand() * w, y = h * 0.44 + rand() * h * 0.22;
+      ctx.beginPath();
+      ctx.arc(x, y, 4 + rand() * 5, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  } else {
+    // tail, trailing off the last panel
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(0, h * 0.44);
+    ctx.bezierCurveTo(w * 0.4, h * 0.4, w * 0.6, h * 0.74, w * 0.95, h * 0.88);
+    ctx.stroke();
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(0, h * 0.66);
+    ctx.bezierCurveTo(w * 0.35, h * 0.62, w * 0.55, h * 0.84, w * 0.8, h * 0.95);
+    ctx.stroke();
+    for (let i = 0; i < 6; i++) {
+      ctx.beginPath();
+      ctx.moveTo(w * (0.08 + i * 0.13), h * (0.42 + i * 0.07));
+      ctx.lineTo(w * (0.12 + i * 0.13), h * (0.3 + i * 0.07));
+      ctx.stroke();
+    }
+  }
+
+  // circuit traces running under the ink on every panel
+  ctx.strokeStyle = "rgba(60,90,110,0.34)";
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 26; i++) {
+    let x = rand() * w, y = rand() * h;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    for (let s = 0; s < 4; s++) {
+      if (rand() > 0.5) x += (rand() - 0.5) * 90;
+      else y += (rand() - 0.5) * 90;
+      ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+
+  // a title, once, on the middle panel
+  if (index === 1) {
+    ctx.textAlign = "center";
+    ctx.font = "bold 30px Georgia, serif";
+    ctx.fillStyle = RED;
+    ctx.fillText("HERE BE LEGACY SYSTEMS", w / 2, h * 0.95);
+  }
+
+  speckle(ctx, Math.max(w, h), 1600, rand, 0.05, false);
+  return c;
+}
+
+/** Wraps a DM-screen canvas into the material set the panel mesh needs. */
+export function screenFace(c) {
+  return {
+    map: toTexture(c, { srgb: true }),
+    normalMap: toTexture(normalFrom(c, 0.6)),
+    roughnessMap: toTexture(roughnessFrom(c, 0.72, 0.95)),
+  };
+}
+
+/**
+ * Painted plaster.
+ *
+ * This replaces a photographed concrete scan that was doing real damage: its
+ * blotches are metres across at wall scale, and under a warm tint they read as
+ * damp rather than as paint. A wall is the largest surface in frame, so its
+ * texture sets the mood of everything in front of it — and a wall wants almost
+ * no texture at all, just enough roller mottling not to be a flat fill.
+ */
+export function plaster({ size = 512, seed = 88, repeat = [3, 1.1] } = {}) {
+  const rand = rng(seed);
+  const [c, ctx] = canvas(size);
+  ctx.fillStyle = "#b9b2a6";
+  ctx.fillRect(0, 0, size, size);
+
+  // roller passes: broad, very low contrast, mostly vertical
+  for (let i = 0; i < 90; i++) {
+    const x = rand() * size;
+    const y = rand() * size;
+    const w = 18 + rand() * 46;
+    const h = 90 + rand() * 260;
+    const g = ctx.createLinearGradient(x, y, x + w, y);
+    const light = rand() > 0.5;
+    g.addColorStop(0, "rgba(0,0,0,0)");
+    g.addColorStop(0.5, light ? "rgba(255,252,246,0.07)" : "rgba(92,84,74,0.07)");
+    g.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(x, y, w, h);
+  }
+
+  // the odd scuff, low down where furniture has been moved
+  for (let i = 0; i < 14; i++) {
+    const x = rand() * size;
+    const y = size * 0.6 + rand() * size * 0.4;
+    ctx.strokeStyle = "rgba(86,76,66,0.1)";
+    ctx.lineWidth = 1 + rand() * 2;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + (rand() - 0.5) * 70, y + (rand() - 0.5) * 16);
+    ctx.stroke();
+  }
+
+  speckle(ctx, size, 14000, rand, 0.05, false);
+  speckle(ctx, size, 10000, rand, 0.05, true);
+
+  return {
+    map: toTexture(c, { repeat, srgb: true }),
+    normalMap: toTexture(normalFrom(c, 0.45), { repeat }),
+    roughnessMap: toTexture(roughnessFrom(c, 0.8, 0.95), { repeat }),
+  };
+}

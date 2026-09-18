@@ -99,9 +99,11 @@ const WatercolourShader = {
       col *= 1.0 - edge * 0.5 * uEdge;
 
       // 4. Quantise gently. Full posterisation reads as cel shading; a partial
-      //    mix keeps the gradient while suggesting separate washes.
-      vec3 stepped = floor(col * 11.0 + 0.5) / 11.0;
-      col = mix(col, stepped, 0.4);
+      //    mix keeps the gradient while suggesting separate washes. Kept light,
+      //    and on a fine ladder: a large near-flat surface such as a wall shows
+      //    every step as a blotch, and the room now has a lot of wall in it.
+      vec3 stepped = floor(col * 18.0 + 0.5) / 18.0;
+      col = mix(col, stepped, 0.22);
 
       // The paper itself: tooth over the whole image, strongest in the mid tones
       // where a real wash is thinnest.

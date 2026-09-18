@@ -1,16 +1,19 @@
 # Horn Saerens — the Dungeon Master's sheet
 
-A 3D table set for a D&D session. I am the DM; the players are the AI agents I
-actually run — **Perseus**, **Hermes**, **Odysseus** and **Codex**. They sit around
-the table on chairs, suited figures with a television for a head, each screen showing
-that agent's mark: two opposite, one at each end, the DM where the camera is.
+A 3D table set for a D&D session, in somebody's living room: a fire going, a
+television left on, posters that have been up since about 2003. I am the DM; the
+players are the AI agents I actually run — **Perseus**, **Hermes**, **Odysseus** and
+**Codex**. They sit around the table on chairs, suited figures with a television for
+a head, each screen showing that agent's mark: two opposite, one at each end, the DM
+where the camera is. In front of every player lies their character sheet.
 
 Three things are clickable:
 
-- **The character sheet** beside the DM screen — the camera drops overhead and the CV
-  reads as the DM's character sheet.
-- **Any player** — the camera turns to them and a card explains what that agent
-  actually is, its stack, and which quest on the sheet it maps to.
+- **The DM's sheet**, beside the screen — the camera drops overhead and the CV reads
+  as the Dungeon Master's character sheet.
+- **Any player**, or the sheet in front of them — their sheet lifts off the table,
+  turns to face you and grows, and it holds what that agent actually is: how it is
+  deployed, its stack, and the project it maps to.
 - **Any die** — it tumbles and a score floats up: gold on a natural 20, red on a
   natural 1.
 
@@ -42,10 +45,11 @@ and non-WebGL browsers get.
 index.html        page shell, importmap for Three.js (jsDelivr CDN)
 css/sheet.css     parchment character sheet + page UI
 js/content.js     all CV text, as sheet data — edit this to update the résumé
-js/sheet.js       renders the character sheet
-js/scene.js       3D table, camera states, sheet projection
+js/sheet.js       renders the DM's sheet and each player's sheet
+js/scene.js       3D table, camera states, sheet projection and raising
+js/room.js        the room around it: posters, fireplace, sofa, television, lamp
 js/watercolour.js the painted look: post-processing chain and its shader
-js/textures.js    procedural battle map, parchment, suit cloth, agent marks and faces
+js/textures.js    every drawn surface: battle map, DM screen, posters, cloth, marks
 js/main.js        bootstrap: 3D mode or full-screen fallback
 assets/           Horn_Saerens_CV_2026.pdf
 assets/textures/  PBR texture sets (diffuse + normal + ARM), 512px JPG
@@ -76,7 +80,10 @@ Texture scans (diffuse + OpenGL normal + ARM):
 |---|---|
 | Desk | [American Walnut Veneer](https://polyhaven.com/a/american_walnut_veneer) |
 | Floor | [Herringbone Parquet](https://polyhaven.com/a/herringbone_parquet) |
-| Wall | [Concrete Wall 008](https://polyhaven.com/a/concrete_wall_008) |
+
+The walls are painted plaster generated in `js/textures.js`. A concrete scan stood
+there first and was the single thing making the room read as a basement: its stains
+are metres across at wall scale, and a wall is the largest surface in frame.
 
 Models (glTF):
 
@@ -86,11 +93,19 @@ Models (glTF):
 | Table plant | [Potted Plant 04](https://polyhaven.com/a/potted_plant_04) |
 | Alarm clock | [Alarm Clock 01](https://polyhaven.com/a/alarm_clock_01) |
 
-Art direction is a modern room, not a fantasy tavern: polished herringbone, smooth
-concrete and walnut, lit by one pendant lamp over the table. The battle
-map, the DM screen, the four agents and every die are generated in code — the party
-is built from capsules and boxes, their marks are drawn as canvas vector paths, and
-the icosahedron and dodecahedron come straight out of Three.js.
+The sofa, the fireplace, the television and its console are built from primitives in
+`js/room.js`, so there is nothing more to download for them.
+
+Art direction is a modern-retro living room, not a fantasy tavern: polished
+herringbone, painted plaster and walnut, a pendant over the table with a hearth and a
+cathode tube for company. Everything that is not a Poly Haven scan is drawn in code —
+the battle map, the DM screen printed on both sides, the five wall posters, the
+suiting, the agents' marks and the flames. The party is built from capsules and
+boxes, and the icosahedron and dodecahedron come straight out of Three.js.
+
+The posters are original artwork in the visual language of the early 2000s — code
+rain, Y2K chrome, a pixel arcade screen, a LAN party flyer, a skate print. None of
+them reproduces a real poster, which would be someone else's copyright.
 
 Every texture is downscaled to 512px and re-encoded, which keeps the whole site near
 2 MB rather than 15 MB at the original 1K. Models load asynchronously and only in 3D

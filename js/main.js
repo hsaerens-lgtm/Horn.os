@@ -1,12 +1,13 @@
 import { content } from "./content.js";
-import { createSheet, renderAgentCard } from "./sheet.js";
+import { createSheet, renderAgentSheet } from "./sheet.js";
 
 const root = document.getElementById("sheet-root");
 const loader = document.getElementById("loader");
 const hint = document.querySelector(".hint");
 const back = document.querySelector(".back");
-const card = document.getElementById("agent-card");
 const params = new URLSearchParams(location.search);
+
+const questOf = (agent) => content.quests.find((q) => q.name === agent.quest);
 
 function supportsWebGL() {
   try {
@@ -31,26 +32,33 @@ function startFallback(reason) {
 
 async function start3D() {
   const { createScene } = await import("./scene.js");
+
+  // One sheet per player, built up front and handed to the scene, which lays
+  // them on the table in front of their seats. They are never appended here —
+  // the CSS3D renderer takes ownership of each element.
+  const agentRoots = content.party.slice(0, 4).map((agent) => {
+    const el = document.createElement("div");
+    renderAgentSheet(el, agent, questOf(agent));
+    return el;
+  });
+
   const scene = createScene({
     container: document.getElementById("scene"),
     sheetRoot: root,
+    agentRoots,
     agents: content.party,
     onEnter() {
       hint.classList.add("hidden");
       back.classList.remove("hidden");
       sheet.scrollTop();
     },
-    onAgent(agent) {
+    onAgent() {
       hint.classList.add("hidden");
       back.classList.remove("hidden");
-      const quest = content.quests.find((q) => q.name === agent.quest);
-      renderAgentCard(card, agent, quest).addEventListener("click", () => scene.exit());
-      card.classList.remove("hidden");
     },
     onExit() {
       back.classList.add("hidden");
       hint.classList.remove("hidden");
-      card.classList.add("hidden");
     },
   });
   const sheet = createSheet(root, content);

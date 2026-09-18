@@ -56,12 +56,20 @@ export const content = {
   ],
 
   // The AI agents that sit at this table — all real projects.
+  // `charClass` and `traits` exist so each one can be read as a character sheet:
+  // the shape is a stat block, but every line in it is a fact about the project.
   party: [
     {
       id: "perseus",
       name: "PERSEUS",
       role: "The Platform",
+      charClass: "Construct · Governed Platform",
       status: "In production",
+      traits: [
+        { k: "Deployment", v: "Self-hosted, Docker Compose" },
+        { k: "Data", v: "Never leaves company infrastructure" },
+        { k: "Reach", v: "Google Workspace, Atlassian, Gmail over MCP" },
+      ],
       stack: "LibreChat (built from source) · Docker Compose · RAG + pgvector · MCP · LM Studio",
       quest: "Raising the Platform",
       colour: "#4fc3f7",
@@ -74,7 +82,13 @@ export const content = {
       id: "hermes",
       name: "HERMES",
       role: "The Messenger",
+      charClass: "Scout · Local Agent",
       status: "Running locally",
+      traits: [
+        { k: "Runs", v: "On the machine, not in someone else's cloud" },
+        { k: "Models", v: "Several providers, switchable per task" },
+        { k: "Sent on", v: "Lead enrichment, scoring, call-quality coaching" },
+      ],
       stack: "Terminal agent · multi-provider model routing · local-first",
       quest: "Sharpening the Blade",
       colour: "#ffb74d",
@@ -86,7 +100,13 @@ export const content = {
       id: "odysseus",
       name: "ODYSSEUS",
       role: "The Navigator",
+      charClass: "Navigator · Knowledge Workspace",
       status: "Under evaluation",
+      traits: [
+        { k: "Carries", v: "Chat, agents, deep research, memory, tasks" },
+        { k: "Hardware", v: "Local, one interface instead of six tools" },
+        { k: "Charted for", v: "1,000–10,000 governed documents" },
+      ],
       stack: "Self-hosted workspace · chat, agents, deep research, memory · local hardware",
       quest: "The Great Library",
       colour: "#81c784",
@@ -98,7 +118,13 @@ export const content = {
       id: "codex",
       name: "CODEX",
       role: "The Artificer",
+      charClass: "Artificer · Coding Agent",
       status: "Daily driver",
+      traits: [
+        { k: "Takes", v: "A written spec and a deadline" },
+        { k: "Returns", v: "Tested code, in CI, deployed" },
+        { k: "Has built", v: "The support workspace — and this table" },
+      ],
       stack: "Coding agent · spec to implementation · used to build this very table",
       quest: "The Support Workspace",
       colour: "#ba68c8",

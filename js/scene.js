@@ -2,8 +2,22 @@ import * as THREE from "three";
 import { CSS3DRenderer, CSS3DObject } from "three/addons/renderers/CSS3DRenderer.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { plasticGrain, parchment, battleMap, agentScreen, agentFace, suitFabric, shirtFabric, scoreLabel } from "./textures.js";
+import {
+  plasticGrain,
+  parchment,
+  battleMap,
+  agentScreen,
+  agentFace,
+  suitFabric,
+  shirtFabric,
+  scoreLabel,
+  plaster,
+  dmScreenTables,
+  dmScreenArt,
+  screenFace,
+} from "./textures.js";
 import { createWatercolour } from "./watercolour.js";
+import { createRoom } from "./room.js";
 
 // The sheet is 860x1180 CSS px, laid flat on the table at this physical width.
 const SHEET_W = 0.34;
@@ -13,7 +27,7 @@ const SHEET_H = 1180 * SHEET_SCALE;
 const TABLE_Y = 0.76;
 const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
-export function createScene({ container, sheetRoot, agents, onEnter, onExit, onAgent }) {
+export function createScene({ container, sheetRoot, agentRoots, agents, onEnter, onExit, onAgent }) {
   const width = () => container.clientWidth;
   const height = () => container.clientHeight;
 
@@ -40,7 +54,7 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit, onA
 
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-  scene.environmentIntensity = 0.16;
+  scene.environmentIntensity = 0.26;
   pmrem.dispose();
 
   // ---------- Materials ----------
@@ -61,7 +75,7 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit, onA
     table: loadPBR("american_walnut_veneer", [1.4, 0.9]),
     tableEdge: loadPBR("american_walnut_veneer", [4, 0.4]),
     floor: loadPBR("herringbone_parquet", [2.2, 2.2]),
-    wall: loadPBR("concrete_wall_008", [3, 1.4]),
+    wall: plaster(),
     plastic: plasticGrain(),
     parchment: parchment(),
     map: battleMap(),
@@ -70,7 +84,9 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit, onA
   const N = (x, y = x) => new THREE.Vector2(x, y);
   const mat = {
     floor: new THREE.MeshStandardMaterial({ ...tex.floor, color: 0x8a7258, normalScale: N(0.35), roughness: 0.55, envMapIntensity: 0.7 }),
-    wall: new THREE.MeshStandardMaterial({ ...tex.wall, color: 0x6a7186, normalScale: N(0.3), envMapIntensity: 0.5 }),
+    // A warm grey rather than the blue-grey it was: the blue was what made the
+    // room read as a basement even before the lighting got involved.
+    wall: new THREE.MeshStandardMaterial({ ...tex.wall, color: 0xa79a86, normalScale: N(0.35), envMapIntensity: 0.75 }),
     wood: new THREE.MeshStandardMaterial({ ...tex.table, color: 0xb8855a, normalScale: N(0.5), envMapIntensity: 0.9 }),
     woodDark: new THREE.MeshStandardMaterial({ ...tex.tableEdge, color: 0x6b4a30, normalScale: N(0.4), envMapIntensity: 0.6 }),
     parchment: new THREE.MeshStandardMaterial({ ...tex.parchment, normalScale: N(0.4), envMapIntensity: 0.5, side: THREE.DoubleSide }),
@@ -97,11 +113,30 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit, onA
   floor.receiveShadow = true;
   scene.add(floor);
 
+  const WALL_Z = -2.1;
   const wall = new THREE.Mesh(new THREE.PlaneGeometry(14, 5), mat.wall);
-  wall.position.set(0, 2.5, -2.1);
+  wall.position.set(0, 2.5, WALL_Z);
   wall.receiveShadow = true;
   scene.add(wall);
-  box(14, 0.1, 0.02, mat.woodDark, 0, 0.05, -2.09, { cast: false });
+  box(14, 0.1, 0.02, mat.woodDark, 0, 0.05, WALL_Z + 0.01, { cast: false });
+  // A picture rail at the top of the poster band gives the wall a horizon; a
+  // blank five-metre plane behind the party is what read as institutional.
+  box(14, 0.03, 0.05, mat.woodDark, 0, 2.38, WALL_Z + 0.02, { cast: false });
+
+  // Side walls. Looking straight at the table you never see them, but the shot
+  // that frames a player at the end of the table looks along the room's axis,
+  // and without these it looks into an unlit void.
+  for (const s of [-1, 1]) {
+    const side = new THREE.Mesh(new THREE.PlaneGeometry(9.5, 5), mat.wall);
+    side.position.set(s * 4.6, 2.5, WALL_Z + 4.7);
+    side.rotation.y = -s * (Math.PI / 2);
+    side.receiveShadow = true;
+    scene.add(side);
+    box(0.02, 0.1, 9.5, mat.woodDark, s * 4.59, 0.05, WALL_Z + 4.7, { cast: false });
+  }
+
+  // ---------- Everything that makes it a room and not a set ----------
+  const room = createRoom(scene, { wallZ: WALL_Z });
 
   // ---------- Table ----------
   const TABLE_W = 2.1;
@@ -114,29 +149,52 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit, onA
   }
 
   // ---------- Battle map ----------
-  const mapMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.92, 0.72), mat.map);
+  // Smaller than it was: every player now has their own sheet in front of them,
+  // and the map has to leave room for four of them.
+  const mapMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.84, 0.6), mat.map);
   mapMesh.rotation.x = -Math.PI / 2;
-  mapMesh.position.set(0.12, TABLE_Y + 0.002, -0.08);
+  mapMesh.position.set(0.1, TABLE_Y + 0.002, -0.05);
   mapMesh.receiveShadow = true;
   scene.add(mapMesh);
 
-  // ---------- DM screen: three parchment panels, hinged, facing the players ----------
+  // ---------- DM screen: three panels, hinged, printed on both sides ----------
+  // A real screen carries artwork on the players' face and the tables the DM
+  // needs on their own. BoxGeometry takes one material per face in the order
+  // +X -X +Y -Y +Z -Z, so each panel gets six: plain stock on the edges, the
+  // dragon on +Z and the reference tables on -Z.
+  const PANEL_H = 0.3;
   const dmScreen = new THREE.Group();
-  dmScreen.position.set(-0.84, TABLE_Y, 0.44);
+  dmScreen.position.set(-0.78, TABLE_Y, 0.46);
+  dmScreen.rotation.y = Math.PI;
   scene.add(dmScreen);
-  const panel = (w, x, rotY) => {
-    const p = new THREE.Mesh(new THREE.BoxGeometry(w, 0.235, 0.008), mat.parchment);
-    p.position.set(x, 0.118, 0);
+
+  const printMat = (canvasEl) =>
+    new THREE.MeshStandardMaterial({ ...screenFace(canvasEl), normalScale: N(0.35), envMapIntensity: 0.45 });
+
+  const panel = (w, x, z, rotY, index) => {
+    // Height in pixels is derived from the panel's own aspect, so none of the
+    // three prints is stretched to fit a shape it was not drawn for.
+    const px = 512;
+    const py = Math.round((px * PANEL_H) / w);
+    const faces = [mat.parchment, mat.parchment, mat.parchment, mat.parchment];
+    faces.push(printMat(dmScreenArt(index, { w: px, h: py })));
+    faces.push(printMat(dmScreenTables(index, { w: px, h: py })));
+    const p = new THREE.Mesh(new THREE.BoxGeometry(w, PANEL_H, 0.009), faces);
+    p.position.set(x, PANEL_H / 2, z);
     p.rotation.y = rotY;
     p.castShadow = true;
     p.receiveShadow = true;
     dmScreen.add(p);
     return p;
   };
-  dmScreen.rotation.y = Math.PI; // the printed side faces the DM, the blank side the table
-  panel(0.24, -0.22, 0.5);
-  panel(0.28, 0, 0);
-  panel(0.24, 0.22, -0.5);
+  // The wings hinge back around the DM, so their inner edges meet the centre
+  // panel's corners exactly instead of intersecting it.
+  const HINGE = 0.5;
+  const wingX = 0.15 + (0.26 / 2) * Math.cos(HINGE);
+  const wingZ = -(0.26 / 2) * Math.sin(HINGE);
+  panel(0.26, -wingX, wingZ, -HINGE, 0);
+  panel(0.3, 0, 0, 0, 1);
+  panel(0.26, wingX, wingZ, HINGE, 2);
 
   // ---------- Character sheet, lying flat in front of the DM ----------
   const SHEET_POS = new THREE.Vector3(-0.3, TABLE_Y + 0.004, 0.36);
@@ -516,11 +574,15 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit, onA
     agentLights.push(faceGlow);
 
     // One invisible box per agent is a far cheaper and steadier click target than
-    // raycasting the two dozen meshes each figure is made of.
-    const hit = new THREE.Mesh(new THREE.BoxGeometry(0.72, 1.15, 0.62), hitMat);
-    hit.position.set(0, HIP_Y + 0.45, 0.04);
+    // raycasting the two dozen meshes each figure is made of. It stops at table
+    // height on purpose: a raycast ignores occlusion, so a box that reached down
+    // to the seat would sit invisibly behind the tabletop and swallow every click
+    // meant for the dice or the map in front of that player.
+    const hit = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.82, 0.62), hitMat);
+    hit.position.set(0, HIP_Y + 0.71, 0.04);
     hit.visible = false;
     hit.userData.agent = a;
+    hit.userData.index = party.indexOf(a);
     hit.userData.seat = { x, z, rotY };
     g.add(hit);
     agentHits.push(hit);
@@ -529,12 +591,13 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit, onA
   };
 
   // Seats around the table, the way a real session sits: the DM is where the camera
-  // is, two players opposite, one at each end. Each laptop sits in front of its seat.
+  // is, two players opposite, one at each end. In front of each seat lies that
+  // player's character sheet, with their laptop pushed off to one side.
   const SEATS = [
-    { lap: [-0.44, -0.52], rot: 0.12, fig: [-0.44, -1.06], striped: false },
-    { lap: [0.44, -0.52], rot: -0.12, fig: [0.44, -1.06], striped: true },
-    { lap: [-0.84, 0.0], rot: Math.PI / 2, fig: [-1.4, 0.0], striped: true },
-    { lap: [0.84, 0.0], rot: -Math.PI / 2, fig: [1.4, 0.0], striped: false },
+    { fig: [-0.46, -1.08], rot: 0.1, sheet: [-0.46, -0.49], lap: [-0.78, -0.5], striped: false },
+    { fig: [0.46, -1.08], rot: -0.1, sheet: [0.46, -0.49], lap: [0.78, -0.5], striped: true },
+    { fig: [-1.42, 0.0], rot: Math.PI / 2, sheet: [-0.8, 0.0], lap: [-0.8, -0.32], striped: true },
+    { fig: [1.42, 0.0], rot: -Math.PI / 2, sheet: [0.8, 0.0], lap: [0.8, -0.32], striped: false },
   ];
 
   party.slice(0, 4).forEach((a, i) => {
@@ -573,6 +636,86 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit, onA
   // The figures sit behind their laptops, on the far side of the table.
   party.slice(0, 4).forEach((a, i) => makeAgent(a, SEATS[i].fig[0], SEATS[i].fig[1], SEATS[i].rot, { striped: SEATS[i].striped }));
 
+  // ---------- Each player's character sheet ----------
+  // The sheet lies face-up on the table in front of its player, the way a sheet
+  // does at a real table. Clicking that player lifts it: it rises off the table,
+  // turns to face you and grows, because 22 cm of paper seen at an angle is a
+  // prop, and the whole point is that you can read what the agent actually is.
+  const AS_W = 480; // the sheet's own CSS pixel size
+  const AS_H = 740;
+  const AS_FLAT = 0.22 / AS_W; // lying on the table
+  const AS_RAISED = 0.42 / AS_W; // held up in front of you
+
+  const agentSheets = [];
+  const agentSheetHits = [];
+
+  party.slice(0, 4).forEach((a, i) => {
+    const root = agentRoots?.[i];
+    if (!root) return;
+    const seat = SEATS[i];
+    const [fx, fz] = seat.fig;
+    const rot = seat.rot;
+    // The direction the player faces, and their right hand side. Every pose
+    // below is written in those two vectors, so the same code works for a
+    // player sitting across the table and one sitting at the end of it.
+    const fwd = new THREE.Vector3(Math.sin(rot), 0, Math.cos(rot));
+    const right = new THREE.Vector3(Math.cos(rot), 0, -Math.sin(rot));
+
+    const flatPos = new THREE.Vector3(seat.sheet[0], TABLE_Y + 0.004, seat.sheet[1]);
+    // Euler order YXZ means the yaw is applied first and the lay-flat tilt second,
+    // which is what keeps the text the right way up for a reader on the table side
+    // whichever way round the chair is.
+    const flatQuat = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, rot, 0, "YXZ"));
+
+    const raisedPos = new THREE.Vector3(fx, 1.14, fz).addScaledVector(fwd, 0.72).addScaledVector(right, 0.4);
+    const raisedQuat = new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.14, rot, 0, "YXZ"));
+
+    const obj = new CSS3DObject(root);
+    obj.position.copy(flatPos);
+    obj.quaternion.copy(flatQuat);
+    obj.scale.setScalar(AS_FLAT);
+    scene.add(obj);
+
+    const cut = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat.cutout);
+    cut.userData.agent = a;
+    cut.userData.index = i;
+    scene.add(cut);
+
+    // the paper's own edge, so it is a physical page and not a floating rectangle
+    const backing = new THREE.Mesh(
+      new THREE.PlaneGeometry(1, 1),
+      new THREE.MeshStandardMaterial({ color: 0xd9cdb2, roughness: 0.9, envMapIntensity: 0.4, side: THREE.DoubleSide })
+    );
+    backing.receiveShadow = true;
+    scene.add(backing);
+
+    agentSheets.push({ index: i, obj, cut, backing, flatPos, flatQuat, raisedPos, raisedQuat, k: 0, target: 0 });
+    agentSheetHits.push(cut);
+  });
+
+  const SHEET_NORMAL = new THREE.Vector3();
+  const updateAgentSheets = (dt) => {
+    for (const s of agentSheets) {
+      s.k = THREE.MathUtils.damp(s.k, s.target, 6.5, dt);
+      s.obj.position.lerpVectors(s.flatPos, s.raisedPos, s.k);
+      s.obj.quaternion.slerpQuaternions(s.flatQuat, s.raisedQuat, s.k);
+      const sc = THREE.MathUtils.lerp(AS_FLAT, AS_RAISED, s.k);
+      s.obj.scale.setScalar(sc);
+
+      s.cut.position.copy(s.obj.position);
+      s.cut.quaternion.copy(s.obj.quaternion);
+      s.cut.scale.set(AS_W * sc, AS_H * sc, 1);
+
+      // Sit the backing a fraction behind the page along its own normal, derived
+      // from the quaternion rather than the matrix — the matrix has not been
+      // recomputed yet at this point in the frame.
+      SHEET_NORMAL.set(0, 0, 1).applyQuaternion(s.obj.quaternion);
+      s.backing.position.copy(s.obj.position).addScaledVector(SHEET_NORMAL, -0.0015);
+      s.backing.quaternion.copy(s.obj.quaternion);
+      s.backing.scale.set(AS_W * sc + 0.012, AS_H * sc + 0.012, 1);
+    }
+  };
+
   // ---------- Furniture ----------
   const gltfLoader = new GLTFLoader();
   const addModel = (name, { position, rotationY = 0, scale = 1, tint = null }) =>
@@ -595,21 +738,21 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit, onA
       })
       .catch((err) => console.warn(`model "${name}" not loaded:`, err));
 
-  addModel("modern_arm_chair_01", { position: [-2.55, 0, 0.95], rotationY: 0.95, tint: 0.85 });
-  addModel("potted_plant_04", { position: [-0.92, TABLE_Y, -0.52], rotationY: -0.6 });
-  addModel("alarm_clock_01", { position: [0.72, TABLE_Y, 0.38], rotationY: -2.5 });
+  addModel("modern_arm_chair_01", { position: [-3.45, 0, -1.62], rotationY: 1.3, tint: 0.85 });
+  addModel("potted_plant_04", { position: [0.9, TABLE_Y, 0.46], rotationY: -0.6 });
+  addModel("alarm_clock_01", { position: [0.26, TABLE_Y, 0.5], rotationY: -2.5 });
 
   // ---------- Lighting ----------
   // A pendant lamp over the table is the key light: it puts the map and the sheet
   // in a warm pool and lets the room fall away, the way a real table looks at night.
   const pendant = new THREE.Group();
-  pendant.position.set(0, 1.78, -0.05);
+  pendant.position.set(0, 1.95, -0.05);
   scene.add(pendant);
-  const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.9, 8), mat.dark);
-  cord.position.y = 0.45;
+  const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.7, 8), mat.dark);
+  cord.position.y = 0.35;
   pendant.add(cord);
   const shade = new THREE.Mesh(
-    new THREE.ConeGeometry(0.22, 0.17, 28, 1, true),
+    new THREE.ConeGeometry(0.19, 0.15, 28, 1, true),
     new THREE.MeshStandardMaterial({ color: 0x24262c, roughness: 0.5, metalness: 0.5, side: THREE.DoubleSide, envMapIntensity: 1.1 })
   );
   shade.castShadow = true;
@@ -619,7 +762,7 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit, onA
   pendant.add(bulb);
 
   const keyLight = new THREE.PointLight(0xffc489, 6.2, 4.2, 2);
-  keyLight.position.set(0, 1.71, -0.05);
+  keyLight.position.set(0, 1.88, -0.05);
   keyLight.castShadow = true;
   keyLight.shadow.mapSize.set(1024, 1024);
   keyLight.shadow.bias = -0.002;
@@ -633,8 +776,11 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit, onA
   scene.add(rim);
   scene.add(rim.target);
 
-  scene.add(new THREE.HemisphereLight(0x3a3550, 0x0b0a09, 0.18));
-  const fill = new THREE.DirectionalLight(0x8090c0, 0.12);
+  // The ambient pair is warm now rather than blue. The room stays dark — the
+  // pendant is still far and away the brightest thing — but dark and warm reads
+  // as a evening at home, where dark and blue read as a basement.
+  scene.add(new THREE.HemisphereLight(0x53453c, 0x14100c, 0.32));
+  const fill = new THREE.DirectionalLight(0xb09878, 0.16);
   fill.position.set(2, 3, 3);
   scene.add(fill);
 
@@ -666,13 +812,16 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit, onA
   const camUp = UP_IDLE.clone();
 
   const lookAt = new THREE.Vector3();
-  const idleTarget = new THREE.Vector3(-0.05, TABLE_Y + 0.1, -0.05);
+  // Sat a little higher and further back than before, so the fire, the sofa and
+  // the wall all fall inside the frame. The table is still the subject; the room
+  // is what tells you the table is somewhere.
+  const idleTarget = new THREE.Vector3(-0.05, TABLE_Y + 0.2, -0.05);
   const pointer = { x: 0, y: 0 };
 
   const idlePose = (t, out) => {
     const angle = Math.sin(t * 0.1) * 0.3 + pointer.x * 0.16;
-    const radius = camera.aspect > 1.4 ? 2.35 : 2.35 * (1.4 / camera.aspect);
-    out.pos.set(Math.sin(angle) * radius, 1.5 + pointer.y * 0.1, Math.cos(angle) * radius + 0.25);
+    const radius = camera.aspect > 1.4 ? 2.5 : 2.5 * (1.4 / camera.aspect);
+    out.pos.set(Math.sin(angle) * radius, 1.62 + pointer.y * 0.1, Math.cos(angle) * radius + 0.25);
     out.target.copy(idleTarget);
     return out;
   };
@@ -688,15 +837,20 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit, onA
     return out;
   };
 
-  // Framing one agent: stand off along the direction they face, at head height, so
-  // the shot reads as looking across the table at that player.
+  // Framing one agent: stand off along the direction they face, high enough to
+  // take in both the player and the sheet they have just raised. The aim point
+  // sits between the two and slightly to their right, which pushes the player
+  // into the left of frame and leaves the right for the sheet.
   let focusedAgent = null;
+  const AGENT_F = new THREE.Vector3();
+  const AGENT_R = new THREE.Vector3();
   const agentPose = (out) => {
     const { x, z, rotY } = focusedAgent.userData.seat;
-    const headY = 0.5 + 0.69;
-    const d = camera.aspect > 1.4 ? 1.12 : 1.12 * (1.4 / camera.aspect);
-    out.pos.set(x + Math.sin(rotY) * d, headY + 0.16, z + Math.cos(rotY) * d);
-    out.target.set(x, headY - 0.08, z);
+    AGENT_F.set(Math.sin(rotY), 0, Math.cos(rotY));
+    AGENT_R.set(Math.cos(rotY), 0, -Math.sin(rotY));
+    const d = camera.aspect > 1.4 ? 1.75 : 1.75 * (1.4 / camera.aspect);
+    out.pos.set(x, 1.4, z).addScaledVector(AGENT_F, d).addScaledVector(AGENT_R, 0.1);
+    out.target.set(x, 1.12, z).addScaledVector(AGENT_F, 0.6).addScaledVector(AGENT_R, 0.24);
     return out;
   };
 
@@ -732,6 +886,7 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit, onA
   function enterAgent(hit) {
     if (mode !== "idle") return;
     focusedAgent = hit;
+    for (const s of agentSheets) s.target = s.index === hit.userData.index ? 1 : 0;
     from.pos.copy(camera.position);
     from.target.copy(lookAt);
     from.up.copy(camUp);
@@ -742,6 +897,7 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit, onA
 
   function exit() {
     if (mode === "idle" || mode === "toIdle") return;
+    for (const s of agentSheets) s.target = 0;
     from.pos.copy(camera.position);
     from.target.copy(lookAt);
     from.up.copy(camUp);
@@ -763,8 +919,15 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit, onA
     aim(e);
     return raycaster.intersectObject(sheetMesh, false).length > 0;
   };
+  // A player's own sheet opens that player, so the paper in front of them is a
+  // target too, not just the figure behind it.
   const hitAgent = (e) => {
     aim(e);
+    const onSheet = raycaster.intersectObjects(agentSheetHits, false);
+    if (onSheet.length) {
+      const i = onSheet[0].object.userData.index;
+      return agentHits.find((h) => h.userData.index === i) ?? null;
+    }
     const hits = raycaster.intersectObjects(agentHits, false);
     return hits.length ? hits[0].object : null;
   };
@@ -804,8 +967,15 @@ export function createScene({ container, sheetRoot, agents, onEnter, onExit, onA
 
   // ---------- Loop ----------
   const clock = new THREE.Clock();
+  let prevT = 0;
   renderer.setAnimationLoop(() => {
     const t = clock.getElapsedTime();
+    // Clamped, because a backgrounded tab returns with a delta of several
+    // seconds and every damped value would snap.
+    const dt = Math.min(0.05, t - prevT);
+    prevT = t;
+    room.update(t);
+    updateAgentSheets(dt);
 
     const p = dust.geometry.attributes.position;
     for (let i = 0; i < DUST; i++) {
