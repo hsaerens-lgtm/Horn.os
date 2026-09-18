@@ -1312,6 +1312,50 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
   scene.add(playerKey);
   scene.add(playerKey.target);
 
+  /* ---------------- Moonlight through the left window ----------------
+   *
+   * The last piece of the shadow problem, and the one that took a test to see.
+   *
+   * Tracing every light through every object to where its shadow lands, and
+   * then asking whether the camera can see that place, sorts the failures into
+   * three kinds. The pendant scored 15 HIDDEN, 0 too weak, 0 readable: its
+   * shadows are not missing and they are not faint, they fall ten centimetres
+   * behind each player, on that player's own chair, where the player's body is
+   * between them and the camera. A light almost overhead puts the shadow almost
+   * underneath, and the thing casting it is exactly what hides it.
+   *
+   * So the rule, measured rather than assumed: a shadow reads only when it is
+   * thrown *sideways* relative to the camera's line of sight through its
+   * caster. Overhead hides it underneath. Behind hides it behind. From the
+   * camera's own side hides it behind too — which is why the players' key, the
+   * hearth aimed into the room and a wider pendant cone all came to nothing.
+   *
+   * This is aligned with the left-hand window, so it throws to the right and
+   * forwards: both of those are lateral to the view. It is directional rather
+   * than a point, because a point light falls off as the inverse square and at
+   * three metres from the table contributes about a twelfth of what it does
+   * near it — the shadows land in the far half of the room where there is
+   * almost nothing left to block. A directional light has no distance term at
+   * all, so a shadow three metres away is exactly as dark as one three
+   * centimetres away.
+   */
+  const moon = new THREE.DirectionalLight(0xa8c6f0, 2.2);
+  moon.position.set(-3.5, 2.9, -2.6);
+  moon.target.position.set(0.3, 0.3, 0.6);
+  moon.castShadow = true;
+  moon.shadow.mapSize.set(2048, 2048);
+  moon.shadow.camera.left = -4.5;
+  moon.shadow.camera.right = 4.5;
+  moon.shadow.camera.top = 3.6;
+  moon.shadow.camera.bottom = -2.4;
+  moon.shadow.camera.near = 0.2;
+  moon.shadow.camera.far = 14;
+  moon.shadow.bias = -0.0012;
+  moon.shadow.normalBias = 0.03;
+  moon.shadow.camera.updateProjectionMatrix();
+  scene.add(moon);
+  scene.add(moon.target);
+
   // Rim light from behind the party, so the figures read against the dark wall
   // instead of dissolving into it.
   const rim = new THREE.DirectionalLight(0x9fb4d8, 0.12);
@@ -1635,7 +1679,13 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
     }
   };
 
-  Promise.all(pending).then(() => {
+  // allSettled, not all. One asset failing to fetch — a flaky connection, a
+  // texture that 404s — used to reject this promise, and then the occlusion
+  // never baked and the room shipped with a flat floor. The bake is not worth
+  // skipping because a chair lost a texture. Found by a test harness that hit
+  // the dev server hard enough to make it drop a request, which is exactly the
+  // kind of thing a browser on somebody's train journey will do too.
+  Promise.allSettled(pending).then(() => {
     tidy();
     bakeOcclusion();
   });
@@ -1750,5 +1800,15 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
   // `celebrate` and `wreck` are returned so a natural 20 and a natural 1 can be
   // fired without waiting one in twenty rolls for the dice to produce one, which
   // is how both were built and tested.
-  return { enter, exit, enterBoard, celebrate, wreck, isFocused: () => mode === "focused", ready: Promise.all(pending) };
+  return {
+    enter,
+    exit,
+    enterBoard,
+    celebrate,
+    wreck,
+    isFocused: () => mode === "focused",
+    // Settled rather than fulfilled, for the same reason: a missing armchair is
+    // a missing armchair, not a reason to drop the whole page to the flat sheet.
+    ready: Promise.allSettled(pending),
+  };
 }

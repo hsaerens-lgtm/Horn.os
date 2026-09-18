@@ -98,9 +98,11 @@ npm run shots          # against the local server on :4330
 npm run shots:live     # against GitHub Pages
 ```
 
-`test/lights.mjs` and `test/lamp.mjs` are the bench that produced the numbers
-below: they try whole light rigs and head positions rather than parameters, and
-score each one. Nothing in `test/` ships — the page is still static files with no
+`test/rays.mjs` traces every light through every object to where its shadow lands,
+and `test/visible.mjs` adds the question that mattered most: whether the camera can
+see that place. `test/lights.mjs`, `test/lamp.mjs` and `test/cone.mjs` are the
+bench — they try whole rigs, head positions and cone widths rather than parameters,
+and score each one. Nothing in `test/` ships — the page is still static files with no
 build step.
 
 ## Why there were no shadows
@@ -144,43 +146,71 @@ than dark.
 ### And then it still was not enough
 
 Reported again, with a screenshot, as having no shadows — and the screenshot was
-right. Deepening the pendant's shadow made the dark parts darker without making
-any shadow *readable*, because the problem was never depth. It was position.
-Shadow length on a surface is
+right. Deepening the pendant's shadow made the dark parts darker without making any
+shadow *readable*, because the problem was never depth. It was position.
 
-```
-    object height  x  its distance from the light axis
-    -------------------------------------------------
-         light height above that surface
-```
+`test/rays.mjs` settles it the way the obvious method says: from each light, trace a
+ray through each object, and the first surface past it is where its shadow lands.
+Then ask of that place, in order, because the first "no" is the answer — is it
+inside the light's cone at all; is it inside the shadow camera's frustum; does the
+pixel there actually go darker.
 
-and the pendant hangs 1.16 m above the tabletop. A four-centimetre die sixty
-centimetres off the axis throws two centimetres of shadow, straight down,
-underneath the die that is already hiding it. The shadow is the right length and
-it is in the wrong place, and no map resolution, bias or penumbra changes that.
+Every row came back the same: **OUTSIDE CONE.** The pendant's half-angle is 56° and
+the landing points were at 67-86°. A spot lights a circle of radius `height x
+tan(angle)`, 2.8 m here, and a player sitting 1.2 m off the axis throws its shadow
+out to 2.5-4 m, past the edge. Outside the circle there is no light to block.
 
-So the table has a clamp lamp on its left edge now, leaning in over the DM's
-screen, with its head 28 cm above the tabletop. The same die gets a shadow four
-times as long, thrown sideways into open tabletop.
+Widening the cone fixes the geometry and not the picture. At 1.4 rad, 24 of 24
+shadows land inside the lit circle and exactly **one** darkens a pixel — a point
+light falls off as the inverse square, so three metres out it contributes about a
+twelfth of what it does over the table, and the ambient swamps the rest.
 
-Seven rigs were tried and scored on a fixed shot of the table, then seven head
-positions for the winner. Pixels darkened by more than 25%:
+`test/visible.mjs` then found what none of the earlier measurements could see. It
+adds one question, *can the camera see the place where the shadow lands*, and the
+tally settles it:
 
-| | table shot | players shot |
-|---|---|---|
-| before | 0.06% | 0.00% |
-| after | **2.63%** | **2.61%** |
+| | hidden | too weak | reads |
+|---|---|---|---|
+| pendant | **15** | 0 | 0 |
+| directional through the window | 12 | 1 | 1 |
 
-Two things the bench found that guessing would not have:
+The pendant's shadows are neither missing nor faint. They fall **ten centimetres
+behind each player, on that player's own chair**, where the player's body is between
+them and the camera. A light almost overhead puts the shadow almost underneath, and
+the thing casting it is exactly what hides it.
 
-- **Lowering the pendant makes it worse.** It is the obvious thing to try and it
-  narrows the cone faster than it shortens the throw: readable shadow goes from
-  3.4% to 2.1%, and with a harder penumbra as well, to 0.6%.
-- **The result is sharply positional.** Moving the lamp head 16 cm along z, from
-  0.42 to 0.26, takes the deep fraction from 1.7% to zero. It has to sit where
-  its cone rakes the length of the table rather than across a corner of it. The
-  first version built into the scene sat 20 cm from the bench's position and
-  scored 0.06% — the same as having no lamp at all.
+**The rule, measured rather than assumed: a shadow reads only when it is thrown
+sideways relative to the camera's line of sight through its caster.** Overhead hides
+it underneath, behind hides it behind, and the camera's own side hides it behind too
+— which is why the players' key light, the hearth aimed into the room and a wider
+pendant cone all came to nothing, and why a lamp on the left edge throwing right
+across the table worked immediately.
+
+So there are two new lights and both are lateral:
+
+- **A clamp lamp on the table's left edge**, head 28 cm above the tabletop. Seven
+  rigs and then seven head positions were scored on a fixed shot. Lowering the
+  pendant instead — the obvious thing to try — makes it worse, narrowing the cone
+  faster than it shortens the throw. And the position is sharp: 16 cm along z, from
+  0.42 to 0.26, takes the deep fraction from 1.7% to zero.
+- **A directional light aligned with the left window.** Directional and not a point,
+  precisely because of the inverse-square problem above: no distance term, so a
+  shadow three metres away is as dark as one three centimetres away. It throws right
+  and forwards, both lateral to the view.
+
+Pixels darkened by more than 25%, per fixed shot:
+
+| | before | + lamp | + window |
+|---|---|---|---|
+| wide | 0.07% | 0.56% | **1.30%** |
+| table | 0.06% | 2.63% | 2.65% |
+| players | 0.00% | 2.61% | 2.61% |
+| floor | 0.07% | 0.21% | **0.79%** |
+
+What this does not do is give everything a shadow. Twelve of eighteen traced shadows
+are still hidden even with the window light, and that is inherent — the room is
+dense and most shadows land behind some other piece of furniture. The claim is only
+that the ones which *can* be seen now are.
 
 ## What the players actually needed
 
