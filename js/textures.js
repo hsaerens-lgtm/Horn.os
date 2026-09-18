@@ -1640,12 +1640,33 @@ export function wallpaper({ size = 512, seed = 88, repeat = [12, 4.5] } = {}) {
  * the figure is about six pixels of text on screen. It is a cartoon table, and
  * a cartoon lets you draw the bubble too big.
  */
-export function speechBubble(text, name, colour, { w = 640, h = 260 } = {}) {
+/**
+ * The proportions of a bubble, so the sprite that carries it is not stretched.
+ * Exported rather than repeated: chatter.js needs the same number.
+ */
+export const BUBBLE = { w: 680, h: 320 };
+
+/**
+ * One speech bubble.
+ *
+ * The text is wrapped to the bubble, at the largest size that fits. The first
+ * version of this trusted the line breaks written into content.js and drew each
+ * row centred without ever measuring it — seventeen of the forty lines ran past
+ * the outline, the worst of them by two hundred pixels, which is what made them
+ * unreadable. Nothing is drawn now that has not been measured first.
+ *
+ * Authored breaks are kept as hard breaks: they are the comic timing, the pause
+ * between the setup and the punchline. Wrapping happens inside them.
+ */
+export function speechBubble(text, name, colour, { w = BUBBLE.w, h = BUBBLE.h } = {}) {
   const rand = rng(text.length * 31 + name.length);
   const [c, ctx] = canvas(w, h);
-  const PAD = 26;
-  const TAIL = 30;
+  const PAD = 32;
+  const TAIL = 34;
   const bodyH = h - TAIL;
+  const maxW = w - PAD * 2;
+  const TOP = 84;               // under the name
+  const room = bodyH - 26 - TOP; // vertical space the text has
 
   const round = (x, y, bw, bh, r) => {
     ctx.beginPath();
@@ -1665,7 +1686,7 @@ export function speechBubble(text, name, colour, { w = 640, h = 260 } = {}) {
   ctx.fillStyle = "#f1e8d2";
   ctx.strokeStyle = colour;
   ctx.lineWidth = 7;
-  round(6, 6, w - 12, bodyH - 6, 26);
+  round(6, 6, w - 12, bodyH - 6, 28);
   ctx.fill();
   ctx.stroke();
 
@@ -1684,16 +1705,189 @@ export function speechBubble(text, name, colour, { w = 640, h = 260 } = {}) {
 
   ctx.textAlign = "center";
   ctx.fillStyle = colour;
-  ctx.font = "bold 26px Georgia, 'Times New Roman', serif";
-  ctx.fillText(name, w / 2, 48);
+  ctx.font = "bold 27px Georgia, 'Times New Roman', serif";
+  ctx.fillText(name, w / 2, 52);
+
+  const wrap = (size) => {
+    ctx.font = `italic ${size}px Georgia, 'Times New Roman', serif`;
+    const out = [];
+    for (const hard of String(text).split("\n")) {
+      let line = "";
+      for (const word of hard.split(/\s+/)) {
+        const test = line ? line + " " + word : word;
+        if (line && ctx.measureText(test).width > maxW) {
+          out.push(line);
+          line = word;
+        } else {
+          line = test;
+        }
+      }
+      if (line) out.push(line);
+    }
+    return out;
+  };
+
+  // The largest size that fits both ways. It stops at 26 rather than shrinking
+  // for ever: a line that still does not fit at 26 is too long to be a joke,
+  // and the right fix for that one is to write it shorter.
+  let rows = [];
+  let lh = 0;
+  for (const size of [42, 38, 34, 30, 26]) {
+    rows = wrap(size);
+    lh = Math.round(size * 1.22);
+    if (rows.length * lh <= room && rows.every((r) => ctx.measureText(r).width <= maxW)) break;
+  }
 
   ctx.fillStyle = "#33240f";
-  ctx.font = "italic 44px Georgia, 'Times New Roman', serif";
-  const rows = String(text).split("\n");
-  const top = bodyH / 2 - (rows.length - 1) * 27 + 14;
-  rows.forEach((row, i) => ctx.fillText(row, w / 2, top + i * 54));
+  const first = TOP + (room - rows.length * lh) / 2 + lh * 0.76;
+  rows.forEach((row, i) => ctx.fillText(row, w / 2, first + i * lh));
 
   speckle(ctx, Math.max(w, h), 900, rand, 0.035, false);
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+/* ------------------------------------------------------------------ *
+ *  What is on the other side of the glass
+ *
+ *  The clock on the chimney breast reads twenty past eleven and the fire
+ *  is lit, so this cannot be daylight. It is the blue hour instead: the
+ *  sky still holds light at the horizon while the street below has gone
+ *  to silhouette. That is the useful version anyway — a cool window
+ *  against a warm hearth is the contrast that makes an interior read as
+ *  a real place rather than a lit box, and daylight would just wash the
+ *  fire out.
+ *
+ *  `shift` slides the skyline sideways. Two windows seven metres apart
+ *  on the same wall look onto the same street from different points, so
+ *  they get the same generator and different offsets rather than two
+ *  unrelated views.
+ * ------------------------------------------------------------------ */
+export function nightView({ w = 512, h = 560, seed = 24, shift = 0, moon = false } = {}) {
+  const [c, ctx] = canvas(w, h);
+  const rand = rng(seed);
+  const HORIZON = h * 0.66;
+
+  const sky = ctx.createLinearGradient(0, 0, 0, HORIZON);
+  sky.addColorStop(0, "#111c33");
+  sky.addColorStop(0.42, "#22375c");
+  sky.addColorStop(0.74, "#3c5c80");
+  sky.addColorStop(0.93, "#7d8aa0");
+  sky.addColorStop(1, "#b09a86"); // the last of the sun, just above the roofline
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, w, HORIZON + 2);
+
+  // Stars only in the top third: any lower and they sit in sky that is still
+  // bright enough to drown them, which reads as dirt on the glass.
+  for (let i = 0; i < 90; i++) {
+    const y = rand() * HORIZON * 0.55;
+    const a = (1 - y / (HORIZON * 0.55)) * (0.25 + rand() * 0.6);
+    ctx.fillStyle = `rgba(226,236,255,${a.toFixed(3)})`;
+    const r = rand() < 0.12 ? 1.5 : 0.9;
+    ctx.beginPath();
+    ctx.arc(rand() * w, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  if (moon) {
+    const mx = w * 0.72;
+    const my = h * 0.16;
+    const halo = ctx.createRadialGradient(mx, my, 4, mx, my, 74);
+    halo.addColorStop(0, "rgba(233,240,255,0.55)");
+    halo.addColorStop(1, "rgba(233,240,255,0)");
+    ctx.fillStyle = halo;
+    ctx.beginPath();
+    ctx.arc(mx, my, 74, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#eef3ff";
+    ctx.beginPath();
+    ctx.arc(mx, my, 15, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // A few streaks of cloud, lit from underneath by the city.
+  for (let i = 0; i < 7; i++) {
+    const y = HORIZON * (0.18 + rand() * 0.66);
+    const cw = w * (0.3 + rand() * 0.6);
+    const cx = rand() * w;
+    const g = ctx.createLinearGradient(cx - cw / 2, 0, cx + cw / 2, 0);
+    g.addColorStop(0, "rgba(150,168,196,0)");
+    g.addColorStop(0.5, `rgba(150,168,196,${(0.06 + rand() * 0.12).toFixed(3)})`);
+    g.addColorStop(1, "rgba(150,168,196,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(cx - cw / 2, y, cw, 6 + rand() * 14);
+  }
+
+  /* The roofline. Amsterdam, because that is where the desk this was built
+     at is: stepped and bell gables rather than flat parapets. */
+  const ROOF = "#0b1019";
+  const gable = (x, bw, top) => {
+    ctx.fillStyle = ROOF;
+    ctx.beginPath();
+    ctx.moveTo(x, h);
+    ctx.lineTo(x, top + 30);
+    const style = rand();
+    if (style < 0.42) {
+      // stepped
+      const steps = 3 + Math.floor(rand() * 2);
+      for (let s = 0; s < steps; s++) {
+        const sx = x + (bw / 2) * ((s + 1) / steps) * 0.82;
+        const sy = top + 30 - ((top + 30 - top) * 0 + 30 * (s + 1)) / steps;
+        ctx.lineTo(sx - bw * 0.06, sy);
+        ctx.lineTo(sx, sy);
+      }
+      ctx.lineTo(x + bw / 2, top);
+      ctx.lineTo(x + bw / 2, top);
+      for (let s = steps - 1; s >= 0; s--) {
+        const sx = x + bw - (bw / 2) * ((s + 1) / steps) * 0.82;
+        const sy = top + 30 - (30 * (s + 1)) / steps;
+        ctx.lineTo(sx, sy);
+        ctx.lineTo(sx + bw * 0.06, sy);
+      }
+    } else if (style < 0.75) {
+      // bell
+      ctx.bezierCurveTo(x, top + 4, x + bw * 0.34, top, x + bw / 2, top);
+      ctx.bezierCurveTo(x + bw * 0.66, top, x + bw, top + 4, x + bw, top + 30);
+    } else {
+      // plain pitched
+      ctx.lineTo(x + bw / 2, top);
+      ctx.lineTo(x + bw, top + 30);
+    }
+    ctx.lineTo(x + bw, h);
+    ctx.closePath();
+    ctx.fill();
+
+    // Lit windows across the street. Warm, and only a few: a facade where
+    // every window is on reads as an office block.
+    const cols = Math.max(2, Math.round(bw / 34));
+    for (let r = 0; r < 4; r++) {
+      for (let k = 0; k < cols; k++) {
+        if (rand() > 0.3) continue;
+        const wx = x + bw * ((k + 0.5) / cols) - 6;
+        const wy = top + 56 + r * 40;
+        if (wy > h - 16) continue;
+        ctx.fillStyle = rand() < 0.22 ? "rgba(150,196,236,0.72)" : "rgba(255,196,110,0.82)";
+        ctx.fillRect(wx, wy, 12, 20);
+      }
+    }
+  };
+
+  let x = -60 + ((shift % 90) + 90) % 90;
+  while (x < w + 40) {
+    const bw = 44 + rand() * 62;
+    gable(x, bw, HORIZON - 34 - rand() * 78);
+    x += bw + 2 + rand() * 5;
+  }
+
+  // Sodium haze rising off the street, which is what actually sells a city
+  // at night — the silhouette alone reads as a cut-out.
+  const haze = ctx.createLinearGradient(0, h, 0, h * 0.72);
+  haze.addColorStop(0, "rgba(255,168,92,0.26)");
+  haze.addColorStop(1, "rgba(255,168,92,0)");
+  ctx.fillStyle = haze;
+  ctx.fillRect(0, h * 0.72, w, h * 0.28);
 
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;

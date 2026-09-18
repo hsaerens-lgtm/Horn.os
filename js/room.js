@@ -10,11 +10,30 @@
 // pendant over the table — the table has to stay the brightest thing in frame.
 
 import * as THREE from "three";
-import { poster, brick, weave, tvScreen, flame } from "./textures.js";
+import { poster, brick, weave, tvScreen, flame, nightView } from "./textures.js";
 import { roundedBox } from "./shapes.js";
 import { mergeParts, at } from "./merge.js";
+import { plant } from "./plants.js";
 
 const N = (x, y = x) => new THREE.Vector2(x, y);
+
+/**
+ * Where the two openings are, in wall coordinates: centre and size.
+ *
+ * Exported because the wall itself is built in scene.js and has to be cut
+ * around them — a window is a hole in a wall or it is a poster of a window.
+ *
+ * The x positions are not a composition choice, they are what is left. Reading
+ * the back wall from the left: bookcase, chimney breast, five posters,
+ * dartboard, television. The only clear runs are outside all of that, so the
+ * windows flank the room rather than sitting behind the party. The head stops
+ * just under the picture rail at 2.38, and the sill clears the top of the
+ * bookcase that stands under the left one.
+ */
+export const WINDOWS = [
+  { x: -3.52, y: 1.8, w: 1.12, h: 0.96 },
+  { x: 3.52, y: 1.8, w: 1.12, h: 0.96 },
+];
 
 export function createRoom(scene, { wallZ = -2.1 } = {}) {
   const group = new THREE.Group();
@@ -334,7 +353,7 @@ export function createRoom(scene, { wallZ = -2.1 } = {}) {
 
   // A bookcase in the corner past the hearth.
   const bookcase = new THREE.Group();
-  bookcase.position.set(-3.3, 0, wallZ + 0.17);
+  bookcase.position.set(-3.52, 0, wallZ + 0.17);  // directly under the left window
   bookcase.rotation.y = 0.07;
   group.add(bookcase);
   add(B(0.92, 0.04, 0.32), shelfMat, 0, 1.14, 0, { parent: bookcase });
@@ -403,7 +422,7 @@ export function createRoom(scene, { wallZ = -2.1 } = {}) {
 
   // A dartboard beside the television, two darts still in it.
   const darts = new THREE.Group();
-  darts.position.set(2.62, 1.76, wallZ + 0.02);
+  darts.position.set(2.6, 1.76, wallZ + 0.02);
   group.add(darts);
   add(new THREE.CylinderGeometry(0.24, 0.24, 0.045, 28), mat.frame, 0, 0, 0, { parent: darts }).rotation.x = Math.PI / 2;
   // The four rings differ only in colour, so they bake into one mesh with a
@@ -503,6 +522,177 @@ export function createRoom(scene, { wallZ = -2.1 } = {}) {
     );
   }
 
+
+  /* ------------------------------------------------------------------ *
+   *  Windows
+   *
+   *  Two of them, flanking everything else on the back wall — which is
+   *  where they fit, the middle three metres being fully spoken for by
+   *  the chimney breast and the posters. They swing in and out of frame
+   *  as the idle camera sweeps; most of the time what you see of them is
+   *  the cool light they throw, which is the half that matters. A warm
+   *  interior against a cold exterior is the oldest trick for making a
+   *  room read as a place rather than a lit box.
+   *
+   *  They are real openings, not paintings: the wall in scene.js is a
+   *  shape with these two rectangles cut out of it, so there is a jamb
+   *  with depth and it moves against the view the way a reveal should.
+   *  Nothing here joins `furniture` — a natural 1 throws the bookcase
+   *  across the room, not the window frames.
+   * ------------------------------------------------------------------ */
+  const arch = new THREE.Group();
+  scene.add(arch);
+
+  const paintMat = new THREE.MeshStandardMaterial({
+    color: 0xe4ded0,
+    roughness: 0.52,
+    envMapIntensity: 1.0,
+    // The jamb faces away from every lamp in the room, so without a little of
+    // its own light it renders as a black slot and the window loses its depth.
+    emissive: 0x2b3444,
+    emissiveIntensity: 0.55,
+  });
+  const glassMat = new THREE.MeshStandardMaterial({
+    color: 0xaecbe4,
+    roughness: 0.06,
+    metalness: 0,
+    transparent: true,
+    opacity: 0.1,
+    depthWrite: false,
+    envMapIntensity: 2.4,
+  });
+  const blindMat = new THREE.MeshStandardMaterial({ color: 0xcfc3aa, roughness: 0.9, side: THREE.DoubleSide });
+
+  const REVEAL = 0.17; // how far the glass sits behind the face of the wall
+  const sills = [];
+
+  WINDOWS.forEach((wdw, i) => {
+    const { x: WX, y: WY, w: WW, h: WH } = wdw;
+    const half = { w: WW / 2, h: WH / 2 };
+
+    // What is out there. Same generator for both, shifted: two windows seven
+    // metres apart on one wall look onto the same street, not onto two.
+    const view = new THREE.Mesh(
+      new THREE.PlaneGeometry(WW + 1.4, WH + 1.4),
+      new THREE.MeshBasicMaterial({ map: nightView({ seed: 24 + i * 11, shift: i * 47, moon: i === 1 }), toneMapped: false })
+    );
+    view.position.set(WX, WY, wallZ - REVEAL - 0.04);
+    arch.add(view);
+
+    // Jamb, architrave, glazing bars and sill, all one material and all rigidly
+    // fixed to each other, so they bake into a single mesh.
+    const T = 0.03; // architrave thickness off the wall
+    const parts = [];
+    // the four faces of the reveal
+    parts.push({ geometry: B(WW + 0.02, 0.02, REVEAL), matrix: at(WX, WY + half.h, wallZ - REVEAL / 2) });
+    parts.push({ geometry: B(WW + 0.02, 0.02, REVEAL), matrix: at(WX, WY - half.h, wallZ - REVEAL / 2) });
+    for (const s of [-1, 1]) {
+      parts.push({ geometry: B(0.02, WH, REVEAL), matrix: at(WX + s * half.w, WY, wallZ - REVEAL / 2) });
+    }
+    // the architrave standing proud of the wall
+    parts.push({ geometry: B(WW + 0.1, 0.065, T), matrix: at(WX, WY + half.h + 0.032, wallZ + T / 2) });
+    parts.push({ geometry: B(WW + 0.1, 0.05, T), matrix: at(WX, WY - half.h - 0.025, wallZ + T / 2) });
+    for (const s of [-1, 1]) {
+      parts.push({ geometry: B(0.05, WH + 0.1, T), matrix: at(WX + s * (half.w + 0.025), WY, wallZ + T / 2) });
+    }
+    // glazing bars: a two-over-two casement, which is the era of the room
+    parts.push({ geometry: B(0.022, WH, 0.03), matrix: at(WX, WY, wallZ - 0.03) });
+    parts.push({ geometry: B(WW, 0.022, 0.03), matrix: at(WX, WY + 0.02, wallZ - 0.03) });
+    // the sill, jutting into the room
+    parts.push({ geometry: B(WW + 0.16, 0.028, 0.17, 0.006), matrix: at(WX, WY - half.h - 0.05, wallZ + 0.05) });
+
+    const casing = new THREE.Mesh(mergeParts(parts), paintMat);
+    casing.castShadow = true;
+    casing.receiveShadow = true;
+    arch.add(casing);
+
+    const glass = new THREE.Mesh(new THREE.PlaneGeometry(WW, WH), glassMat);
+    glass.position.set(WX, WY, wallZ - 0.028);
+    glass.renderOrder = 2;
+    arch.add(glass);
+
+    // A roller blind, pulled down a different amount on each — nobody has ever
+    // levelled two blinds in one room.
+    const drop = 0.15 + i * 0.09;
+    const blind = new THREE.Mesh(new THREE.PlaneGeometry(WW - 0.03, drop), blindMat);
+    blind.position.set(WX, WY + half.h - drop / 2, wallZ - 0.06);
+    arch.add(blind);
+    const roller = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, WW - 0.02, 10), blindMat);
+    roller.rotation.z = Math.PI / 2;
+    roller.position.set(WX, WY + half.h - 0.025, wallZ - 0.06);
+    arch.add(roller);
+
+    // The spill. Cool, and weak — this is a sky an hour after sunset, not a
+    // window at noon. It has to lose to the pendant over the table and to the
+    // fire, or the room stops being about the table.
+    const sky = new THREE.PointLight(0x8fb2e0, 1.35, 3.4, 2);
+    sky.position.set(WX, WY - 0.1, wallZ + 0.42);
+    scene.add(sky);
+
+    sills.push({ x: WX, y: WY - half.h - 0.036, z: wallZ + 0.06 });
+  });
+
+  /* ------------------------------------------------------------------ *
+   *  Plants
+   *
+   *  A lot of them, on the floor, on the mantel, on the bookcase, on the
+   *  console and on both sills. Foliage is the cheapest way to make a
+   *  room look inhabited: it is the only thing in here whose silhouette
+   *  nobody drew, so it breaks up the straight lines everything else is
+   *  made of.
+   *
+   *  Each one is a pot plus exactly one canopy mesh — see js/plants.js
+   *  for why. The ones standing on the floor go into `group`, so a
+   *  natural 1 throws them with everything else; the ones standing on
+   *  furniture are children of that furniture and fly with it.
+   * ------------------------------------------------------------------ */
+  const swaying = [];
+  const potted = (kind, x, y, z, opts = {}) => {
+    const p = plant(kind, opts);
+    p.position.set(x, y, z);
+    p.rotation.y = opts.spin ?? 0;
+    (opts.parent ?? group).add(p);
+    if (opts.sway) swaying.push({ p, phase: swaying.length * 2.1, amp: opts.sway });
+    return p;
+  };
+
+  // Floor plants. The monstera fills the stretch of wall between the chimney
+  // breast and the posters, which was the one blank patch behind the party; the
+  // palm stands between the hearth and the table, where it reads against the
+  // fire and gives the left of frame something with height in it.
+  potted("monstera", -0.92, 0, -1.72, { r: 0.155, h: 0.21, scale: 1.05, seed: 11, sway: 0.012 });
+  potted("palm", -1.86, 0, -0.66, { r: 0.155, h: 0.22, pot: "slate", scale: 0.72, seed: 23, sway: 0.01 });
+  potted("fern", 1.32, 0, -1.74, { r: 0.14, h: 0.17, scale: 0.92, seed: 37, sway: 0.014 });
+  potted("fern", 0.32, 0, -1.82, { r: 0.16, h: 0.2, pot: "cream", scale: 1.0, seed: 53, sway: 0.012 });
+
+  // On the hearth, where a plant has no business being and always ends up.
+  potted("herb", -1.62, 0.062, -1.44, { r: 0.075, h: 0.095, pot: "brass", scale: 0.85, seed: 67 });
+
+  // Trailing off the end of the mantel.
+  potted("pothos", -2.88, 1.472, wallZ + 0.36, { r: 0.085, h: 0.1, pot: "cream", scale: 1.0, seed: 79, fall: -0.6, sway: 0.02 });
+
+  // On top of the bookcase, one of them hanging down over the books.
+  potted("pothos", -0.3, 1.18, 0.09, { r: 0.08, h: 0.095, pot: "terracotta", scale: 1.15, seed: 91, parent: bookcase, fall: 0, sway: 0.022 });
+  potted("herb", 0.28, 1.18, 0.13, { r: 0.07, h: 0.085, pot: "slate", scale: 0.9, seed: 103, parent: bookcase });
+
+  // On the television console, beside the case of discs.
+  potted("succulent", 0.5, 0.7, 0.08, { r: 0.065, h: 0.07, pot: "cream", scale: 1.0, seed: 117, parent: tv });
+
+  // Both windowsills. This is the one place in a room where everybody puts a
+  // plant, so leaving them bare would be the thing that looked wrong.
+  sills.forEach((s, i) => {
+    potted("herb", s.x - 0.3, s.y, s.z + 0.02, { r: 0.065, h: 0.08, pot: "terracotta", scale: 0.85, seed: 131 + i * 7 });
+    potted("succulent", s.x + 0.02, s.y, s.z + 0.02, { r: 0.055, h: 0.06, pot: "cream", scale: 0.85, seed: 149 + i * 7 });
+    // Only the right window gets a trailing one. The left sill has the top of
+    // the bookcase ten centimetres under it, so anything hanging off it hangs
+    // through three shelves of books — measured, not guessed.
+    if (i === 1) {
+      potted("pothos", s.x + 0.33, s.y, s.z + 0.02, { r: 0.07, h: 0.085, pot: "slate", scale: 0.9, seed: 163, fall: 0, sway: 0.018 });
+    } else {
+      potted("succulent", s.x + 0.3, s.y, s.z + 0.02, { r: 0.06, h: 0.07, pot: "slate", scale: 0.95, seed: 163 });
+    }
+  });
+
   /* ------------------------------------------------------------------ *
    *  Animation
    * ------------------------------------------------------------------ */
@@ -518,6 +708,13 @@ export function createRoom(scene, { wallZ = -2.1 } = {}) {
       f.s.scale.set(f.w * (0.92 + w * 0.14), hh, 1);
       f.s.position.y = f.y - f.w * 1.63 * 0.5 + hh * 0.5;
       f.s.material.opacity = 0.78 + w * 0.18;
+    }
+    // The canopies are single merged meshes, so no leaf can move on its own.
+    // The whole plant leaning a fraction of a degree is enough — still air in a
+    // lived-in room is what this is, not wind.
+    for (const s of swaying) {
+      s.p.rotation.z = Math.sin(t * 0.62 + s.phase) * s.amp;
+      s.p.rotation.x = Math.sin(t * 0.47 + s.phase * 1.7) * s.amp * 0.7;
     }
     fireLight.intensity = 2.8 + beat * 0.6;
     tvGlow.intensity = 0.82 + Math.sin(t * 23.0) * 0.12 + Math.sin(t * 3.1) * 0.06;

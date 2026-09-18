@@ -17,7 +17,7 @@ import {
   screenFace,
 } from "./textures.js";
 import { createWatercolour } from "./watercolour.js";
-import { createRoom } from "./room.js";
+import { createRoom, WINDOWS } from "./room.js";
 import { createBoard } from "./board.js";
 import { createProps } from "./props.js";
 import { createChatter } from "./chatter.js";
@@ -121,8 +121,39 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
   scene.add(floor);
 
   const WALL_Z = -2.1;
-  const wall = new THREE.Mesh(new THREE.PlaneGeometry(14, 5), mat.wall);
-  wall.position.set(0, 2.5, WALL_Z);
+  // A shape with two rectangles cut out of it rather than a plane, because the
+  // windows have to be openings. A window painted onto a wall gives itself away
+  // the moment the camera drifts off axis: the reveal does not move against the
+  // view, so the whole thing reads as a sticker. Cutting the wall costs one
+  // triangulation at start-up and nothing per frame.
+  const wallShape = new THREE.Shape();
+  wallShape.moveTo(-7, 0);
+  wallShape.lineTo(7, 0);
+  wallShape.lineTo(7, 5);
+  wallShape.lineTo(-7, 5);
+  wallShape.closePath();
+  for (const w of WINDOWS) {
+    const hole = new THREE.Path();
+    hole.moveTo(w.x - w.w / 2, w.y - w.h / 2);
+    hole.lineTo(w.x - w.w / 2, w.y + w.h / 2);
+    hole.lineTo(w.x + w.w / 2, w.y + w.h / 2);
+    hole.lineTo(w.x + w.w / 2, w.y - w.h / 2);
+    hole.closePath();
+    wallShape.holes.push(hole);
+  }
+  const wallGeo = new THREE.ShapeGeometry(wallShape);
+  // ShapeGeometry writes the shape's own coordinates straight into the UVs —
+  // metres, here, which would tile the wallpaper a hundred and sixty times
+  // across. Remap to 0..1 so the texture's own repeat is the only thing setting
+  // the scale, and the wall matches what the PlaneGeometry used to do.
+  {
+    const wp = wallGeo.attributes.position;
+    const wuv = wallGeo.attributes.uv;
+    for (let i = 0; i < wp.count; i++) wuv.setXY(i, (wp.getX(i) + 7) / 14, wp.getY(i) / 5);
+    wuv.needsUpdate = true;
+  }
+  const wall = new THREE.Mesh(wallGeo, mat.wall);
+  wall.position.set(0, 0, WALL_Z);
   wall.receiveShadow = true;
   scene.add(wall);
   box(14, 0.1, 0.02, mat.woodDark, 0, 0.05, WALL_Z + 0.01, { cast: false });

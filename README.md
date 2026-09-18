@@ -88,6 +88,56 @@ every mesh at one instance per distinct surface. It skips sprites, which animate
 their own material every frame — a speech bubble, a flame, a floating score —
 and would otherwise all end up showing the last thing assigned to any of them.
 
+## Windows and plants
+
+The back wall is a shape with two rectangles cut out of it, not a plane. A window
+painted on a wall gives itself away the moment the camera drifts off axis, because
+the reveal does not move against the view — so these are real openings with a jamb,
+a sill and glass set back 17 cm. Cutting the wall costs one triangulation at
+start-up and nothing per frame; the only care it needs is the UVs, which
+`ShapeGeometry` writes in metres and which have to be remapped to 0..1 or the
+wallpaper tiles a hundred and sixty times across.
+
+Where they are was not a composition choice. Reading the back wall from the left:
+bookcase, chimney breast, five posters, dartboard, television. The only clear runs
+are outside all of that, so the windows flank the room rather than sitting behind
+the party, and they swing in and out of frame as the camera sweeps. Most of the
+time what you see of them is the light.
+
+What is outside is the blue hour, not daylight: the clock reads twenty past eleven
+and the fire is lit. A cool window against a warm hearth is the contrast that makes
+an interior read as a place rather than a lit box, and daylight would wash the fire
+out. Both windows use the same generator with a horizontal offset — two windows on
+one wall look onto the same street, not onto two.
+
+Fifteen plants, each one a pot plus exactly **one** canopy mesh. A monstera is eight
+leaves, a fern is a hundred and twenty leaflets, and the naive build would have cost
+four hundred draw calls; they go through the same merge path as the bookcase, with
+the colour variation between leaves carried on a vertex attribute. The leaves are
+flat outlines bent twice — down along their length and up along their width. A leaf
+modelled as a flat card vanishes edge-on and takes light as a single tone; the
+second bend is what makes a canopy read as many surfaces rather than a green cloud.
+
+Placements were measured, not eyeballed. The first pass put the monstera 8 cm inside
+the chimney breast, a fern 28 x 49 cm inside the sofa, the mantel plant's vines
+through the brickwork, and a pot on the bookcase 7 cm up through the window sill
+above it. None of that was visible in a screenshot at this distance; all of it was
+visible in a bounding-box sweep.
+
+## Speech bubbles
+
+Two things made the table talk hard to read, and both were measurable.
+
+The text was drawn centred and never measured: **17 of the 40 lines ran past the
+outline**, the worst by 200 px. Lines are now wrapped to the bubble at the largest
+size from a ladder that fits, with the authored line breaks kept as hard breaks —
+they are the comic timing, the pause between setup and punchline.
+
+And the hold was a flat 3.5 s whatever the line — the same time for "Nat 20." as for
+a two-clause joke. It scales with length now, roughly 1.9 s plus 85 ms a character
+and capped at 8, with a 1.4–3.2 s pause after the bubble clears rather than a
+cadence measured from the trigger, which left no gap at all after a long line.
+
 ## Run locally
 
 ```bash
@@ -118,7 +168,8 @@ js/effects.js     what a natural 20 and a natural 1 do to the room
 js/merge.js       baking small static pieces into single meshes
 js/palette.js     collapsing duplicate materials once the scene is built
 js/shapes.js      rounded boxes — nothing in a room has a knife edge
-js/room.js        the room around it: posters, fireplace, sofa, television, lamp
+js/plants.js      houseplants: procedural leaves, one merged mesh per plant
+js/room.js        the room around it: posters, fireplace, sofa, television, windows
 js/watercolour.js the painted look: post-processing chain and its shader
 js/textures.js    every drawn surface: battle map, DM screen, posters, cloth, marks
 js/main.js        bootstrap: 3D mode or full-screen fallback

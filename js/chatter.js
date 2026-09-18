@@ -7,7 +7,7 @@
 // The lines themselves live in content.js with everything else that is words.
 
 import * as THREE from "three";
-import { speechBubble } from "./textures.js";
+import { speechBubble, BUBBLE } from "./textures.js";
 
 const EASE = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
@@ -27,13 +27,22 @@ export function createChatter(scene, speakers, { width = 1.02 } = {}) {
   sprite.visible = false;
   scene.add(sprite);
 
-  const HEIGHT = width * (260 / 640);
-  // One line every four to seven seconds, measured trigger to trigger. The
-  // bubble holds for three and a half of those, so at the fastest there is
-  // still half a second of quiet between one player and the next.
-  const SHOW = 3500;
-  const EVERY_MIN = 4000;
-  const EVERY_MAX = 7000;
+  const HEIGHT = width * (BUBBLE.h / BUBBLE.w);
+
+  /**
+   * How long one line stays up, from its own length.
+   *
+   * A flat three and a half seconds was the same time for "Nat 20." and for a
+   * two-clause joke with a punchline, which is why the long ones read as too
+   * fast: they were. Ordinary prose reads at roughly fifteen characters a
+   * second, so this allows about half that and adds a beat at the front for
+   * noticing the bubble at all and a beat at the end for the joke to land.
+   */
+  const showFor = (text) => Math.min(8000, 1900 + String(text).length * 85);
+  // Quiet between one bubble clearing and the next opening. Scheduling from the
+  // trigger the way this used to means a long line leaves no gap at all.
+  const GAP_MIN = 1400;
+  const GAP_MAX = 3200;
 
   let current = null;
   let nextAt = performance.now() + 3000; // let the room settle before anyone speaks
@@ -78,10 +87,7 @@ export function createChatter(scene, speakers, { width = 1.02 } = {}) {
     sprite.material.map = map;
     sprite.material.needsUpdate = true;
     sprite.visible = true;
-    current = { speaker, t0: now };
-    // Scheduled from this trigger, not from when the bubble clears, so the
-    // cadence is the one the interval actually names.
-    nextAt = now + EVERY_MIN + Math.random() * (EVERY_MAX - EVERY_MIN);
+    current = { speaker, t0: now, show: showFor(text) };
   };
 
   return {
@@ -105,16 +111,18 @@ export function createChatter(scene, speakers, { width = 1.02 } = {}) {
         speak(now, pool);
       }
 
-      const k = (now - current.t0) / SHOW;
+      const k = (now - current.t0) / current.show;
       if (k >= 1) {
         sprite.visible = false;
         current = null;
+        nextAt = now + GAP_MIN + Math.random() * (GAP_MAX - GAP_MIN);
         return;
       }
 
-      // in quickly, out over the last fifth, and still for the two and a half
-      // seconds in between — which is the part you actually read
-      const fade = k < 0.12 ? EASE(k / 0.12) : k > 0.82 ? 1 - EASE((k - 0.82) / 0.18) : 1;
+      // In quickly, out over the last eighth, and still for everything in
+      // between — which is the part you actually read. Both ramps are fractions
+      // of the hold, so a long line is not also a slow fade.
+      const fade = k < 0.1 ? EASE(k / 0.1) : k > 0.87 ? 1 - EASE((k - 0.87) / 0.13) : 1;
       sprite.material.opacity = fade;
 
       current.speaker.mount.getWorldPosition(anchor);
