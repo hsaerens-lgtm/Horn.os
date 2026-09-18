@@ -51,6 +51,7 @@ js/content.js     all CV text, as sheet data — edit this to update the résum�
 js/sheet.js       renders the DM's sheet and each player's sheet
 js/scene.js       3D table, camera states, sheet projection and raising
 js/board.js       the board: the tray, and the terrain standing on the map
+js/props.js       what each player brought: a mug, a dice cup, a map, a notepad
 js/shapes.js      rounded boxes — nothing in a room has a knife edge
 js/room.js        the room around it: posters, fireplace, sofa, television, lamp
 js/watercolour.js the painted look: post-processing chain and its shader
@@ -109,7 +110,10 @@ for the party.
 ## The players
 
 The party is RobotExpressive, seated, one colour each, each wearing a television for
-a head with that agent's mark on the screen. It is the **only rigged character
+a head with that agent's mark on the screen, and each with one small thing of its own
+on the table in front of it — a table with nothing personal on it reads as a
+showroom. The props are matched to their owner rather than dealt out: the platform
+that runs overnight gets the coffee, the navigator gets the rolled map. It is the **only rigged character
 three.js ships that is actually CC0** — Soldier, Michelle and Xbot are Mixamo, and
 readyplayer.me carries its own terms.
 

@@ -19,6 +19,7 @@ import {
 import { createWatercolour } from "./watercolour.js";
 import { createRoom } from "./room.js";
 import { createBoard } from "./board.js";
+import { createProps } from "./props.js";
 import { roundedBox } from "./shapes.js";
 
 // The sheet is 860x1180 CSS px, laid flat on the table at this physical width.
@@ -385,7 +386,7 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
   // The robot was drawn around a head half the size of its body. Swapping that
   // head for a television leaves the body looking oversized, so the body comes
   // down and the set goes up until the two read as one creature.
-  const ROBOT_BODY = 0.78;
+  const ROBOT_BODY = 0.9;
   const ROBOT_HEAD = 1.15;
   const DEBUG_ROBOT = new URLSearchParams(location.search).has("debug");
   const robotTrim = new THREE.MeshStandardMaterial({ color: 0x1b1f27, roughness: 0.55, envMapIntensity: 0.5 });
@@ -794,13 +795,13 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
     // suit / lean / turn / tilt / reach: the posture of one player at the table.
     // The one leaning furthest in is looking at the board; the one sitting back
     // with their head turned is looking at whoever is talking.
-    { fig: [-0.46, -1.08], rot: 0.1, sheet: [-0.46, -0.49], lap: [-0.78, -0.5],
+    { fig: [-0.46, -1.08], rot: 0.1, sheet: [-0.46, -0.49], lap: [-0.78, -0.5], prop: [-0.2, -0.56],
       striped: false, suit: 0x232a3a, lean: 0.1, turn: -0.22, tilt: 0.06, reach: 0.03 },
-    { fig: [0.46, -1.08], rot: -0.1, sheet: [0.46, -0.49], lap: [0.78, -0.5],
+    { fig: [0.46, -1.08], rot: -0.1, sheet: [0.46, -0.49], lap: [0.78, -0.5], prop: [0.66, -0.56],
       striped: true, suit: 0x33302c, lean: 0.02, turn: 0.3, tilt: -0.04, reach: -0.03 },
-    { fig: [-1.42, 0.0], rot: Math.PI / 2, sheet: [-0.8, 0.0], lap: [-0.8, -0.32],
+    { fig: [-1.42, 0.0], rot: Math.PI / 2, sheet: [-0.8, 0.0], lap: [-0.8, -0.32], prop: [-0.84, 0.24],
       striped: true, suit: 0x2b3330, lean: 0.16, turn: 0.12, tilt: 0.1, reach: 0.06 },
-    { fig: [1.42, 0.0], rot: -Math.PI / 2, sheet: [0.8, 0.0], lap: [0.8, -0.32],
+    { fig: [1.42, 0.0], rot: -Math.PI / 2, sheet: [0.8, 0.0], lap: [0.8, -0.32], prop: [0.84, 0.24],
       striped: false, suit: 0x2f2833, lean: -0.04, turn: -0.34, tilt: -0.02, reach: -0.05 },
   ];
 
@@ -840,6 +841,10 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
   // The figures sit behind their laptops, on the far side of the table.
   const buildPlayer = players === "robot" ? makeRobotAgent : makeAgent;
   party.slice(0, 4).forEach((a, i) => buildPlayer(a, SEATS[i]));
+
+  // ---------- What each player brought with them ----------
+  const props = createProps(scene, { tableY: TABLE_Y });
+  party.slice(0, 4).forEach((a, i) => props.place(a, SEATS[i].prop, SEATS[i].rot));
 
   // ---------- Each player's character sheet ----------
   // The sheet lies face-up on the table in front of its player, the way a sheet
