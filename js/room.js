@@ -10,7 +10,7 @@
 // pendant over the table — the table has to stay the brightest thing in frame.
 
 import * as THREE from "three";
-import { poster, brick, weave, tvScreen, flame, nightView } from "./textures.js";
+import { poster, brick, weave, tvScreen, flame, nightView, rainSheet, wetGlass } from "./textures.js";
 import { roundedBox } from "./shapes.js";
 import { mergeParts, at } from "./merge.js";
 import { plant } from "./plants.js";
@@ -552,15 +552,32 @@ export function createRoom(scene, { wallZ = -2.1 } = {}) {
     emissive: 0x2b3444,
     emissiveIntensity: 0.55,
   });
+  // Water on the pane. This is the half of "raining outside" that actually does
+  // the work: the streaks say it is raining, the beads on the glass say you are
+  // on the dry side of it. A normal map is enough — the beads only have to
+  // catch the fire and the pendant and bend them.
   const glassMat = new THREE.MeshStandardMaterial({
     color: 0xaecbe4,
-    roughness: 0.06,
+    roughness: 0.08,
     metalness: 0,
     transparent: true,
-    opacity: 0.1,
+    opacity: 0.16,
     depthWrite: false,
+    normalMap: wetGlass(),
+    normalScale: N(0.85),
     envMapIntensity: 2.4,
   });
+  // One sheet of rain, shared. Each layer gets its own clone so it can scroll
+  // at its own rate: sharing the texture object would mean sharing the offset.
+  const rainTex = rainSheet();
+  const rainLayer = (repeat) => {
+    const t = rainTex.clone();
+    t.needsUpdate = true;
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(repeat[0], repeat[1]);
+    return t;
+  };
+  const rain = [];
   const blindMat = new THREE.MeshStandardMaterial({ color: 0xcfc3aa, roughness: 0.9, side: THREE.DoubleSide });
 
   const REVEAL = 0.17; // how far the glass sits behind the face of the wall
@@ -610,6 +627,34 @@ export function createRoom(scene, { wallZ = -2.1 } = {}) {
     glass.position.set(WX, WY, wallZ - 0.028);
     glass.renderOrder = 2;
     arch.add(glass);
+
+    // The rain itself: two sheets inside the reveal, between the view and the
+    // glass, scrolling at different rates. Two layers and not one because a
+    // single sheet has no depth — the near one falling visibly faster than the
+    // far one is the whole illusion. They are wider than the opening so the
+    // wall crops them; a sheet cut to the opening shows its own edge as soon as
+    // the camera is off axis.
+    [
+      { z: wallZ - REVEAL + 0.02, rep: [2.6, 1.7], speed: 1.9, op: 0.5 },
+      { z: wallZ - 0.07, rep: [1.5, 1.0], speed: 2.6, op: 0.72 },
+    ].forEach((layer) => {
+      const tex = rainLayer(layer.rep);
+      const sheet = new THREE.Mesh(
+        new THREE.PlaneGeometry(WW + 0.5, WH + 0.5),
+        new THREE.MeshBasicMaterial({
+          map: tex,
+          transparent: true,
+          opacity: layer.op,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+          toneMapped: false,
+        })
+      );
+      sheet.position.set(WX, WY, layer.z);
+      sheet.renderOrder = 1;
+      arch.add(sheet);
+      rain.push({ tex, speed: layer.speed });
+    });
 
     // A roller blind, pulled down a different amount on each — nobody has ever
     // levelled two blinds in one room.
@@ -767,6 +812,11 @@ export function createRoom(scene, { wallZ = -2.1 } = {}) {
       s.p.rotation.z = Math.sin(t * 0.62 + s.phase) * s.amp;
       s.p.rotation.x = Math.sin(t * 0.47 + s.phase * 1.7) * s.amp * 0.7;
     }
+    // Rain falls by scrolling the sheet, not by moving anything: wrapping the
+    // offset is free and a particle system for this would be a thousand points
+    // to see two hundred of.
+    for (const r of rain) r.tex.offset.y = (-t * r.speed) % 1;
+
     fireLight.intensity = 2.8 + beat * 0.6;
     tvGlow.intensity = 0.82 + Math.sin(t * 23.0) * 0.12 + Math.sin(t * 3.1) * 0.06;
   };

@@ -17,7 +17,10 @@
   </script>
 </head>
 <body>
-  <div id="loader">setting the table…</div>
+  <div id="loader">
+    <div class="d20-slot"></div>
+    <p>setting the table…</p>
+  </div>
   <div id="scene"></div>
   <div id="sheet-root"></div>
   <div id="ui">
@@ -25,6 +28,7 @@
     <div class="scroll-hint hidden">scroll or drag the page to read on</div>
     <button class="hint hidden" type="button">Click the sheet to read it · a player to open their sheet · the board to lean in · a die to roll it · scroll to zoom</button>
   </div>
+  <script type="module" src="js/loader.js"></script>
   <script type="module" src="js/main.js"></script>
 </body>
 </html>

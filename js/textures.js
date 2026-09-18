@@ -1893,3 +1893,85 @@ export function nightView({ w = 512, h = 560, seed = 24, shift = 0, moon = false
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
 }
+
+/* ------------------------------------------------------------------ *
+ *  Rain
+ *
+ *  Two things make rain read, and they are not the same thing. The
+ *  falling streaks give it movement; the water sitting on the glass
+ *  gives it the cosiness, because that is the part that says you are on
+ *  the dry side of the window. The streaks are a scrolling sheet, the
+ *  water is a normal map on the pane.
+ * ------------------------------------------------------------------ */
+
+/**
+ * A tileable sheet of falling rain, white on transparent.
+ *
+ * The slant is baked in rather than applied by scrolling the texture
+ * diagonally: scrolling diagonally moves the whole sheet sideways as well as
+ * down, and after a few seconds the seam between tiles walks into view.
+ */
+export function rainSheet({ w = 256, h = 512, seed = 305, drops = 150, slant = 0.14, len = 0.11 } = {}) {
+  const [c, ctx] = canvas(w, h);
+  const rand = rng(seed);
+  ctx.lineCap = "round";
+  for (let i = 0; i < drops; i++) {
+    const x = rand() * w;
+    const y = rand() * h;
+    const L = h * len * (0.5 + rand());
+    const a = 0.18 + rand() * 0.5;
+    ctx.strokeStyle = `rgba(214,230,255,${a.toFixed(3)})`;
+    ctx.lineWidth = 0.7 + rand() * 1.1;
+    // Drawn three times, offset by exactly one tile height each way, so a
+    // streak crossing the seam is continuous when the sheet wraps.
+    for (const dy of [-h, 0, h]) {
+      ctx.beginPath();
+      ctx.moveTo(x, y + dy);
+      ctx.lineTo(x + L * slant, y + dy + L);
+      ctx.stroke();
+    }
+  }
+  return toTexture(c);
+}
+
+/**
+ * Water on the glass, as a normal map: scattered beads, and a few runnels
+ * where enough of them have joined up to run.
+ */
+export function wetGlass({ size = 512, seed = 311 } = {}) {
+  const [c, ctx] = canvas(size);
+  const rand = rng(seed);
+  ctx.fillStyle = "#808080";
+  ctx.fillRect(0, 0, size, size);
+
+  const bead = (x, y, r) => {
+    const g = ctx.createRadialGradient(x - r * 0.3, y - r * 0.3, 0, x, y, r);
+    g.addColorStop(0, "rgba(255,255,255,0.95)");
+    g.addColorStop(0.55, "rgba(180,180,180,0.5)");
+    g.addColorStop(1, "rgba(30,30,30,0)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  };
+
+  for (let i = 0; i < 520; i++) bead(rand() * size, rand() * size, 1.5 + rand() * 5);
+
+  // Runnels. A bead only starts running once it is heavy enough, so these are
+  // few and they wander — a straight vertical line reads as a scratch.
+  for (let i = 0; i < 9; i++) {
+    let x = rand() * size;
+    let y = rand() * size * 0.5;
+    const r = 2.2 + rand() * 2.4;
+    const fall = size * (0.3 + rand() * 0.6);
+    for (let s = 0; s < fall; s += r * 0.75) {
+      x += (rand() - 0.5) * 1.6;
+      bead(x, y + s, r * (0.75 + rand() * 0.5));
+    }
+    // the fat drop at the bottom of the run
+    bead(x, y + fall, r * 1.9);
+  }
+
+  // normalFrom hands back a canvas, not a texture.
+  return toTexture(normalFrom(c, 1.6), { repeat: [1, 1] });
+}

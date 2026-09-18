@@ -76,14 +76,36 @@ html, body {
 #loader {
   position: fixed;
   inset: 0;
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 26px;
   background: var(--bg);
   color: #8a7a62;
   font-size: 15px;
   letter-spacing: 0.1em;
   z-index: 20;
   transition: opacity 0.6s;
+}
+
+#loader p { margin: 0; }
+
+/* The die is drawn by js/loader.js, one polygon per visible face. The glow
+   behind it is the only thing in the loading screen that is not the die: it
+   stands the dark red off a dark page without lighting the page. */
+.d20-slot {
+  width: 116px;
+  height: 116px;
+  filter: drop-shadow(0 0 22px rgba(140, 47, 34, 0.45));
+}
+
+.d20 { width: 100%; height: 100%; display: block; }
+
+.d20-pip {
+  font: 700 0.34px Georgia, "Times New Roman", serif;
+  fill: #ece0c8;
+  letter-spacing: -0.02px;
 }
 
 #loader.hidden { opacity: 0; pointer-events: none; }

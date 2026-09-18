@@ -130,6 +130,37 @@ was visible in a screenshot at this distance; all of it was visible in a
 bounding-box sweep, which is now the check every new plant goes through: canopy
 against canopy, canopy against the wall, canopy against the floor.
 
+## Rain
+
+It is raining outside, which is half the reason the windows are there. Two things
+make rain read and they are not the same thing: the falling streaks give it
+movement, and the water sitting on the glass gives it the cosiness, because that is
+the part that says you are on the dry side of it.
+
+The streaks are two scrolling sheets per window inside the reveal, between the view
+and the pane, at different rates — one sheet has no depth, and the near one falling
+visibly faster than the far one is the whole illusion. They are wider than the
+opening so the wall crops them, because a sheet cut to the opening shows its own
+edge the moment the camera is off axis. The slant is drawn into the texture rather
+than produced by scrolling diagonally: scrolling diagonally walks the tile seam
+sideways into view after a few seconds. The water on the pane is a normal map of
+beads and runnels — the beads only have to catch the fire and the pendant and bend
+them.
+
+A particle system for this would be a thousand points to see two hundred of.
+Wrapping a texture offset is free.
+
+## The loading screen
+
+A real icosahedron, projected and shaded per frame in SVG, not a picture of one
+spun about its centre — twenty faces coming and going is what reads as a die. The
+"20" rides on whichever face is most towards the viewer and fades as that face
+turns away. It respects `prefers-reduced-motion` by holding a three-quarter view.
+
+`js/loader.js` is its own script on purpose: Three.js comes off a CDN and the room
+takes a moment to build, so the die has to be turning before any of that arrives,
+or the loading screen is a line of text for exactly the stretch it exists to cover.
+
 ## Speech bubbles
 
 Two things made the table talk hard to read, and both were measurable.
@@ -178,6 +209,7 @@ js/plants.js      houseplants: procedural leaves, one merged mesh per plant
 js/room.js        the room around it: posters, fireplace, sofa, television, windows
 js/watercolour.js the painted look: post-processing chain and its shader
 js/textures.js    every drawn surface: battle map, DM screen, posters, cloth, marks
+js/loader.js      the spinning d20 on the loading screen, in plain SVG
 js/main.js        bootstrap: 3D mode or full-screen fallback
 assets/           Horn_Saerens_CV_2026.pdf
 assets/textures/  PBR texture sets (diffuse + normal + ARM), 512px JPG
