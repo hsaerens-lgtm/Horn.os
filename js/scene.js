@@ -895,7 +895,14 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
   const BLAST_AT = new THREE.Vector3(0.1, TABLE_Y + 0.15, -0.05);
   const effects = createEffects(scene, { centre: BLAST_AT });
   const celebrate = (at) => effects.fireworks(at ?? BLAST_AT);
-  const wreck = () => effects.blast(room.furniture);
+  const wreck = () => {
+    // The contact shadows belong to furniture standing on the floor, and for the
+    // eight seconds it spends in the air they would be four dark patches of
+    // nothing. The timing is the effect's own, stated in js/effects.js.
+    room.contact.visible = false;
+    effects.blast(room.furniture);
+    setTimeout(() => (room.contact.visible = true), 7600);
+  };
 
   // ---------- Each player's character sheet ----------
   // The sheet lies face-up on the table in front of its player, the way a sheet
@@ -1021,12 +1028,29 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
   bulb.position.y = -0.06;
   pendant.add(bulb);
 
-  const keyLight = new THREE.PointLight(0xffc489, 6.2, 4.2, 2);
-  keyLight.position.set(0, 1.88, -0.05);
+  // A spot rather than a point, for two reasons. A shade physically blocks the
+  // sideways light, so a cone is what a pendant actually casts. And a spot has
+  // one shadow map with a frustum you can tighten around the table, where a
+  // point light has six faces covering the whole room — the old 1024 cube was
+  // spending most of its resolution on parts of the room nothing stands in,
+  // which is why contact shadows were mush.
+  const keyLight = new THREE.SpotLight(0xffc489, 11, 5.2, 0.98, 0.6, 2);
+  keyLight.position.set(0, 1.9, -0.05);
+  keyLight.target.position.set(0, TABLE_Y, -0.05);
   keyLight.castShadow = true;
-  keyLight.shadow.mapSize.set(1024, 1024);
-  keyLight.shadow.bias = -0.002;
+  keyLight.shadow.mapSize.set(2048, 2048);
+  keyLight.shadow.camera.near = 0.5;
+  keyLight.shadow.camera.far = 4.2;
+  keyLight.shadow.bias = -0.0012;
+  keyLight.shadow.normalBias = 0.018;
   scene.add(keyLight);
+  scene.add(keyLight.target);
+
+  // The cone leaves the rest of the room unlit, which a bare bulb in a shade
+  // does not, so a small unshadowed point light puts the spill back.
+  const spill = new THREE.PointLight(0xffc489, 1.9, 3.4, 2);
+  spill.position.set(0, 1.86, -0.05);
+  scene.add(spill);
 
   // Rim light from behind the party, so the figures read against the dark wall
   // instead of dissolving into it.

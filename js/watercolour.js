@@ -127,8 +127,34 @@ const WatercolourShader = {
  * Returns { render, setSize, pass } — call render() in place of renderer.render().
  */
 export function createWatercolour(renderer, scene, camera) {
-  const composer = new EffectComposer(renderer);
+  const size = renderer.getDrawingBufferSize(new THREE.Vector2());
+
+  // EffectComposer's own target, made explicitly, for one reason: left to
+  // itself it allocates `{ type: HalfFloatType }` and nothing else, and
+  // `samples` defaults to zero. The renderer's own `antialias: true` only ever
+  // applied to the default framebuffer, which a composer bypasses — so from the
+  // day this chain was added the scene has been rendering with no antialiasing
+  // at all, and the Sobel below has been sharpening the jaggies it produced.
+  const target = new THREE.WebGLRenderTarget(size.x, size.y, {
+    type: THREE.HalfFloatType,
+    samples: 4,
+  });
+
+  const composer = new EffectComposer(renderer, target);
   composer.addPass(new RenderPass(scene, camera));
+
+  // There is no ambient-occlusion pass here, and that was measured rather than
+  // assumed. GTAOPass works and is safe for the alpha cut-out — both its
+  // shaders write alpha 1 and its blend multiplies destination alpha by source
+  // alpha, so the character sheets still show through — but it costs ten times
+  // the frame: 55 fps without, 5 with. Dropping its internal resolution to an
+  // eighth changed nothing, which locates the cost in the full second pass it
+  // makes over the scene to collect depth and normals. This room is 553
+  // separate meshes; drawing all of them twice is the whole budget.
+  //
+  // Contact darkening is done in js/room.js instead, with a soft quad under
+  // each piece of furniture. It is a much older trick and it costs one textured
+  // quad each.
 
   const pass = new ShaderPass(WatercolourShader);
   const paper = paperGrain();

@@ -40,6 +40,27 @@ then painted: a watercolour pass lays paper grain over the image, pools pigment 
 the edges and lets the washes bleed, while the sheet itself stays crisp.
 No build step, no framework: plain ES modules served as static files.
 
+## Lighting and edges
+
+The pendant is a spotlight, not a point light. A shade physically blocks the
+sideways light, so a cone is what a pendant casts — and a spot has one shadow map
+whose frustum can be tightened around the table, where a point light spends six
+cube faces covering a room nothing stands in. A small unshadowed point light puts
+back the spill the cone loses.
+
+The composer is handed its own render target with `samples: 4`. Left to itself it
+allocates one with no samples, and a renderer's `antialias: true` only ever applied
+to the default framebuffer — which a composer bypasses. From the day the watercolour
+chain was added until this was found, the scene rendered with no antialiasing at all,
+and the Sobel in the paint pass was sharpening the jaggies.
+
+There is no ambient-occlusion pass, and that is measured rather than assumed. GTAOPass
+works here and is safe for the alpha cut-out, but it costs ten times the frame: 55 fps
+without, 5 with. Dropping its internal resolution to an eighth changed nothing, which
+puts the cost in the second pass it makes over the scene for depth and normals — this
+room is 553 separate meshes, and drawing all of them twice is the whole budget.
+Contact is done the old way instead, with a soft quad under each piece of furniture.
+
 ## Run locally
 
 ```bash

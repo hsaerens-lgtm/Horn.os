@@ -512,8 +512,63 @@ export function createRoom(scene, { wallZ = -2.1 } = {}) {
     tvGlow.intensity = 0.82 + Math.sin(t * 23.0) * 0.12 + Math.sin(t * 3.1) * 0.06;
   };
 
+  const furniture = group.children.slice();
+
+  /* ------------------------------------------------------------------ *
+   *  Contact
+   *  A soft dark quad under everything that stands on the floor. This is
+   *  the oldest trick there is and it is here because the modern answer
+   *  is not affordable: an ambient-occlusion pass costs ten times the
+   *  frame at this mesh count (55 fps down to 5), all of it in the
+   *  second pass it makes over the scene. See js/watercolour.js.
+   *
+   *  It earns its place. The pendant is a spot aimed at the table, so
+   *  nothing on the floor casts a shadow at all, and furniture without a
+   *  shadow does not sit on the floor — it hovers a little above it.
+   * ------------------------------------------------------------------ */
+  const blobTex = (() => {
+    const c = document.createElement("canvas");
+    c.width = c.height = 128;
+    const x = c.getContext("2d");
+    const g = x.createRadialGradient(64, 64, 4, 64, 64, 64);
+    g.addColorStop(0, "rgba(0,0,0,0.62)");
+    g.addColorStop(0.45, "rgba(0,0,0,0.42)");
+    g.addColorStop(0.8, "rgba(0,0,0,0.1)");
+    g.addColorStop(1, "rgba(0,0,0,0)");
+    x.fillStyle = g;
+    x.fillRect(0, 0, 128, 128);
+    return new THREE.CanvasTexture(c);
+  })();
+
+  const contact = new THREE.Group();
+  scene.add(contact);
+  const bounds = new THREE.Box3();
+  for (const item of furniture) {
+    bounds.setFromObject(item);
+    if (!isFinite(bounds.min.y) || bounds.min.y > 0.42) continue; // hangs on a wall
+    const w = bounds.max.x - bounds.min.x;
+    const d = bounds.max.z - bounds.min.z;
+    if (w > 4 || d > 4 || w < 0.04) continue; // the rug is its own floor
+    const blob = new THREE.Mesh(
+      new THREE.PlaneGeometry(w * 1.5, d * 1.5),
+      new THREE.MeshBasicMaterial({
+        map: blobTex,
+        transparent: true,
+        depthWrite: false,
+        // Fainter the further the object's underside is off the floor, which
+        // is what a real contact shadow does as the gap opens.
+        opacity: 0.9 * Math.max(0.25, 1 - Math.max(0, bounds.min.y) * 3),
+      })
+    );
+    blob.rotation.x = -Math.PI / 2;
+    blob.position.set((bounds.min.x + bounds.max.x) / 2, 0.006, (bounds.min.z + bounds.max.z) / 2);
+    blob.renderOrder = -1;
+    contact.add(blob);
+  }
+
   // Everything loose in the room, as its own rigid body. The lights are not in
   // here on purpose: a natural 1 throws the furniture about, and a fireplace
-  // whose glow flew across the room with it would read as a bug.
-  return { update, fireLight, furniture: group.children.slice() };
+  // whose glow flew across the room with it would read as a bug. Nor are the
+  // contact shadows — they are hidden while the furniture is in the air.
+  return { update, fireLight, furniture, contact };
 }
