@@ -22,6 +22,7 @@ import { createBoard } from "./board.js";
 import { createProps } from "./props.js";
 import { createChatter } from "./chatter.js";
 import { createEffects } from "./effects.js";
+import { dedupeMaterials } from "./palette.js";
 import { roundedBox } from "./shapes.js";
 
 // The sheet is 860x1180 CSS px, laid flat on the table at this physical width.
@@ -1335,6 +1336,15 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
     cssRenderer.setSize(width(), height());
     painter.setSize(width(), height());
   });
+
+  // Collapse the material list once everything is in the scene. The players
+  // arrive late, so it runs again when they land.
+  const tidy = () => {
+    const { before, after } = dedupeMaterials(scene);
+    if (DEBUG_ROBOT) console.debug(`PROBE materials ${before} -> ${after}`);
+  };
+  tidy();
+  Promise.all(pending).then(tidy);
 
   // ---------- Loop ----------
   const clock = new THREE.Clock();

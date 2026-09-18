@@ -12,6 +12,7 @@
 import * as THREE from "three";
 import { poster, brick, weave, tvScreen, flame } from "./textures.js";
 import { roundedBox } from "./shapes.js";
+import { mergeParts, at } from "./merge.js";
 
 const N = (x, y = x) => new THREE.Vector2(x, y);
 
@@ -339,6 +340,10 @@ export function createRoom(scene, { wallZ = -2.1 } = {}) {
   add(B(0.92, 0.04, 0.32), shelfMat, 0, 1.14, 0, { parent: bookcase });
   add(B(0.92, 0.04, 0.32), shelfMat, 0, 0.05, 0, { parent: bookcase });
   for (const s of [-1, 1]) add(B(0.04, 1.14, 0.32), shelfMat, s * 0.44, 0.57, 0, { parent: bookcase });
+  // Every book on all three shelves is baked into a single mesh; they keep
+  // their own colours through a vertex-colour attribute. Seventy meshes and
+  // seventy materials become one of each.
+  const bookParts = [];
   for (let shelf = 0; shelf < 3; shelf++) {
     const y = 0.07 + shelf * 0.345;
     add(B(0.86, 0.025, 0.3), shelfMat, 0, y + 0.31, 0, { parent: bookcase });
@@ -346,23 +351,22 @@ export function createRoom(scene, { wallZ = -2.1 } = {}) {
     while (x < 0.34) {
       const w = 0.018 + rand() * 0.024;
       const h = 0.18 + rand() * 0.095;
-      const book = add(
-        B(w, h, 0.2 + rand() * 0.07, 0.003),
-        new THREE.MeshStandardMaterial({
-          color: BOOK_COLOURS[Math.floor(rand() * BOOK_COLOURS.length)],
-          roughness: 0.72,
-          envMapIntensity: 0.6,
-        }),
-        x + w / 2,
-        y + h / 2,
-        0.01,
-        { parent: bookcase }
-      );
-      // one row has given up and started to lean
-      if (shelf === 1 && x > 0.18) book.rotation.z = 0.24;
+      bookParts.push({
+        geometry: B(w, h, 0.2 + rand() * 0.07, 0.003),
+        // one row has given up and started to lean
+        matrix: at(x + w / 2, y + h / 2, 0.01, [0, 0, shelf === 1 && x > 0.18 ? 0.24 : 0]),
+        colour: new THREE.Color(BOOK_COLOURS[Math.floor(rand() * BOOK_COLOURS.length)]),
+      });
       x += w + 0.004;
     }
   }
+  const books = new THREE.Mesh(
+    mergeParts(bookParts, { colours: true }),
+    new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.72, envMapIntensity: 0.6 })
+  );
+  books.castShadow = true;
+  books.receiveShadow = true;
+  bookcase.add(books);
 
   // The stack of boxes every table accumulates, on the floor beside it.
   const BOX_TOPS = [0x8c2f22, 0x2f5f8c, 0xb08a2a, 0x3f6b46];
@@ -383,33 +387,40 @@ export function createRoom(scene, { wallZ = -2.1 } = {}) {
   const clock = new THREE.Group();
   clock.position.set(FIRE_X, 1.96, wallZ + 0.35);
   group.add(clock);
-  add(new THREE.CylinderGeometry(0.15, 0.15, 0.04, 26), mat.frame, 0, 0, 0, { parent: clock }).rotation.x = Math.PI / 2;
-  add(new THREE.CircleGeometry(0.132, 26), paleMat, 0, 0, 0.021, { parent: clock, cast: false });
+  const clockParts = [
+    { geometry: new THREE.CylinderGeometry(0.15, 0.15, 0.04, 26), matrix: at(0, 0, 0, [Math.PI / 2, 0, 0]) },
+    { geometry: B(0.009, 0.086, 0.004), matrix: at(0.012, 0.037, 0.026, [0, 0, -0.3]) },
+    { geometry: B(0.007, 0.112, 0.004), matrix: at(0.048, -0.03, 0.028, [0, 0, 2.1]) },
+  ];
   for (let i = 0; i < 12; i++) {
     const a = (i / 12) * Math.PI * 2;
-    const tick = add(B(0.008, 0.019, 0.003), mat.frame, Math.sin(a) * 0.112, Math.cos(a) * 0.112, 0.023, {
-      parent: clock,
-      cast: false,
-    });
-    tick.rotation.z = -a;
+    clockParts.push({ geometry: B(0.008, 0.019, 0.003), matrix: at(Math.sin(a) * 0.112, Math.cos(a) * 0.112, 0.023, [0, 0, -a]) });
   }
-  add(B(0.009, 0.086, 0.004), mat.frame, 0.012, 0.037, 0.026, { parent: clock, cast: false }).rotation.z = -0.3;
-  add(B(0.007, 0.112, 0.004), mat.frame, 0.048, -0.03, 0.028, { parent: clock, cast: false }).rotation.z = 2.1;
+  const clockBody = new THREE.Mesh(mergeParts(clockParts), mat.frame);
+  clockBody.castShadow = true;
+  clock.add(clockBody);
+  add(new THREE.CircleGeometry(0.132, 26), paleMat, 0, 0, 0.021, { parent: clock, cast: false });
 
   // A dartboard beside the television, two darts still in it.
   const darts = new THREE.Group();
   darts.position.set(2.62, 1.76, wallZ + 0.02);
   group.add(darts);
   add(new THREE.CylinderGeometry(0.24, 0.24, 0.045, 28), mat.frame, 0, 0, 0, { parent: darts }).rotation.x = Math.PI / 2;
-  const ring = (r, col, z) =>
-    add(new THREE.CircleGeometry(r, 28), new THREE.MeshStandardMaterial({ color: col, roughness: 0.8 }), 0, 0, z, {
-      parent: darts,
-      cast: false,
-    });
-  ring(0.215, 0x1d1a16, 0.024);
-  ring(0.15, 0xc9b68a, 0.0255);
-  ring(0.09, 0x8c2f22, 0.027);
-  ring(0.028, 0x1d1a16, 0.0285);
+  // The four rings differ only in colour, so they bake into one mesh with a
+  // colour per vertex rather than four meshes and four materials.
+  const RINGS = [[0.215, 0x1d1a16, 0.024], [0.15, 0xc9b68a, 0.0255], [0.09, 0x8c2f22, 0.027], [0.028, 0x1d1a16, 0.0285]];
+  const face = new THREE.Mesh(
+    mergeParts(
+      RINGS.map(([r, col, z]) => ({
+        geometry: new THREE.CircleGeometry(r, 28),
+        matrix: at(0, 0, z),
+        colour: new THREE.Color(col),
+      })),
+      { colours: true }
+    ),
+    new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8 })
+  );
+  darts.add(face);
   for (const [dx, dy, col] of [[0.06, 0.09, 0xc8342a], [-0.11, -0.05, 0x3fc4ff]]) {
     const dart = new THREE.Group();
     dart.position.set(dx, dy, 0.03);

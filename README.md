@@ -61,6 +61,33 @@ puts the cost in the second pass it makes over the scene for depth and normals �
 room is 553 separate meshes, and drawing all of them twice is the whole budget.
 Contact is done the old way instead, with a soft quad under each piece of furniture.
 
+## Draw calls
+
+Two passes over the scene's cost, both measured rather than guessed:
+
+| | before | after |
+|---|---|---|
+| meshes | 553 | 400 |
+| materials | 289 | 140 |
+| shadow casters | 419 | 264 |
+| triangles | 135 k | 135 k |
+
+Small static pieces are baked into single meshes by `js/merge.js` — seventy books
+into one, seven miniatures into one, ninety-odd battlements, walls, roofs and
+standing stones into three. They keep their individual colours through a
+vertex-colour attribute. Only things that never move relative to each other are
+merged: each piece of furniture is merged into itself, never into its neighbour,
+because a natural 1 still has to throw the bookcase across the room.
+
+The triangle count is unchanged on purpose. Merging removes draw calls, not
+geometry.
+
+Materials are collapsed after the scene is built rather than by rewriting five
+modules to pull from a shared palette. `js/palette.js` walks the graph and points
+every mesh at one instance per distinct surface. It skips sprites, which animate
+their own material every frame — a speech bubble, a flame, a floating score —
+and would otherwise all end up showing the last thing assigned to any of them.
+
 ## Run locally
 
 ```bash
@@ -88,6 +115,8 @@ js/board.js       the board: the tray, and the terrain standing on the map
 js/props.js       what each player brought: a mug, a dice cup, a map, a notepad
 js/chatter.js     the speech bubbles, one at a time
 js/effects.js     what a natural 20 and a natural 1 do to the room
+js/merge.js       baking small static pieces into single meshes
+js/palette.js     collapsing duplicate materials once the scene is built
 js/shapes.js      rounded boxes — nothing in a room has a knife edge
 js/room.js        the room around it: posters, fireplace, sofa, television, lamp
 js/watercolour.js the painted look: post-processing chain and its shader

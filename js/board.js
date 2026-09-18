@@ -13,6 +13,7 @@
 import * as THREE from "three";
 import { MAP_PLAN, fantasyMap } from "./textures.js";
 import { roundedBox } from "./shapes.js";
+import { mergeParts, at } from "./merge.js";
 
 const N = (x, y = x) => new THREE.Vector2(x, y);
 
@@ -152,44 +153,46 @@ export function createBoard(scene, { cx = 0.1, cz = -0.05, w = 0.84, d = 0.6, y 
   const roofMat = new THREE.MeshStandardMaterial({ color: 0x7a3b2c, roughness: 0.7, envMapIntensity: 0.5 });
   const plankMat = new THREE.MeshStandardMaterial({ color: 0x6b4c30, roughness: 0.8, envMapIntensity: 0.4 });
 
+  // Everything built on the map is static relative to the board, so it is baked
+  // down to one mesh per material: stone, roof and plank. Ninety-odd little
+  // meshes — battlements, wall segments, roofs, standing stones, ruin blocks —
+  // become three.
+  const stoneParts = [];
+  const roofParts = [];
+  const plankParts = [];
+
   // the keep at Highmark: a round tower with battlements and a spire
   const keep = MAP_PLAN.towns.find((t) => t.kind === "keep");
   const kx = X(keep.at[0]);
   const kz = Z(keep.at[1]);
-  solid(new THREE.CylinderGeometry(0.019, 0.023, 0.062, 14), stoneMat, kx, SURFACE + 0.031, kz);
-  solid(new THREE.CylinderGeometry(0.024, 0.024, 0.008, 14), stoneMat, kx, SURFACE + 0.066, kz);
+  stoneParts.push(
+    { geometry: new THREE.CylinderGeometry(0.019, 0.023, 0.062, 14), matrix: at(kx, SURFACE + 0.031, kz) },
+    { geometry: new THREE.CylinderGeometry(0.024, 0.024, 0.008, 14), matrix: at(kx, SURFACE + 0.066, kz) }
+  );
   for (let i = 0; i < 8; i++) {
     const a = (i / 8) * Math.PI * 2;
-    solid(
-      roundedBox(0.007, 0.009, 0.007, 0.0015, 2),
-      stoneMat,
-      kx + Math.cos(a) * 0.021,
-      SURFACE + 0.0745,
-      kz + Math.sin(a) * 0.021,
-      -a
-    );
+    stoneParts.push({
+      geometry: roundedBox(0.007, 0.009, 0.007, 0.0015, 2),
+      matrix: at(kx + Math.cos(a) * 0.021, SURFACE + 0.0745, kz + Math.sin(a) * 0.021, [0, -a, 0]),
+    });
   }
-  solid(new THREE.ConeGeometry(0.016, 0.03, 12), roofMat, kx, SURFACE + 0.094, kz);
+  roofParts.push({ geometry: new THREE.ConeGeometry(0.016, 0.03, 12), matrix: at(kx, SURFACE + 0.094, kz) });
 
   // the walled town at Ravensmoor: a ring of wall, a gate, roofs inside
   const town = MAP_PLAN.towns.find((t) => t.kind === "town");
   const tx = X(town.at[0]);
   const tz = Z(town.at[1]);
   for (let i = 0; i < 12; i++) {
-    const a = (i / 12) * Math.PI * 2;
     if (i === 3) continue; // the gate
-    solid(
-      roundedBox(0.014, 0.018, 0.006, 0.0015, 2),
-      stoneMat,
-      tx + Math.cos(a) * 0.028,
-      SURFACE + 0.009,
-      tz + Math.sin(a) * 0.028,
-      -a + Math.PI / 2
-    );
+    const a = (i / 12) * Math.PI * 2;
+    stoneParts.push({
+      geometry: roundedBox(0.014, 0.018, 0.006, 0.0015, 2),
+      matrix: at(tx + Math.cos(a) * 0.028, SURFACE + 0.009, tz + Math.sin(a) * 0.028, [0, -a + Math.PI / 2, 0]),
+    });
   }
-  for (const [ox, oz, s] of [[-0.008, -0.004, 1], [0.007, 0.006, 0.85], [0.002, -0.011, 0.75]]) {
-    solid(new THREE.BoxGeometry(0.013 * s, 0.011, 0.013 * s), plankMat, tx + ox, SURFACE + 0.0055, tz + oz);
-    solid(new THREE.ConeGeometry(0.011 * s, 0.009, 4), roofMat, tx + ox, SURFACE + 0.0155, tz + oz, Math.PI / 4);
+  for (const [ox, oz, sc] of [[-0.008, -0.004, 1], [0.007, 0.006, 0.85], [0.002, -0.011, 0.75]]) {
+    plankParts.push({ geometry: roundedBox(0.013 * sc, 0.011, 0.013 * sc, 0.0015, 2), matrix: at(tx + ox, SURFACE + 0.0055, tz + oz) });
+    roofParts.push({ geometry: new THREE.ConeGeometry(0.011 * sc, 0.009, 4), matrix: at(tx + ox, SURFACE + 0.0155, tz + oz, [0, Math.PI / 4, 0]) });
   }
 
   // the village at Tallow: three roofs, no wall
@@ -197,8 +200,33 @@ export function createBoard(scene, { cx = 0.1, cz = -0.05, w = 0.84, d = 0.6, y 
   for (let i = 0; i < 3; i++) {
     const vx = X(vil.at[0]) + (i - 1) * 0.014;
     const vz = Z(vil.at[1]) + (i % 2) * 0.011;
-    solid(roundedBox(0.012, 0.01, 0.012, 0.0015, 2), plankMat, vx, SURFACE + 0.005, vz);
-    solid(new THREE.ConeGeometry(0.0105, 0.008, 4), roofMat, vx, SURFACE + 0.014, vz, Math.PI / 4);
+    plankParts.push({ geometry: roundedBox(0.012, 0.01, 0.012, 0.0015, 2), matrix: at(vx, SURFACE + 0.005, vz) });
+    roofParts.push({ geometry: new THREE.ConeGeometry(0.0105, 0.008, 4), matrix: at(vx, SURFACE + 0.014, vz, [0, Math.PI / 4, 0]) });
+  }
+
+  // standing stones, and the ruin the party is presumably headed for
+  const [su, sv] = MAP_PLAN.stones;
+  for (let i = 0; i < 7; i++) {
+    const a = (i / 7) * Math.PI * 2;
+    stoneParts.push({
+      geometry: roundedBox(0.005, 0.019, 0.004, 0.0015, 2),
+      matrix: at(X(su) + Math.cos(a) * 0.017, SURFACE + 0.0095, Z(sv) + Math.sin(a) * 0.013, [0, -a, (rand() - 0.5) * 0.18]),
+    });
+  }
+  const [ru, rv] = MAP_PLAN.ruin;
+  for (let i = 0; i < 5; i++) {
+    const h = 0.008 + rand() * 0.018;
+    stoneParts.push({
+      geometry: roundedBox(0.009, h, 0.007, 0.0015, 2),
+      matrix: at(X(ru) + (i - 2) * 0.011, SURFACE + h / 2, Z(rv) + (rand() - 0.5) * 0.016, [0, rand() * 0.5, 0]),
+    });
+  }
+
+  for (const [parts, material] of [[stoneParts, stoneMat], [roofParts, roofMat], [plankParts, plankMat]]) {
+    const m = new THREE.Mesh(mergeParts(parts), material);
+    m.castShadow = true;
+    m.receiveShadow = true;
+    group.add(m);
   }
 
   // the bridge, standing over the river at the point the road crosses it
@@ -226,71 +254,34 @@ export function createBoard(scene, { cx = 0.1, cz = -0.05, w = 0.84, d = 0.6, y 
     part(roundedBox(0.009, 0.009, 0.022, 0.0015, 2), stoneMat, s * 0.026, 0.004, 0);
   }
 
-  // standing stones, and the ruin the party is presumably headed for
-  const [su, sv] = MAP_PLAN.stones;
-  for (let i = 0; i < 7; i++) {
-    const a = (i / 7) * Math.PI * 2;
-    solid(
-      roundedBox(0.005, 0.019, 0.004, 0.0015, 2),
-      stoneMat,
-      X(su) + Math.cos(a) * 0.017,
-      SURFACE + 0.0095,
-      Z(sv) + Math.sin(a) * 0.013,
-      -a
-    ).rotation.z = (rand() - 0.5) * 0.18;
-  }
-  const [ru, rv] = MAP_PLAN.ruin;
-  for (let i = 0; i < 5; i++) {
-    const h = 0.008 + rand() * 0.018;
-    solid(
-      new THREE.BoxGeometry(0.009, h, 0.007),
-      stoneMat,
-      X(ru) + (i - 2) * 0.011,
-      SURFACE + h / 2,
-      Z(rv) + (rand() - 0.5) * 0.016,
-      rand() * 0.5
-    );
-  }
-
   // ---------- Miniatures ----------
   // Painted metal on a round base: a slotted base, a cloak, a head, and a spear
   // or banner in the party's colour, so you can tell whose is whose at a glance.
-  const baseMat = new THREE.MeshStandardMaterial({ color: 0x23201c, roughness: 0.55, metalness: 0.2, envMapIntensity: 0.9 });
+  //
+  // All seven are baked into one mesh. They differ only in colour, and a colour
+  // per vertex carries that — fifty-six little meshes and fourteen materials
+  // become one of each.
+  const DARK = new THREE.Color(0x23201c);
+  const miniParts = [];
   const mini = (colour, u, v, tall = 1, foe = false) => {
-    const g = new THREE.Group();
-    g.position.set(X(u), SURFACE, Z(v));
-    g.rotation.y = rand() * Math.PI * 2;
-    group.add(g);
+    const stand = new THREE.Matrix4().compose(
+      new THREE.Vector3(X(u), SURFACE, Z(v)),
+      new THREE.Quaternion().setFromEuler(new THREE.Euler(0, rand() * Math.PI * 2, 0)),
+      new THREE.Vector3(1, 1, 1)
+    );
+    const cloak = colour.clone().multiplyScalar(0.62);
+    const push = (geometry, colour2, x, y, z, rot = [0, 0, 0]) =>
+      miniParts.push({ geometry, colour: colour2, matrix: stand.clone().multiply(at(x, y, z, rot)) });
 
-    const body = new THREE.MeshStandardMaterial({ color: colour, roughness: 0.34, metalness: 0.25, envMapIntensity: 1.5 });
-    const add = (geo, mat, px, py, pz) => {
-      const m = new THREE.Mesh(geo, mat);
-      m.position.set(px, py, pz);
-      m.castShadow = true;
-      g.add(m);
-      return m;
-    };
-    add(new THREE.CylinderGeometry(0.0105, 0.0115, 0.0035, 18), baseMat, 0, 0.0018, 0);
-    add(new THREE.CylinderGeometry(0.0088, 0.0098, 0.0012, 18), body, 0, 0.0041, 0);
-    add(new THREE.CapsuleGeometry(0.0052, 0.016 * tall, 4, 10), body, 0, 0.0145 * tall, 0);
+    push(new THREE.CylinderGeometry(0.0105, 0.0115, 0.0035, 18), DARK, 0, 0.0018, 0);
+    push(new THREE.CylinderGeometry(0.0088, 0.0098, 0.0012, 18), colour, 0, 0.0041, 0);
+    push(new THREE.CapsuleGeometry(0.0052, 0.016 * tall, 4, 10), colour, 0, 0.0145 * tall, 0);
     // the cloak: a cone open at the bottom reads as cloth without a cloth sim
-    const cloakMat = new THREE.MeshStandardMaterial({
-      color: new THREE.Color(colour).multiplyScalar(0.62),
-      roughness: 0.62,
-      side: THREE.DoubleSide,
-      envMapIntensity: 0.9,
-    });
-    add(new THREE.ConeGeometry(0.0082, 0.019 * tall, 10, 1, true), cloakMat, 0, 0.0135 * tall, -0.0022);
-    add(new THREE.SphereGeometry(0.0046, 12, 10), baseMat, 0, 0.0262 * tall, 0.0006);
-    const pole = add(new THREE.CylinderGeometry(0.0009, 0.0009, 0.034 * tall, 6), baseMat, 0.008, 0.019 * tall, 0.002);
-    pole.rotation.z = -0.12;
-    if (foe) {
-      add(new THREE.ConeGeometry(0.0026, 0.007, 6), baseMat, 0.0095, 0.037 * tall, 0.002);
-    } else {
-      const flag = add(new THREE.PlaneGeometry(0.009, 0.007), body, 0.0125, 0.033 * tall, 0.002);
-      flag.material = new THREE.MeshStandardMaterial({ color: colour, side: THREE.DoubleSide, roughness: 0.6 });
-    }
-    return g;
+    push(new THREE.ConeGeometry(0.0082, 0.019 * tall, 10, 1, true), cloak, 0, 0.0135 * tall, -0.0022);
+    push(new THREE.SphereGeometry(0.0046, 12, 10), DARK, 0, 0.0262 * tall, 0.0006);
+    push(new THREE.CylinderGeometry(0.0009, 0.0009, 0.034 * tall, 6), DARK, 0.008, 0.019 * tall, 0.002, [0, 0, -0.12]);
+    if (foe) push(new THREE.ConeGeometry(0.0026, 0.007, 6), DARK, 0.0095, 0.037 * tall, 0.002);
+    else push(new THREE.PlaneGeometry(0.009, 0.007), colour, 0.0125, 0.033 * tall, 0.002);
   };
 
   return {
@@ -302,6 +293,20 @@ export function createBoard(scene, { cx = 0.1, cz = -0.05, w = 0.84, d = 0.6, y 
         mini(new THREE.Color(a.colour), u, v, 1);
       });
       MAP_PLAN.foes.forEach(([u, v], i) => mini(new THREE.Color(0x8c2f22), u, v, i === 0 ? 1.35 : 1.05, true));
+
+      const figures = new THREE.Mesh(
+        mergeParts(miniParts, { colours: true }),
+        new THREE.MeshStandardMaterial({
+          vertexColors: true,
+          roughness: 0.4,
+          metalness: 0.2,
+          envMapIntensity: 1.3,
+          // the cloaks and the banners are open surfaces
+          side: THREE.DoubleSide,
+        })
+      );
+      figures.castShadow = true;
+      group.add(figures);
     },
   };
 }
