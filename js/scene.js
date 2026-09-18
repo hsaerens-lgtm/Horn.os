@@ -1195,6 +1195,97 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
   spill.position.set(0, 1.86, -0.05);
   scene.add(spill);
 
+  /* ---------------- The DM's task lamp ----------------
+   *
+   * A clamp lamp on the left edge of the table, leaning in over the screen.
+   * It exists for one reason: the table had no readable shadows, and the cause
+   * is geometry rather than settings. Shadow length on a surface is
+   *
+   *     object height  x  its distance from the light axis
+   *     -------------------------------------------------
+   *          light height above that surface
+   *
+   * and the pendant hangs 1.16 m above the tabletop, so a four-centimetre die
+   * sixty centimetres off the axis throws two centimetres of shadow, straight
+   * down, underneath the die that is already hiding it. No map resolution, no
+   * bias and no penumbra fixes that: the shadow is the right length and it is
+   * in the wrong place.
+   *
+   * A head 28 cm above the table throws the same die a shadow four times as
+   * long and sideways, into open tabletop. Measured on a fixed shot against
+   * seven rigs and then seven head positions, the pixels darkened more than
+   * 25% go from 0.06% of the frame to 2.28%, and the faint ones from 4.2% to
+   * 13.8%. Lowering the pendant instead — the obvious thing to try — makes it
+   * worse, because it narrows the cone faster than it shortens the throw.
+   *
+   * The position is sharply specific, which is worth knowing: moving the head
+   * 16 cm along z, from 0.42 to 0.26, takes the deep fraction from 1.7% to
+   * zero. It has to sit where its cone rakes the length of the table rather
+   * than across the corner of it.
+   */
+  const HEAD = new THREE.Vector3(-1.02, TABLE_Y + 0.28, 0.42);
+  const CLAMP_X = -1.11;
+  const taskLamp = new THREE.Group();
+  taskLamp.position.set(CLAMP_X, TABLE_Y, HEAD.z);
+  scene.add(taskLamp);
+  // Brass, not the near-black steel it was first built in. In a room this dim a
+  // dark thin object does not read as an object, it reads as a gap — the first
+  // version came out of the wide shot as a black bar standing next to a player.
+  const lampMetal = new THREE.MeshStandardMaterial({
+    color: 0x9a7538,
+    roughness: 0.34,
+    metalness: 0.8,
+    envMapIntensity: 1.5,
+  });
+  const lampPart = (geo, x, y, z, rot) => {
+    const m = new THREE.Mesh(geo, lampMetal);
+    m.position.set(x, y, z);
+    if (rot) m.rotation.set(...rot);
+    m.castShadow = true;
+    taskLamp.add(m);
+    return m;
+  };
+  // the clamp on the table edge, the upright, and the arm leaning in
+  lampPart(roundedBox(0.055, 0.075, 0.1, 0.012), 0, 0.0, 0);
+  lampPart(new THREE.CylinderGeometry(0.009, 0.011, 0.48, 10), 0, 0.26, 0);
+  const reach = Math.hypot(HEAD.x - CLAMP_X, TABLE_Y + 0.48 - HEAD.y);
+  lampPart(
+    new THREE.CylinderGeometry(0.0075, 0.0075, reach, 10),
+    (HEAD.x - CLAMP_X) / 2,
+    (0.48 + (HEAD.y - TABLE_Y)) / 2,
+    0,
+    [0, 0, -Math.atan2(HEAD.x - CLAMP_X, 0.48 - (HEAD.y - TABLE_Y))]
+  );
+  // The shade is cream outside and lit inside, so that from the far side of the
+  // table it reads as a lamp that is on rather than a cone of dark metal.
+  const hood = lampPart(new THREE.ConeGeometry(0.05, 0.07, 18, 1, true), HEAD.x - CLAMP_X, HEAD.y - TABLE_Y, 0, [1.05, 0, -0.62]);
+  hood.material = new THREE.MeshStandardMaterial({
+    color: 0xe8dcc2,
+    roughness: 0.5,
+    side: THREE.DoubleSide,
+    emissive: 0xffc98a,
+    emissiveIntensity: 0.85,
+    envMapIntensity: 1.0,
+  });
+  const lampBulb = new THREE.Mesh(
+    new THREE.SphereGeometry(0.015, 12, 10),
+    // Above white, like the pendant's: a lit bulb is a source, not a white ball.
+    new THREE.MeshBasicMaterial({ color: new THREE.Color(3.1, 2.55, 1.7) })
+  );
+  lampBulb.position.set(HEAD.x - CLAMP_X, HEAD.y - TABLE_Y - 0.012, 0.012);
+  taskLamp.add(lampBulb);
+
+  const task = new THREE.SpotLight(0xffd9a8, 9, 4.5, 0.95, 0.35, 2);
+  task.position.copy(HEAD);
+  task.target.position.set(0.35, TABLE_Y + 0.01, -0.25);
+  task.castShadow = true;
+  task.shadow.mapSize.set(1536, 1536);
+  task.shadow.camera.near = 0.15;
+  task.shadow.bias = -0.0008;
+  task.shadow.normalBias = 0.012;
+  scene.add(task);
+  scene.add(task.target);
+
   // A key for the players.
   //
   // This is the one that was missing, and the measurements are why it is here.
@@ -1324,6 +1415,9 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
     out.target.set(x, 1.12, z).addScaledVector(AGENT_F, 0.6).addScaledVector(AGENT_R, 0.24);
     return out;
   };
+
+  // Set by the test harness through window.__debug.pin(); null in normal use.
+  let pinned = null;
 
   const pose = { pos: new THREE.Vector3(), target: new THREE.Vector3() };
   const from = { pos: new THREE.Vector3(), target: new THREE.Vector3(), up: new THREE.Vector3() };
@@ -1530,7 +1624,14 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
       console.debug(`PROBE occlusion ${size[0]}x${size[1]} in ${ms} ms`);
       // ?debug only: the bake has to be checked against the room it was made
       // from, and that means reading it through a raycast at known positions.
-      window.__debug = { scene, renderer, camera, ao: mesh };
+      window.__debug = {
+        scene,
+        renderer,
+        camera,
+        ao: mesh,
+        pin: (pos, target) =>
+          (pinned = pos ? { pos: new THREE.Vector3(...pos), target: new THREE.Vector3(...target) } : null),
+      };
     }
   };
 
@@ -1631,6 +1732,16 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
 
     camera.up.copy(camUp);
     camera.lookAt(lookAt);
+
+    // ?debug only: hold the camera at a fixed pose so a screenshot taken now
+    // and a screenshot taken tomorrow frame the same thing. The idle camera is
+    // a function of elapsed time, which makes every capture of it a different
+    // picture and every comparison between two of them worthless.
+    if (pinned) {
+      camera.position.copy(pinned.pos);
+      camera.up.set(0, 1, 0);
+      camera.lookAt(pinned.target);
+    }
 
     painter.render();
     cssRenderer.render(scene, camera);

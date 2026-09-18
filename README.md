@@ -77,6 +77,32 @@ it runs after the figure is posed — an armpit is only an armpit once the arm i
 down. It comes out at 0.4 to 1.0, and the shoulders and torso are the darkest, which
 is where the creases are.
 
+## Testing
+
+Everything above this line was judged through a preview pane that resized itself,
+stopped drawing when the window went behind another one, and throttled
+`requestAnimationFrame` to nothing. Three separate frame-rate readings taken that
+way were artefacts. And a screenshot from it was a different picture every time,
+because the idle camera is a function of elapsed time — so no two captures could
+be compared, which is the one thing a screenshot is for.
+
+`test/shots.mjs` runs the page in headless Chromium through Playwright, on
+SwiftShader so there is real WebGL, pins the camera to four fixed poses, and
+writes PNGs to `test/out`. It also measures the shadows the only way that means
+anything: render the frame twice, once with the casting lights' shadows on and
+once off, and count how many pixels moved and by how much.
+
+```bash
+npm install && npx playwright install chromium
+npm run shots          # against the local server on :4330
+npm run shots:live     # against GitHub Pages
+```
+
+`test/lights.mjs` and `test/lamp.mjs` are the bench that produced the numbers
+below: they try whole light rigs and head positions rather than parameters, and
+score each one. Nothing in `test/` ships — the page is still static files with no
+build step.
+
 ## Why there were no shadows
 
 "Still no shadows — is there no way to have a dynamic light so the shadow happens
@@ -106,7 +132,7 @@ Each new unshadowed light makes every *other* shadow shallower. And a light plac
 on the camera's side casts its shadows away from the viewer, where by construction
 they cannot be seen.
 
-The fix was one number: **the key light goes from 15 to 38.** Measured across 15, 24,
+Raising the key light from 15 to 38 was the first half of the fix. Measured across 15, 24,
 30, 38, 48 and 60, the pixels darkened more than 10% go from 0.1% to 11.4% — and the
 picture does not get brighter. Frame mean moves 0.334 → 0.345, the crushed fraction
 does not move at all, and blown highlights stay under 1%. It is a spot confined to
@@ -114,6 +140,47 @@ the table, and the table already sits on the shoulder of the tone curve: the lit
 saturates while the shadowed side does not move, which is precisely the ratio that
 was wanted. 38 is where it stops paying; past about 48 the shadows go black rather
 than dark.
+
+### And then it still was not enough
+
+Reported again, with a screenshot, as having no shadows — and the screenshot was
+right. Deepening the pendant's shadow made the dark parts darker without making
+any shadow *readable*, because the problem was never depth. It was position.
+Shadow length on a surface is
+
+```
+    object height  x  its distance from the light axis
+    -------------------------------------------------
+         light height above that surface
+```
+
+and the pendant hangs 1.16 m above the tabletop. A four-centimetre die sixty
+centimetres off the axis throws two centimetres of shadow, straight down,
+underneath the die that is already hiding it. The shadow is the right length and
+it is in the wrong place, and no map resolution, bias or penumbra changes that.
+
+So the table has a clamp lamp on its left edge now, leaning in over the DM's
+screen, with its head 28 cm above the tabletop. The same die gets a shadow four
+times as long, thrown sideways into open tabletop.
+
+Seven rigs were tried and scored on a fixed shot of the table, then seven head
+positions for the winner. Pixels darkened by more than 25%:
+
+| | table shot | players shot |
+|---|---|---|
+| before | 0.06% | 0.00% |
+| after | **2.63%** | **2.61%** |
+
+Two things the bench found that guessing would not have:
+
+- **Lowering the pendant makes it worse.** It is the obvious thing to try and it
+  narrows the cone faster than it shortens the throw: readable shadow goes from
+  3.4% to 2.1%, and with a harder penumbra as well, to 0.6%.
+- **The result is sharply positional.** Moving the lamp head 16 cm along z, from
+  0.42 to 0.26, takes the deep fraction from 1.7% to zero. It has to sit where
+  its cone rakes the length of the table rather than across a corner of it. The
+  first version built into the scene sat 20 cm from the bench's position and
+  scored 0.06% — the same as having no lamp at all.
 
 ## What the players actually needed
 

@@ -1,0 +1,31 @@
+{
+  "name": "cv-3d",
+  "version": "1.0.0",
+  "description": "Interactive 3D CV. No build step: the page is static files. This manifest exists only for the Playwright test harness.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "shots": "node test/shots.mjs",
+    "shots:live": "node test/shots.mjs --live",
+    "bench:lights": "node test/lights.mjs",
+    "bench:lamp": "node test/lamp.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hsaerens-lgtm/Horn.os.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/hsaerens-lgtm/Horn.os/issues"
+  },
+  "homepage": "https://github.com/hsaerens-lgtm/Horn.os#readme",
+  "devDependencies": {
+    "playwright": "^1.63.0"
+  },
+  "private": true
+}
