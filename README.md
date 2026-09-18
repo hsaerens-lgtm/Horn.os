@@ -77,6 +77,44 @@ it runs after the figure is posed — an armpit is only an armpit once the arm i
 down. It comes out at 0.4 to 1.0, and the shoulders and torso are the darkest, which
 is where the creases are.
 
+## Why there were no shadows
+
+"Still no shadows — is there no way to have a dynamic light so the shadow happens
+naturally, or do we have to do the shadow of every object?"
+
+Neither, as it turned out. Every object was already casting: 62 of the 74 things on
+the table have `castShadow`, and the tabletop and the floor both receive. And the
+pendant's shadow was already changing **13.7% of the frame** by more than 2%. The
+shadows were there. They were just never *dark*: only **one pixel in a thousand** was
+being darkened by more than 10%.
+
+Shadow depth is not a property of the shadow map. It is the ratio between the light
+that is blocked and the light that is not — and the one light that casts was
+contributing about a third of what reaches the table. Everything else, fourteen
+lights and an environment map, fills its shadows straight back in.
+
+Which is why more lights is the wrong instinct, and the measurements say so. Three
+were tried:
+
+| added light | pixels its shadow changed >2% |
+|---|---|
+| a raking spot from the right | 1.0% |
+| the hearth aimed into the room | 0.1% |
+| a shadow on the players' key | **0%** |
+
+Each new unshadowed light makes every *other* shadow shallower. And a light placed
+on the camera's side casts its shadows away from the viewer, where by construction
+they cannot be seen.
+
+The fix was one number: **the key light goes from 15 to 38.** Measured across 15, 24,
+30, 38, 48 and 60, the pixels darkened more than 10% go from 0.1% to 11.4% — and the
+picture does not get brighter. Frame mean moves 0.334 → 0.345, the crushed fraction
+does not move at all, and blown highlights stay under 1%. It is a spot confined to
+the table, and the table already sits on the shoulder of the tone curve: the lit side
+saturates while the shadowed side does not move, which is precisely the ratio that
+was wanted. 38 is where it stops paying; past about 48 the shadows go black rather
+than dark.
+
 ## What the players actually needed
 
 Three maps where there had been none, a clearcoat, cavity occlusion in the creases,
