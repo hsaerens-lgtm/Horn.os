@@ -512,5 +512,8 @@ export function createRoom(scene, { wallZ = -2.1 } = {}) {
     tvGlow.intensity = 0.82 + Math.sin(t * 23.0) * 0.12 + Math.sin(t * 3.1) * 0.06;
   };
 
-  return { update, fireLight };
+  // Everything loose in the room, as its own rigid body. The lights are not in
+  // here on purpose: a natural 1 throws the furniture about, and a fireplace
+  // whose glow flew across the room with it would read as a bug.
+  return { update, fireLight, furniture: group.children.slice() };
 }

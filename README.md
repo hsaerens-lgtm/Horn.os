@@ -17,7 +17,8 @@ Three things are clickable:
 - **The board** — the camera drops to the table and leans in over the map, close
   enough to read the settlement names and the tables printed on the DM screen.
 - **Any die** — it tumbles and a score floats up: gold on a natural 20, red on a
-  natural 1.
+  natural 1. A natural 20 puts fireworks over the table. A natural 1 blows the
+  furniture out of the room, and then, eight seconds later, puts it all back.
 
 The wheel pulls the camera in and out of the room, and scrolls the sheet once you
 are reading it: the same gesture moves you through whatever you are looking at.
@@ -65,6 +66,7 @@ js/scene.js       3D table, camera states, sheet projection and raising
 js/board.js       the board: the tray, and the terrain standing on the map
 js/props.js       what each player brought: a mug, a dice cup, a map, a notepad
 js/chatter.js     the speech bubbles, one at a time
+js/effects.js     what a natural 20 and a natural 1 do to the room
 js/shapes.js      rounded boxes — nothing in a room has a knife edge
 js/room.js        the room around it: posters, fireplace, sofa, television, lamp
 js/watercolour.js the painted look: post-processing chain and its shader

@@ -21,6 +21,7 @@ import { createRoom } from "./room.js";
 import { createBoard } from "./board.js";
 import { createProps } from "./props.js";
 import { createChatter } from "./chatter.js";
+import { createEffects } from "./effects.js";
 import { roundedBox } from "./shapes.js";
 
 // The sheet is 860x1180 CSS px, laid flat on the table at this physical width.
@@ -264,6 +265,11 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
     sprite.renderOrder = 999;
     scene.add(sprite);
     labels.push({ sprite, t0: performance.now(), dur: kind === "normal" ? 1900 : 2600, y0: sprite.position.y, kind });
+
+    // A natural 20 puts fireworks up over the table. A natural 1 takes the room
+    // apart and then puts it back.
+    if (kind === "crit") celebrate(die.position);
+    else if (kind === "fumble") wreck();
   };
 
   const rollDie = (die) => {
@@ -885,6 +891,12 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
   // ---------- And what they say ----------
   const chatter = createChatter(scene, speakers);
 
+  // ---------- What a 20 and a 1 do ----------
+  const BLAST_AT = new THREE.Vector3(0.1, TABLE_Y + 0.15, -0.05);
+  const effects = createEffects(scene, { centre: BLAST_AT });
+  const celebrate = (at) => effects.fireworks(at ?? BLAST_AT);
+  const wreck = () => effects.blast(room.furniture);
+
   // ---------- Each player's character sheet ----------
   // The sheet lies face-up on the table in front of its player, the way a sheet
   // does at a real table. Clicking that player lifts it: it rises off the table,
@@ -1327,6 +1339,8 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
     // They only talk in the wide shot: every closer view has its own thing to read.
     chatter.update(performance.now(), mode !== "idle");
 
+    effects.update(dt);
+
     for (const b of breathers) {
       const k = Math.sin(t * b.rate + b.phase);
       b.objects.forEach((o, i) => {
@@ -1379,6 +1393,15 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
         }
       }
     }
+    // The shake goes on after the pose and before the look-at, so the camera
+    // rattles without ever losing what it was pointed at.
+    if (effects.shake > 0) {
+      const a = effects.shake;
+      camera.position.x += Math.sin(t * 71.3) * a;
+      camera.position.y += Math.sin(t * 58.1 + 1.7) * a * 0.8;
+      camera.position.z += Math.sin(t * 83.7 + 3.1) * a * 0.6;
+    }
+
     camera.up.copy(camUp);
     camera.lookAt(lookAt);
 
@@ -1386,5 +1409,8 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
     cssRenderer.render(scene, camera);
   });
 
-  return { enter, exit, enterBoard, isFocused: () => mode === "focused", ready: Promise.all(pending) };
+  // `celebrate` and `wreck` are returned so a natural 20 and a natural 1 can be
+  // fired without waiting one in twenty rolls for the dice to produce one, which
+  // is how both were built and tested.
+  return { enter, exit, enterBoard, celebrate, wreck, isFocused: () => mode === "focused", ready: Promise.all(pending) };
 }
