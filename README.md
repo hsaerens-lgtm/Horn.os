@@ -77,43 +77,45 @@ it runs after the figure is posed — an armpit is only an armpit once the arm i
 down. It comes out at 0.4 to 1.0, and the shoulders and torso are the darkest, which
 is where the creases are.
 
-## Shadows
+## What the players actually needed
 
-Fourteen lights in the room and exactly one of them cast a shadow — the pendant
-over the table. The hearth, the second brightest source and the only one at ankle
-height, cast nothing at all, which made it a coloured lamp rather than a fire.
+Three maps where there had been none, a clearcoat, cavity occlusion in the creases,
+and a shadow-casting hearth — and the honest report back was "I can't see a
+difference". That is worth measuring rather than arguing with, so each change was
+switched off in a live frame and the finished image differenced against itself:
 
-It is two lights now. A point light at the firebox for the glow on its own brick,
-and a spot pointing out into the room that carries the shadows; two, because the
-jobs want different shapes. The glow is omnidirectional and short-range, and a
-point light's shadow is a six-face cube — six renders of the room for one light.
-The spot is one render with a frustum you can aim.
+| change | mean Δ over the frame | pixels changed >2% |
+|---|---|---|
+| hearth's spot light and its shadow | 0.0004 | **0.1%** |
+| clearcoat | 0.0013 | 0.1% |
+| cavity occlusion | 0.0020 | 2.9% |
+| shell maps + PBR response | 0.0067 | 5.5% |
+| **a key light on the players** | **0.0103** | **12.1%** |
 
-Its shadow map is **rendered once and then frozen** (`shadow.autoUpdate = false`).
-Nothing the hearth shadows ever moves: the furniture is fixed, and the one thing
-that does move is a seated robot breathing, which at three metres shifts its shadow
-by less than a pixel. `wreck()` turns it back on for the eight seconds after a
-natural 1, when the furniture genuinely is in the air.
+Everything done to the *surface* lands at around one per cent, which is below the
+threshold at which anybody notices. The reason is the same for all of it: **the only
+strong light in the room hangs directly over the table.** It lands on the tops of
+their heads and their shoulders and nowhere else, and a surface has to be lit across
+it to show what it is made of. The maps were not the problem; there was nothing
+raking across them.
 
-Splitting the fire in two got it wrong the first time — at 1.15 the point light
-left the firebox reading 0.035 against 0.090 on the floor in front of it, so the
-fire was lighting the room and not itself. At 2.55 the firebox reads 0.161. The
-floor now runs from 0.006 in shadow to 0.157 in the pool of firelight, a contrast
-of twenty-five to one that was not there before.
+So the players have their own key now, warm and soft from the camera's side. It is
+motivated rather than invented — the near half of the room is floor, rug and sofa,
+and it bounces the pendant back; the environment map already carries that bounce as
+a flat panel, and this is the same light given a direction so that it models instead
+of only lifting. No shadow map: by construction its shadows fall away from the
+viewer.
 
-Two things checked rather than assumed:
+It costs 0.011 on the frame mean (0.339 → 0.350 in the test frame) and takes the
+crushed fraction *down* slightly, so the room keeps its falloff.
 
-- **No acne.** A dense run across open floor showed 12.6% variation between
-  neighbouring samples, which looks like acne and is not: with the hearth's shadow
-  switched off it is 12.6% as well. That is the parquet's own normal map.
-- **The pendant's near plane was clipping the players' heads.** It sat at 0.5 with
-  the light at y = 1.9, and a television head tops out at 1.55 — 0.35 away, inside
-  the near plane, casting nothing. Nothing looked wrong, because a head's shadow
-  falls directly underneath the head. Only the arithmetic said so.
-
-One trap worth recording: setting `shadow.camera.far` on a SpotLight does nothing.
-`SpotLightShadow.updateMatrices` overwrites it with the light's `distance` every
-frame, so the line reads as if it works and does not.
+**And the hearth's shadow was reverted.** A fire at ankle height throwing long
+shadows is most of what a hearth does to a room — the argument was good and the
+result was 0.0004 of the tonal range, not one pixel in a thousand moved by more than
+2%. Its shadows land on the floor between the table and the camera, which is hidden
+behind the table from every angle the camera takes and already darkened by the baked
+occlusion. A light and a whole shadow pass for four ten-thousandths of an image is
+not a trade worth making, however well it reasoned.
 
 ## Ambient light
 

@@ -226,42 +226,23 @@ export function createRoom(scene, { wallZ = -2.1 } = {}) {
     flames.push({ s, phase: i * 1.7, w: fw, y: fy });
   });
 
-  // The hearth, in two parts.
+  // The hearth.
   //
-  // A point light at the firebox for the glow on its own brick, and a spot
-  // pointing out into the room that carries the shadows. It has to be two,
-  // because the two jobs want different shapes: the glow is omnidirectional and
-  // short-range, and a point light's shadow is a six-face cube — six renders of
-  // the room for one light. The spot is one render with a frustum you can aim.
+  // This was briefly two lights — a point for the glow and a shadow-casting
+  // spot aimed into the room — on the reasoning that a fire at ankle height
+  // throwing long shadows is most of what a hearth does to a room. The
+  // reasoning was fine and the result was not: switching the spot off changed
+  // the finished frame by 0.0004 of its tonal range, and not one pixel in a
+  // thousand by more than 2%. Its shadows land on the floor between the table
+  // and the camera, which is hidden behind the table from every angle the
+  // camera takes and already darkened by the baked occlusion.
   //
-  // Until now this was the second brightest source in the room and it cast
-  // nothing at all. A fire at ankle height throwing long shadows of the table
-  // legs and the party across the floor is most of what a hearth does to a
-  // room; without it the fire was a coloured lamp.
-  const fireLight = new THREE.PointLight(0xff7b2e, 2.55, 2.6, 2);
-  fireLight.position.set(FIRE_X, 0.42, wallZ + 0.4);
+  // So it is one point light again, and the second shadow map is gone. Keeping
+  // a light and a shadow pass for four ten-thousandths of an image is not a
+  // trade worth making, however good the argument for it sounded.
+  const fireLight = new THREE.PointLight(0xff7b2e, 2.8, 3.9, 2);
+  fireLight.position.set(FIRE_X, 0.5, wallZ + 0.42);
   scene.add(fireLight);
-
-  const fireSpot = new THREE.SpotLight(0xff8536, 5.0, 7.2, 1.24, 0.85, 2);
-  fireSpot.position.set(FIRE_X + 0.1, 0.4, wallZ + 0.52);
-  fireSpot.target.position.set(FIRE_X + 1.9, 0.1, wallZ + 2.6);
-  fireSpot.castShadow = true;
-  fireSpot.shadow.mapSize.set(1536, 1536);
-  fireSpot.shadow.camera.near = 0.25;
-  fireSpot.shadow.camera.far = 7.4;
-  // A long shadow from a low light grazes every surface it lands on, which is
-  // the worst case for acne — hence a normal bias several times the pendant's.
-  fireSpot.shadow.bias = -0.0015;
-  fireSpot.shadow.normalBias = 0.055;
-  // Rendered once and then frozen. Nothing this light shadows ever moves: the
-  // furniture is fixed, and the only thing that does move is a seated robot
-  // breathing, which at three metres shifts its shadow by less than a pixel.
-  // scene.js turns it back on for the eight seconds after a natural 1, when the
-  // furniture genuinely is in the air.
-  fireSpot.shadow.autoUpdate = false;
-  fireSpot.shadow.needsUpdate = true;
-  scene.add(fireSpot);
-  scene.add(fireSpot.target);
 
   // mantel clutter: two candles and a framed something
   for (const s of [-1, 1]) {
@@ -851,10 +832,7 @@ export function createRoom(scene, { wallZ = -2.1 } = {}) {
     // to see two hundred of.
     for (const r of rain) r.tex.offset.y = (-t * r.speed) % 1;
 
-    fireLight.intensity = 2.55 + beat * 0.55;
-    // The spot flickers with it. Its shadow map does not need redrawing for
-    // that — only the intensity changes, not the geometry.
-    fireSpot.intensity = 5.0 + beat * 1.2;
+    fireLight.intensity = 2.8 + beat * 0.6;
     tvGlow.intensity = 0.82 + Math.sin(t * 23.0) * 0.12 + Math.sin(t * 3.1) * 0.06;
   };
 
@@ -879,5 +857,5 @@ export function createRoom(scene, { wallZ = -2.1 } = {}) {
   // here on purpose: a natural 1 throws the furniture about, and a fireplace
   // whose glow flew across the room with it would read as a bug. Nor are the
   // contact shadows — they are hidden while the furniture is in the air.
-  return { update, fireLight, fireSpot, furniture, contact, rug };
+  return { update, fireLight, furniture, contact, rug };
 }
