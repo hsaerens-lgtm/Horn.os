@@ -40,6 +40,44 @@ then painted: a watercolour pass lays paper grain over the image, pools pigment 
 the edges and lets the washes bleed, while the sheet itself stays crisp.
 No build step, no framework: plain ES modules served as static files.
 
+## Ambient light
+
+Reworked against a histogram of the finished frame rather than by eye, because
+"the room looks a bit flat" is not something you can act on and a histogram is.
+
+**Before:** mean luminance 0.292, 38.6% of the frame below 0.125 with a single 30%
+spike in one narrow dark band, 54% below 0.25, and **nothing at all above 0.94**.
+A picture with no highlights and almost no midtones — a dark mass, and the pool on
+the table, and a gap between them.
+
+The cause was the ambient itself. It was three.js's `RoomEnvironment` — a generic
+bright studio box, the right answer for a product turntable and the wrong one for a
+room lit by a hearth — plus a hemisphere light and a directional fill. All three
+are flat: they raise every surface by the same amount whichever way it faces, which
+lifts the floor of the histogram without putting anything into it.
+
+`js/environment.js` replaces it with a box whose walls are the room's own sources:
+hearth warm and low on one side, two cold windows behind, the pendant's bounce
+overhead, the television's blue on the right, everything else nearly black. Indirect
+light then has a direction and a colour, so a surface facing the fire gets a
+different answer from one facing a window — and that difference is midtones.
+
+The one number that had to be found and not designed is the shell, the part that
+*is* flat. The first version had it at 0.30 and the room came out evenly lit like an
+afternoon, with the wall as bright as the table; the histogram was better and the
+picture was worse, which is the whole argument for looking as well as measuring. It
+sits at 0.045 now and the panels carry the light.
+
+**After:** mean 0.295 — the same overall darkness — but 28.4% below 0.125 instead of
+38.6, 40.4% below 0.25 instead of 54.2, the dark spike spread across four bins, and
+0.7% of the frame above 0.94 where there had been none.
+
+Those highlights came from the practicals. A filmic tone curve is mostly shoulder,
+and only 1.4% of the scene was ever above 1.0, so the shoulder never came into play.
+The bulb, the embers, the lamp shade and the television now render brighter than
+white — a lit bulb is not a white object, it is a source, and the brightest thing in
+frame reaches 42 in linear terms instead of barely clearing 1.
+
 ## Lighting and edges
 
 The pendant is a spotlight, not a point light. A shade physically blocks the
@@ -245,6 +283,7 @@ js/effects.js     what a natural 20 and a natural 1 do to the room
 js/merge.js       baking small static pieces into single meshes
 js/palette.js     collapsing duplicate materials once the scene is built
 js/occlusion.js   the floor's ambient occlusion, baked from above at load
+js/environment.js the ambient light, as a box of the room's own sources
 js/shapes.js      rounded boxes — nothing in a room has a knife edge
 js/plants.js      houseplants: procedural leaves, one merged mesh per plant
 js/room.js        the room around it: posters, fireplace, sofa, television, windows

@@ -67,7 +67,7 @@ export function createRoom(scene, { wallZ = -2.1 } = {}) {
     mantel: new THREE.MeshStandardMaterial({ color: 0x6b4a30, roughness: 0.5, envMapIntensity: 0.7 }),
     soot: new THREE.MeshStandardMaterial({ color: 0x0d0b0a, roughness: 0.96, envMapIntensity: 0.15 }),
     log: new THREE.MeshStandardMaterial({ color: 0x3a2a1c, roughness: 0.9, envMapIntensity: 0.3 }),
-    ember: new THREE.MeshStandardMaterial({ color: 0x2a1408, emissive: 0xff5a14, emissiveIntensity: 1.6, roughness: 1 }),
+    ember: new THREE.MeshStandardMaterial({ color: 0x2a1408, emissive: 0xff5a14, emissiveIntensity: 3.4, roughness: 1 }),
     sofa: new THREE.MeshStandardMaterial({ ...weaveTex, color: 0x5d6878, normalScale: N(0.8), envMapIntensity: 0.35 }),
     sofaDark: new THREE.MeshStandardMaterial({ ...weaveTex, color: 0x4a5464, normalScale: N(0.7), envMapIntensity: 0.3 }),
     cushion: new THREE.MeshStandardMaterial({ ...weaveTex, color: 0x8a5a3c, normalScale: N(0.9), envMapIntensity: 0.4 }),
@@ -269,7 +269,7 @@ export function createRoom(scene, { wallZ = -2.1 } = {}) {
   add(new THREE.CylinderGeometry(0.14, 0.16, 0.03, 16), mat.metal, 0, 0.015, 0, { parent: lamp });
   add(new THREE.CylinderGeometry(0.014, 0.014, 1.42, 10), mat.metal, 0, 0.71, 0, { parent: lamp });
   const shade = add(new THREE.CylinderGeometry(0.17, 0.21, 0.24, 20, 1, true),
-    new THREE.MeshStandardMaterial({ color: 0xd8c39a, roughness: 0.85, side: THREE.DoubleSide, emissive: 0xffc98a, emissiveIntensity: 0.5 }),
+    new THREE.MeshStandardMaterial({ color: 0xd8c39a, roughness: 0.85, side: THREE.DoubleSide, emissive: 0xffc98a, emissiveIntensity: 1.15 }),
     0, 1.5, 0, { parent: lamp });
   shade.castShadow = false;
   const lampLight = new THREE.PointLight(0xffc07a, 1.5, 3.4, 2);
@@ -309,7 +309,8 @@ export function createRoom(scene, { wallZ = -2.1 } = {}) {
   add(B(CRT_W - 0.03, CRT_H - 0.03, 0.02, 0.03), mat.plastic, 0, CRT_Y, 0.265, { parent: tv });
   const screen = add(
     new THREE.PlaneGeometry(CRT_W - 0.14, CRT_H - 0.19),
-    new THREE.MeshBasicMaterial({ map: tvScreen(), toneMapped: false }),
+    // Above white, like the bulb: a lit tube in a dark room is a source.
+    new THREE.MeshBasicMaterial({ map: tvScreen(), color: new THREE.Color(1.5, 1.5, 1.5), toneMapped: false }),
     0,
     CRT_Y + 0.02,
     0.277,

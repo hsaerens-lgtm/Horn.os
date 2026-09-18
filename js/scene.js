@@ -1,6 +1,5 @@
 import * as THREE from "three";
 import { CSS3DRenderer, CSS3DObject } from "three/addons/renderers/CSS3DRenderer.js";
-import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { clone as cloneSkeleton } from "three/addons/utils/SkeletonUtils.js";
 import {
@@ -24,6 +23,7 @@ import { createChatter } from "./chatter.js";
 import { createEffects } from "./effects.js";
 import { dedupeMaterials } from "./palette.js";
 import { bakeFloorOcclusion } from "./occlusion.js";
+import { createAmbience } from "./environment.js";
 import { roundedBox } from "./shapes.js";
 
 // The sheet is 860x1180 CSS px, laid flat on the table at this physical width.
@@ -59,9 +59,16 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(45, width() / height(), 0.05, 50);
 
+  // The ambient light is the room's own, not three.js's default studio box —
+  // see js/environment.js for why that mattered. Because it now has a direction
+  // and a colour, it can be turned up without flattening anything: a surface
+  // facing the hearth gets a different indirect term from one facing a window,
+  // and that difference is the midtones the image was missing.
   const pmrem = new THREE.PMREMGenerator(renderer);
-  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-  scene.environmentIntensity = 0.26;
+  const ambience = createAmbience();
+  scene.environment = pmrem.fromScene(ambience, 0.035).texture;
+  ambience.traverse((o) => o.isMesh && (o.geometry.dispose(), o.material.dispose()));
+  scene.environmentIntensity = 0.65;
   pmrem.dispose();
 
   // ---------- Materials ----------
@@ -1067,7 +1074,15 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
   );
   shade.castShadow = true;
   pendant.add(shade);
-  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.026, 14, 12), new THREE.MeshBasicMaterial({ color: 0xffdca8 }));
+  // Brighter than white on purpose. The tone curve in the watercolour pass is a
+  // filmic one, and a filmic curve is mostly shoulder — but only 1.4% of the
+  // scene was above 1.0, so the shoulder never came into play and the picture
+  // had no highlight anywhere in it, measured: zero pixels above 0.94. A lit
+  // bulb is not a white object, it is a source, and it should read as one.
+  const bulb = new THREE.Mesh(
+    new THREE.SphereGeometry(0.026, 14, 12),
+    new THREE.MeshBasicMaterial({ color: new THREE.Color(2.6, 2.15, 1.5) })
+  );
   bulb.position.y = -0.06;
   pendant.add(bulb);
 
@@ -1077,7 +1092,7 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
   // point light has six faces covering the whole room — the old 1024 cube was
   // spending most of its resolution on parts of the room nothing stands in,
   // which is why contact shadows were mush.
-  const keyLight = new THREE.SpotLight(0xffc489, 11, 5.2, 0.98, 0.6, 2);
+  const keyLight = new THREE.SpotLight(0xffc489, 15, 5.2, 0.98, 0.6, 2);
   keyLight.position.set(0, 1.9, -0.05);
   keyLight.target.position.set(0, TABLE_Y, -0.05);
   keyLight.castShadow = true;
@@ -1091,7 +1106,7 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
 
   // The cone leaves the rest of the room unlit, which a bare bulb in a shade
   // does not, so a small unshadowed point light puts the spill back.
-  const spill = new THREE.PointLight(0xffc489, 1.9, 3.4, 2);
+  const spill = new THREE.PointLight(0xffc489, 2.6, 3.4, 2);
   spill.position.set(0, 1.86, -0.05);
   scene.add(spill);
 
@@ -1103,13 +1118,14 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
   scene.add(rim);
   scene.add(rim.target);
 
-  // The ambient pair is warm now rather than blue. The room stays dark — the
-  // pendant is still far and away the brightest thing — but dark and warm reads
-  // as a evening at home, where dark and blue read as a basement.
-  scene.add(new THREE.HemisphereLight(0x53453c, 0x14100c, 0.32));
-  const fill = new THREE.DirectionalLight(0xb09878, 0.16);
-  fill.position.set(2, 3, 3);
-  scene.add(fill);
+  // A much smaller flat lift than there was. The hemisphere light and the fill
+  // between them used to do all the ambient work, and a flat lift is exactly
+  // what put 39% of the frame into one narrow dark band: it raises everything
+  // by the same amount, so nothing is shaped by it. The environment map does
+  // that work now. What is left here is the last little bit that stops the
+  // deepest corners going to pure black, which no amount of environment will
+  // reach because nothing faces into them.
+  scene.add(new THREE.HemisphereLight(0x4a3d34, 0x161209, 0.12));
 
   // ---------- Dust ----------
   const DUST = 170;
