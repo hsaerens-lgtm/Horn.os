@@ -77,6 +77,44 @@ it runs after the figure is posed — an armpit is only an armpit once the arm i
 down. It comes out at 0.4 to 1.0, and the shoulders and torso are the darkest, which
 is where the creases are.
 
+## Shadows
+
+Fourteen lights in the room and exactly one of them cast a shadow — the pendant
+over the table. The hearth, the second brightest source and the only one at ankle
+height, cast nothing at all, which made it a coloured lamp rather than a fire.
+
+It is two lights now. A point light at the firebox for the glow on its own brick,
+and a spot pointing out into the room that carries the shadows; two, because the
+jobs want different shapes. The glow is omnidirectional and short-range, and a
+point light's shadow is a six-face cube — six renders of the room for one light.
+The spot is one render with a frustum you can aim.
+
+Its shadow map is **rendered once and then frozen** (`shadow.autoUpdate = false`).
+Nothing the hearth shadows ever moves: the furniture is fixed, and the one thing
+that does move is a seated robot breathing, which at three metres shifts its shadow
+by less than a pixel. `wreck()` turns it back on for the eight seconds after a
+natural 1, when the furniture genuinely is in the air.
+
+Splitting the fire in two got it wrong the first time — at 1.15 the point light
+left the firebox reading 0.035 against 0.090 on the floor in front of it, so the
+fire was lighting the room and not itself. At 2.55 the firebox reads 0.161. The
+floor now runs from 0.006 in shadow to 0.157 in the pool of firelight, a contrast
+of twenty-five to one that was not there before.
+
+Two things checked rather than assumed:
+
+- **No acne.** A dense run across open floor showed 12.6% variation between
+  neighbouring samples, which looks like acne and is not: with the hearth's shadow
+  switched off it is 12.6% as well. That is the parquet's own normal map.
+- **The pendant's near plane was clipping the players' heads.** It sat at 0.5 with
+  the light at y = 1.9, and a television head tops out at 1.55 — 0.35 away, inside
+  the near plane, casting nothing. Nothing looked wrong, because a head's shadow
+  falls directly underneath the head. Only the arithmetic said so.
+
+One trap worth recording: setting `shadow.camera.far` on a SpotLight does nothing.
+`SpotLightShadow.updateMatrices` overwrites it with the light's `distance` every
+frame, so the line reads as if it works and does not.
+
 ## Ambient light
 
 Reworked against a histogram of the finished frame rather than by eye, because

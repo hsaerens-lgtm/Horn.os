@@ -796,9 +796,25 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
           // The model has no UVs, so there is nowhere to put a map until one is
           // made. Box projection, in object space, shared by all four.
           boxProjectUVs(n.geometry, 1.45);
-          // Materials survive the clone by reference, so tinting one robot
-          // would tint all four.
-          n.material = n.material.clone();
+          // Rebuilt rather than cloned, and as a MeshPhysicalMaterial rather
+          // than a Standard one, for the clearcoat: these are painted shells
+          // with a lacquer over the paint, and a lacquer is a second specular
+          // lobe that a MeshStandardMaterial simply cannot produce. It is what
+          // separates painted hardware from moulded plastic — the paint
+          // underneath scatters, and a sharp reflection sits on top of it.
+          //
+          // Deliberately no clearcoatNormalMap. The shell's normal map roughens
+          // the paint; leaving the lacquer on the geometric normal is what
+          // makes the highlight ride cleanly over a broken-up surface, which is
+          // the whole effect. Giving the clearcoat the same normals would just
+          // roughen both and look like one layer again.
+          const src = n.material;
+          n.material = new THREE.MeshPhysicalMaterial({
+            color: src.color.clone(),
+            clearcoat: 0.72,
+            clearcoatRoughness: 0.22,
+          });
+          n.material.name = src.name;
           // Everything below is the fix for "the players look worse than the
           // room". They shipped at roughness 0.9 and metalness 0.1 with no maps
           // — a matte chalk that takes light identically from every direction,
@@ -990,8 +1006,16 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
     // eight seconds it spends in the air they would be four dark patches of
     // nothing. The timing is the effect's own, stated in js/effects.js.
     room.contact.visible = false;
+    // The hearth's shadow map is frozen, on the grounds that nothing it
+    // shadows ever moves. For the next eight seconds that is exactly wrong, so
+    // it goes back to updating every frame until the room is back together.
+    room.fireSpot.shadow.autoUpdate = true;
     effects.blast(room.furniture);
-    setTimeout(() => (room.contact.visible = true), 7600);
+    setTimeout(() => {
+      room.contact.visible = true;
+      room.fireSpot.shadow.autoUpdate = false;
+      room.fireSpot.shadow.needsUpdate = true;
+    }, 7600);
   };
 
   // ---------- Each player's character sheet ----------
@@ -1137,8 +1161,19 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
   keyLight.target.position.set(0, TABLE_Y, -0.05);
   keyLight.castShadow = true;
   keyLight.shadow.mapSize.set(2048, 2048);
-  keyLight.shadow.camera.near = 0.5;
-  keyLight.shadow.camera.far = 4.2;
+  // The near plane was at 0.5, and the light is at y = 1.9. A player's
+  // television head tops out around 1.55, which is 0.35 from the light — inside
+  // the near plane, so the heads were being clipped out of the shadow map and
+  // cast nothing at all. Worked out rather than noticed: a head's own shadow
+  // falls directly underneath it, where the head already is, so nothing looked
+  // wrong; the arithmetic is the only thing that said so.
+  //
+  // There is no `far` set here on purpose. SpotLightShadow.updateMatrices
+  // overwrites camera.far with the light's own `distance` on every frame, so
+  // setting it is a line that reads as if it does something and does not — it
+  // comes back as 5.2, which is this light's distance. Tightening it means
+  // changing `distance`, which changes the falloff as well.
+  keyLight.shadow.camera.near = 0.24;
   keyLight.shadow.bias = -0.0012;
   keyLight.shadow.normalBias = 0.018;
   scene.add(keyLight);
@@ -1466,6 +1501,8 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
   Promise.all(pending).then(() => {
     tidy();
     bakeOcclusion();
+    // The hearth's frozen shadow map was drawn before the players existed.
+    room.fireSpot.shadow.needsUpdate = true;
   });
 
   // ---------- Loop ----------
