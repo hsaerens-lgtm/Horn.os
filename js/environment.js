@@ -87,6 +87,19 @@ export function createAmbience() {
   // panel is that it is the one thing in the room that is cold and close.
   panel(lit(2.42, 4.11, 7.26), 1.6, 1.2, [4.9, -0.7, -2.0], [0, -Math.PI / 2, 0]);
 
+  // The near half of the room — everything on the camera's side, which is
+  // floor, rug, sofa and the light bouncing off them. Leaving it out was the
+  // single worst thing about the first version of this file, and not for a
+  // reason that is obvious until you look for it: the back wall, the chimney
+  // breast and the bookcase all *face this way*, so with nothing here they were
+  // lit by the shell alone. Measured on a nine-cell grid of the frame, the
+  // top-left cell — hearth, mantel, bookcase — was 53% crushed to black against
+  // 7% in the middle. This one panel takes it to 11%, and the picture keeps its
+  // falloff because it only reaches what turns towards the viewer.
+  //
+  // Warm, because what it is standing in for is bounce off parquet.
+  panel(lit(0.7, 0.56, 0.4), 7.0, 4.5, [0, -0.3, 4.9], [0, Math.PI, 0]);
+
   // The floor lamp, right and high, warm.
   panel(lit(7.5, 5.08, 2.66), 1.1, 1.1, [4.6, 1.2, -1.0], [0, -Math.PI / 2, 0]);
 

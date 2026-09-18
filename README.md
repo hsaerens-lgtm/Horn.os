@@ -68,9 +68,20 @@ afternoon, with the wall as bright as the table; the histogram was better and th
 picture was worse, which is the whole argument for looking as well as measuring. It
 sits at 0.045 now and the panels carry the light.
 
-**After:** mean 0.295 — the same overall darkness — but 28.4% below 0.125 instead of
-38.6, 40.4% below 0.25 instead of 54.2, the dark spike spread across four bins, and
-0.7% of the frame above 0.94 where there had been none.
+That first pass left the corners blocked up: 22% of the frame crushed to black,
+against 8.7% before. Averages hid where it was, so the frame was split into a
+nine-cell grid and each cell measured on its own — **the top-left cell was 53%
+crushed against 7% in the middle.** That cell is the hearth, the mantel and the
+bookcase, and the reason is not obvious until you look for it: *they all face the
+camera*, and there was nothing on the camera's side of the environment box. The
+whole near half of the room — floor, rug, sofa, and the warm bounce off all three —
+had simply been left out. One dim warm panel there takes that cell from 53% to 11%,
+and the picture keeps its falloff because the panel only reaches what turns towards
+the viewer.
+
+**After:** mean 0.359, 10.6% crushed, 21.7% below 0.125 instead of 38.6, 32.2% below
+0.25 instead of 54.2, the dark spike spread across four bins, and 0.7% of the frame
+above 0.94 where there had been none. No cell of the nine is above 19%.
 
 Those highlights came from the practicals. A filmic tone curve is mostly shoulder,
 and only 1.4% of the scene was ever above 1.0, so the shoulder never came into play.
