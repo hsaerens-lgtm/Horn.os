@@ -58,9 +58,19 @@ export const content = {
   // The AI agents that sit at this table — all real projects.
   // `charClass` and `traits` exist so each one can be read as a character sheet:
   // the shape is a stat block, but every line in it is a fact about the project.
+  // `lines` are what they say across the table while the session runs: the
+  // corporate world read as a dungeon. The break in each one is placed for the
+  // timing of the joke, not for the width of the bubble.
   party: [
     {
       id: "perseus",
+      lines: [
+        "The stakeholder is immune to charm.\nAnd to logic.",
+        "I attack the backlog.\nIt has legendary resistance.",
+        "You cannot cast Deadline.\nIt is not on your list.",
+        "Roll a Governance check.\nDisadvantage: nobody owns it.",
+        "The budget is a bag of holding\nwith a hole in the bottom.",
+      ],
       name: "PERSEUS",
       role: "The Platform",
       charClass: "Construct · Governed Platform",
@@ -80,6 +90,13 @@ export const content = {
     },
     {
       id: "hermes",
+      lines: [
+        "Roll for initiative.\nThe stand-up starts in two minutes.",
+        "That meeting could have been\na Scroll of Sending.",
+        "Natural 20 on Estimation.\nThe sprint slips anyway.",
+        "I cast Reschedule.\nThe meeting saves against it.",
+        "Do I need to roll\nto leave the call?",
+      ],
       name: "HERMES",
       role: "The Messenger",
       charClass: "Scout · Local Agent",
@@ -98,6 +115,13 @@ export const content = {
     },
     {
       id: "odysseus",
+      lines: [
+        "The requirements document\nis a mimic.",
+        "Perception check:\nnobody read the deck.",
+        "I have proficiency\nin Nodding Thoughtfully.",
+        "The single source of truth\nhas three of them.",
+        "Q4 is a lich.\nIt keeps coming back.",
+      ],
       name: "ODYSSEUS",
       role: "The Navigator",
       charClass: "Navigator · Knowledge Workspace",
@@ -116,6 +140,13 @@ export const content = {
     },
     {
       id: "codex",
+      lines: [
+        "Critical failure.\nHe replied all.",
+        "The client wants a wizard.\nOn the login page.",
+        "Long rest? We have\na demo on Friday.",
+        "It works on my plane\nof existence.",
+        "He is not a dragon,\nhe is a director. Same hoard.",
+      ],
       name: "CODEX",
       role: "The Artificer",
       charClass: "Artificer · Coding Agent",

@@ -22,6 +22,12 @@ Three things are clickable:
 The wheel pulls the camera in and out of the room, and scrolls the sheet once you
 are reading it: the same gesture moves you through whatever you are looking at.
 
+Left alone, the party breathes — each on its own rhythm, none of them on the same
+one — and talks. The lines are the corporate world read as a dungeon, and they live
+in `content.js` with everything else that is words. One bubble at a time, and only in
+the wide shot: a table where everyone speaks at once is noise, and every closer view
+already has something of its own to read.
+
 The metaphor is the job. An AI Solutions Consultant sets the scope, writes the rules,
 hands the agents their tools, and makes sure what happens at the table is something
 the business can actually use.
@@ -57,6 +63,7 @@ js/sheet.js       renders the DM's sheet and each player's sheet
 js/scene.js       3D table, camera states, sheet projection and raising
 js/board.js       the board: the tray, and the terrain standing on the map
 js/props.js       what each player brought: a mug, a dice cup, a map, a notepad
+js/chatter.js     the speech bubbles, one at a time
 js/shapes.js      rounded boxes — nothing in a room has a knife edge
 js/room.js        the room around it: posters, fireplace, sofa, television, lamp
 js/watercolour.js the painted look: post-processing chain and its shader

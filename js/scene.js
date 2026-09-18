@@ -20,6 +20,7 @@ import { createWatercolour } from "./watercolour.js";
 import { createRoom } from "./room.js";
 import { createBoard } from "./board.js";
 import { createProps } from "./props.js";
+import { createChatter } from "./chatter.js";
 import { roundedBox } from "./shapes.js";
 
 // The sheet is 860x1180 CSS px, laid flat on the table at this physical width.
@@ -345,6 +346,20 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
 
   const agentLights = [];
   const agentHits = [];
+  // Anything that should rise and fall as if something inside it were running.
+  // Four figures holding perfectly still is the difference between a party and
+  // a shop window, and it costs one sine wave each.
+  const breathers = [];
+  // An empty object over each player's head: where its speech bubble hangs.
+  const speakers = [];
+  const breathe = (i, ...objects) =>
+    breathers.push({
+      objects,
+      baseY: objects.map((o) => o.position.y),
+      baseX: objects.map((o) => o.rotation.x),
+      phase: i * 1.7,
+      rate: 1.05 + i * 0.09, // no two of them on the same rhythm
+    });
 
   // A jacket silhouette: square across the shoulders, tapering to the waist. Extruding
   // a profile with a bevel gives soft edges without the balloon look of stacked spheres.
@@ -536,6 +551,8 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
     head.rotation.set(tilt, turn, 0);
     upper.add(head);
 
+    breathe(party.indexOf(a), upper);
+    mountSpeaker(g, a, head.position.y + HIP_Y);
     finishAgent(g, a, seat);
     return g;
   };
@@ -618,6 +635,14 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
       head.add(knob);
     }
     return head;
+  }
+
+  /** Hangs a bubble mount over one player, at the height of its screen. */
+  function mountSpeaker(g, a, headY) {
+    const mount = new THREE.Object3D();
+    mount.position.set(0, headY + 0.13, 0.05);
+    g.add(mount);
+    speakers.push({ agent: a, mount });
   }
 
   /**
@@ -771,6 +796,9 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
         tv.rotation.set(seat.tilt ?? 0, seat.turn ?? 0, 0);
         g.add(tv);
 
+        breathe(party.indexOf(a), holder, tv);
+        mountSpeaker(g, a, tv.position.y);
+
         if (DEBUG_ROBOT) {
           (window.__robots ??= []).push({ name: a.name, root, holder, tv, bone });
           const foot = bone("FootL").getWorldPosition(new THREE.Vector3());
@@ -845,6 +873,9 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
   // ---------- What each player brought with them ----------
   const props = createProps(scene, { tableY: TABLE_Y });
   party.slice(0, 4).forEach((a, i) => props.place(a, SEATS[i].prop, SEATS[i].rot));
+
+  // ---------- And what they say ----------
+  const chatter = createChatter(scene, speakers);
 
   // ---------- Each player's character sheet ----------
   // The sheet lies face-up on the table in front of its player, the way a sheet
@@ -1284,6 +1315,17 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
 
     // the agent terminals breathe slightly, so the party looks awake
     agentLights.forEach((l, i) => (l.intensity = 0.45 + Math.sin(t * 1.6 + i * 1.9) * 0.1));
+
+    // They only talk in the wide shot: every closer view has its own thing to read.
+    chatter.update(performance.now(), mode !== "idle");
+
+    for (const b of breathers) {
+      const k = Math.sin(t * b.rate + b.phase);
+      b.objects.forEach((o, i) => {
+        o.position.y = b.baseY[i] + k * 0.0075;
+        o.rotation.x = b.baseX[i] + k * 0.013;
+      });
+    }
     updateDice();
 
     if (mode === "idle") {

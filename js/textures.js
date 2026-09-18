@@ -1631,3 +1631,71 @@ export function wallpaper({ size = 512, seed = 88, repeat = [12, 4.5] } = {}) {
     roughnessMap: toTexture(roughnessFrom(c, 0.86, 0.94), { repeat }),
   };
 }
+
+/**
+ * A speech bubble, drawn for one line.
+ *
+ * Sized for legibility from the wide shot rather than for elegance up close:
+ * at two and a half metres a bubble that looks correctly proportioned beside
+ * the figure is about six pixels of text on screen. It is a cartoon table, and
+ * a cartoon lets you draw the bubble too big.
+ */
+export function speechBubble(text, name, colour, { w = 640, h = 260 } = {}) {
+  const rand = rng(text.length * 31 + name.length);
+  const [c, ctx] = canvas(w, h);
+  const PAD = 26;
+  const TAIL = 30;
+  const bodyH = h - TAIL;
+
+  const round = (x, y, bw, bh, r) => {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + bw - r, y);
+    ctx.quadraticCurveTo(x + bw, y, x + bw, y + r);
+    ctx.lineTo(x + bw, y + bh - r);
+    ctx.quadraticCurveTo(x + bw, y + bh, x + bw - r, y + bh);
+    ctx.lineTo(x + r, y + bh);
+    ctx.quadraticCurveTo(x, y + bh, x, y + bh - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  };
+
+  // the body, then the tail, drawn as one silhouette so the outline is continuous
+  ctx.fillStyle = "#f1e8d2";
+  ctx.strokeStyle = colour;
+  ctx.lineWidth = 7;
+  round(6, 6, w - 12, bodyH - 6, 26);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(w * 0.24, bodyH - 12);
+  ctx.lineTo(w * 0.19, h - 8);
+  ctx.lineTo(w * 0.38, bodyH - 12);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  // paint over the seam the tail leaves in the body outline
+  ctx.fillStyle = "#f1e8d2";
+  ctx.beginPath();
+  ctx.rect(w * 0.245, bodyH - 18, w * 0.13, 14);
+  ctx.fill();
+
+  ctx.textAlign = "center";
+  ctx.fillStyle = colour;
+  ctx.font = "bold 26px Georgia, 'Times New Roman', serif";
+  ctx.fillText(name, w / 2, 48);
+
+  ctx.fillStyle = "#33240f";
+  ctx.font = "italic 44px Georgia, 'Times New Roman', serif";
+  const rows = String(text).split("\n");
+  const top = bodyH / 2 - (rows.length - 1) * 27 + 14;
+  rows.forEach((row, i) => ctx.fillText(row, w / 2, top + i * 54));
+
+  speckle(ctx, Math.max(w, h), 900, rand, 0.035, false);
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
