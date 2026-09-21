@@ -66,8 +66,20 @@ export function buildRobotBody(a, seat, { tex, roundedBox, HIP_Y, TABLE_Y, N }) 
    * the agent's own colour, because a screen-headed thing with no other light
    * on it reads as switched off.
    */
+  // The paint. The accent is the agent's screen colour, which is a light: cyan
+  // at 93% saturation, amber at 100%. Painted on a body it came out as toy
+  // plastic, and the previous fix — accent x 0.62 — did not help, because a
+  // uniform multiply darkens without touching chroma at all. This goes through
+  // HSL and takes the saturation down by nearly half while setting the lightness
+  // to that of a paint under lacquer, so the four read as sage, teal, ochre and
+  // mauve on metal rather than as their own screens.
+  const paint = (() => {
+    const hsl = { h: 0, s: 0, l: 0 };
+    accent.getHSL(hsl);
+    return new THREE.Color().setHSL(hsl.h, hsl.s * 0.52, Math.min(0.38, Math.max(0.26, hsl.l * 0.6)));
+  })();
   const shell = new THREE.MeshPhysicalMaterial({
-    color: accent.clone().multiplyScalar(0.62),
+    color: paint,
     map: tex.shell.map,
     normalMap: tex.shell.normalMap,
     normalScale: N(0.8),

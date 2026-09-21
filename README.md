@@ -285,6 +285,14 @@ in metres, so texel density is a physical constant — one tile every 25 cm on a
 finger, an aerial or a chest alike. `test/closeup.mjs` frames a hand and an aerial
 to check it.
 
+And the paint itself. Each agent's colour is its *screen* colour — a light, cyan at
+93% saturation, amber at 100% — and painted onto a body it came out as toy plastic.
+The earlier fix, accent × 0.62, could never help: a uniform multiply darkens a colour
+without touching its chroma. The shell now goes through HSL, takes saturation down
+to 52% of the screen's and sets lightness to that of a paint under lacquer, so the
+four read as sage, teal, ochre and mauve on metal. The small lit accents keep the
+full screen colour, which is what still says whose body it is.
+
 `?players=gltf` brings back the RobotExpressive bodies and `?players=suit` the
 suited figures, both kept as the two earlier answers to this table.
 
