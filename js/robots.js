@@ -23,6 +23,7 @@
 
 import * as THREE from "three";
 import { mergeParts } from "./merge.js";
+import { boxProjectUVs } from "./shapes.js";
 
 /** A part's transform: position, Euler rotation, and a per-axis scale. */
 const M = (x, y, z, rot = [0, 0, 0], scale = [1, 1, 1]) =>
@@ -217,10 +218,25 @@ export function buildRobotBody(a, seat, { tex, roundedBox, HIP_Y, TABLE_Y, N }) 
   upper.position.set(0, HIP_Y, 0);
   upper.rotation.x = lean;
   const mats = { shell, dark, glow };
+  // The grain has to be the same size on a finger as on a chest, and it was
+  // not: every primitive arrives with UVs that run 0..1 across itself, so a
+  // three-centimetre finger wore one whole tile of the paint texture, the same
+  // as a forty-centimetre torso — and the hands and aerials came out coarse
+  // enough to notice from across the room. The primitives' own UVs are thrown
+  // away after the merge and replaced by a box projection in metres, which
+  // makes texel density a physical constant: one tile every 25 cm, whatever the
+  // part. Seams where a face changes projection axis do not show on a grain
+  // with no direction; they would on anything with a pattern.
+  const TILES_PER_METRE = 4;
   for (const [groupName, group] of [["legs", legs], ["upper", upper]]) {
     for (const [matName, parts] of Object.entries(bins[groupName])) {
       if (!parts.length) continue;
-      const mesh = new THREE.Mesh(mergeParts(parts), mats[matName]);
+      const geometry = mergeParts(parts);
+      if (matName !== "glow") {
+        geometry.deleteAttribute("uv");
+        boxProjectUVs(geometry, TILES_PER_METRE);
+      }
+      const mesh = new THREE.Mesh(geometry, mats[matName]);
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       mesh.name = `${a.id}-${groupName}-${matName}`;

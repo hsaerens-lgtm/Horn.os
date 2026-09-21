@@ -277,6 +277,14 @@ centimetres clear of it; and the Platform's first chest was a straight box, whic
 read as a filing cabinet — it is an extruded trapezoid now, square at the shoulders
 and narrowing to the waist.
 
+One more fix from the harness: the hands and aerials came out coarse. Every
+primitive arrives with UVs running 0..1 across itself, so a three-centimetre finger
+wore one whole tile of the paint texture, the same as a forty-centimetre torso. The
+primitives' UVs are thrown away after the merge and replaced with a box projection
+in metres, so texel density is a physical constant — one tile every 25 cm on a
+finger, an aerial or a chest alike. `test/closeup.mjs` frames a hand and an aerial
+to check it.
+
 `?players=gltf` brings back the RobotExpressive bodies and `?players=suit` the
 suited figures, both kept as the two earlier answers to this table.
 
