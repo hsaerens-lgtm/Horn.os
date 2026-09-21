@@ -918,7 +918,14 @@ const PIXEL_HERO = [
  */
 export function poster(kind, { w = 512, h = 724, seed = 9 } = {}) {
   const rand = rng(seed * 131 + kind.length);
-  const [c, ctx] = canvas(w, h);
+  // Drawn at twice the size it is laid out at. The designs below are written
+  // in 512 x 724 units and at that resolution a 66 cm poster carries 7.7
+  // pixels to the centimetre, which is soft in any shot closer than the wide
+  // one — the type lost its corners. The layout stays in its own units; only
+  // the backing canvas is bigger.
+  const SS = 2;
+  const [c, ctx] = canvas(w * SS, h * SS);
+  ctx.scale(SS, SS);
   ctx.textAlign = "center";
 
   if (kind === "code") {

@@ -25,8 +25,9 @@ import { createEffects } from "./effects.js";
 import { dedupeMaterials } from "./palette.js";
 import { bakeFloorOcclusion, bakeCavityAO } from "./occlusion.js";
 import { buildRobotBody } from "./robots.js";
+import { mergeParts } from "./merge.js";
 import { createAmbience } from "./environment.js";
-import { roundedBox, boxProjectUVs } from "./shapes.js";
+import { roundedBox, boxProjectUVs, between } from "./shapes.js";
 
 // The sheet is 860x1180 CSS px, laid flat on the table at this physical width.
 const SHEET_W = 0.34;
@@ -409,8 +410,11 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
   const shirtMat = new THREE.MeshStandardMaterial({ ...poplin, color: 0x8f96a6, normalScale: N(0.35), envMapIntensity: 0.3 });
   const cuffMat = new THREE.MeshStandardMaterial({ color: 0x6e7484, roughness: 0.78, envMapIntensity: 0.25 });
   const hitMat = new THREE.MeshBasicMaterial({ visible: false });
-  const chairMat = new THREE.MeshStandardMaterial({ color: 0x2f2a26, roughness: 0.72, envMapIntensity: 0.4 });
-  const chairLegMat = new THREE.MeshStandardMaterial({ color: 0x6d7280, roughness: 0.35, metalness: 0.75, envMapIntensity: 1.0 });
+  // The chairs are walnut, like the table, with a leather pad. The first
+  // chairs were a grey slab on four steel pins, and once the players had
+  // proper bodies they were the poorest things in the room.
+  const chairWood = new THREE.MeshStandardMaterial({ ...tex.table, color: 0x6a4630, normalScale: N(0.5), roughness: 0.48, envMapIntensity: 0.8 });
+  const chairLeather = new THREE.MeshStandardMaterial({ color: 0x3b2a22, ...tex.plastic, normalScale: N(0.35), roughness: 0.58, envMapIntensity: 0.6 });
   const shoeMat = new THREE.MeshStandardMaterial({ color: 0x14161d, roughness: 0.34, envMapIntensity: 0.9 });
   const handMat = new THREE.MeshStandardMaterial({ color: 0x474d5c, roughness: 0.72, envMapIntensity: 0.3 });
   const caseMat = new THREE.MeshStandardMaterial({ color: 0x31353e, roughness: 0.6, ...tex.plastic, normalScale: N(0.25), envMapIntensity: 0.8 });
@@ -478,25 +482,79 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
   const DEBUG_ROBOT = new URLSearchParams(location.search).has("debug");
   const robotTrim = new THREE.MeshStandardMaterial({ color: 0x1b1f27, roughness: 0.55, envMapIntensity: 0.5 });
 
-  const makeChair = (g) => {
-    const seat = new THREE.Mesh(roundedBox(0.44, 0.045, 0.42, 0.014), chairMat);
-    seat.position.set(0, SEAT_Y, 0.06);
-    seat.castShadow = true;
-    seat.receiveShadow = true;
-    g.add(seat);
+  // A dining chair: four tapered legs splayed a little at the foot, an H of
+  // stretchers between them, the rear legs running on up as the uprights, and
+  // two curved slats across the back that wrap towards the sitter. The frame
+  // is one merged mesh with metric UVs so the grain is the same size on a leg
+  // and a slat; the pad is a second.
+  const chairFrame = (() => {
+    const V = (x, y, z) => new THREE.Vector3(x, y, z);
+    const parts = [];
+    const part = (p) => parts.push(p);
+    const box = (geometry, x, y, z, rot) =>
+      parts.push({ geometry, matrix: new THREE.Matrix4().compose(V(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(...(rot ?? [0, 0, 0]))), V(1, 1, 1)) });
 
-    const back = new THREE.Mesh(roundedBox(0.42, 0.44, 0.04, 0.013), chairMat);
-    back.position.set(0, SEAT_Y + 0.24, -0.13);
-    back.rotation.x = -0.12;
-    back.castShadow = true;
-    g.add(back);
-
-    for (const [lx, lz] of [[-0.18, -0.11], [0.18, -0.11], [-0.18, 0.23], [0.18, 0.23]]) {
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.015, SEAT_Y, 10), chairLegMat);
-      leg.position.set(lx, SEAT_Y / 2, lz);
-      leg.castShadow = true;
-      g.add(leg);
+    box(roundedBox(0.44, 0.03, 0.42, 0.03), 0, SEAT_Y - 0.01, 0.06);
+    const TOP = SEAT_Y + 0.5;
+    for (const s of [-1, 1]) {
+      // front leg: foot splayed out and forward, up to the seat frame
+      part(between(V(s * 0.205, 0, 0.28), V(s * 0.185, SEAT_Y - 0.02, 0.24), 0.014, 0.02, 12));
+      // rear leg, on up to the top of the back, leaning back as it goes
+      part(between(V(s * 0.205, 0, -0.13), V(s * 0.19, TOP, -0.19), 0.014, 0.02, 12));
+      // side stretcher
+      part(between(V(s * 0.198, 0.15, 0.265), V(s * 0.2, 0.15, -0.125), 0.011, 0.011, 10));
     }
+    // cross stretcher, back
+    part(between(V(-0.2, 0.15, -0.125), V(0.2, 0.15, -0.125), 0.011, 0.011, 10));
+
+    // the slats: the region between two arcs of radius R centred behind the
+    // sitter, extruded through the slat's height. Concave towards the seat.
+    const slat = (h) => {
+      const R = 0.55;
+      const t = 0.02;
+      const th = Math.asin(0.19 / R);
+      const sh = new THREE.Shape();
+      const N_ = 14;
+      for (let i = 0; i <= N_; i++) {
+        const a = -th + (2 * th * i) / N_;
+        const x = R * Math.sin(a);
+        const v = R - R * Math.cos(a);
+        i ? sh.lineTo(x, v) : sh.moveTo(x, v);
+      }
+      for (let i = N_; i >= 0; i--) {
+        const a = -th + (2 * th * i) / N_;
+        sh.lineTo((R - t) * Math.sin(a), R - (R - t) * Math.cos(a));
+      }
+      sh.closePath();
+      const geo = new THREE.ExtrudeGeometry(sh, { depth: h, bevelEnabled: true, bevelSize: 0.003, bevelThickness: 0.003, bevelSegments: 2, curveSegments: 4 });
+      geo.rotateX(Math.PI / 2); // extrusion runs down -Y now, arcs open towards +Z
+      return geo;
+    };
+    // The upright at height y is at z = -0.13 - 0.06 * (y / TOP). A slat's
+    // ends rise 3.3 cm towards the sitter over its arc, so its middle is set
+    // that far behind the uprights and the ends land on their front faces —
+    // the back bows away between the posts, as a bentwood back does.
+    const zAt = (y) => -0.13 - 0.06 * (y / TOP) - 0.028;
+    box(slat(0.11), 0, SEAT_Y + 0.47, zAt(SEAT_Y + 0.415));
+    box(slat(0.045), 0, SEAT_Y + 0.3, zAt(SEAT_Y + 0.28));
+
+    const geometry = mergeParts(parts);
+    geometry.deleteAttribute("uv");
+    boxProjectUVs(geometry, 1.6);
+    return geometry;
+  })();
+  const chairPad = roundedBox(0.4, 0.04, 0.38, 0.035);
+
+  const makeChair = (g) => {
+    const frame = new THREE.Mesh(chairFrame, chairWood);
+    frame.castShadow = true;
+    frame.receiveShadow = true;
+    g.add(frame);
+    const pad = new THREE.Mesh(chairPad, chairLeather);
+    pad.position.set(0, SEAT_Y + 0.02, 0.06);
+    pad.castShadow = true;
+    pad.receiveShadow = true;
+    g.add(pad);
   };
 
   // Everything above the hip lives in its own group, so a single rotation leans

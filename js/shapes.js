@@ -131,3 +131,37 @@ export function boxProjectUVs(geometry, scale = 4) {
   geometry.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
   return geometry;
 }
+
+/* ------------------------------------------------------------------ *
+ *  Building between points.
+ *
+ *  A limb, a chair leg or a stretcher is a thing that runs from one
+ *  joint to the next. Placing a cylinder *near* both ends and hoping is
+ *  how the first players got their floating arms; these take the two
+ *  points and produce the part that joins them, so the gap cannot exist.
+ * ------------------------------------------------------------------ */
+
+const UP = new THREE.Vector3(0, 1, 0);
+
+/** A transform that stands a Y-axis primitive on point `p`, pointing along `dir`. */
+export const along = (p, dir, scale = [1, 1, 1]) =>
+  new THREE.Matrix4().compose(
+    p,
+    new THREE.Quaternion().setFromUnitVectors(UP, dir.clone().normalize()),
+    new THREE.Vector3(...scale)
+  );
+
+/** A tapered tube from `a` to `b`: radius `r0` at `a`, `r1` at `b`. */
+export const between = (a, b, r0, r1, seg = 20) => {
+  const dir = b.clone().sub(a);
+  return {
+    geometry: new THREE.CylinderGeometry(r1, r0, dir.length(), seg, 1, false),
+    matrix: along(a.clone().add(b).multiplyScalar(0.5), dir),
+  };
+};
+
+/** A thin ring around a limb at `p`, perpendicular to `dir`: a seam, a cuff, a wrist. */
+export const ring = (p, dir, r, tube = 0.007) => ({
+  geometry: new THREE.TorusGeometry(r, tube, 10, 28),
+  matrix: along(p, dir).multiply(new THREE.Matrix4().makeRotationX(Math.PI / 2)),
+});

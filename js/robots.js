@@ -33,9 +33,8 @@
 
 import * as THREE from "three";
 import { mergeParts } from "./merge.js";
-import { boxProjectUVs } from "./shapes.js";
+import { boxProjectUVs, along, between, ring } from "./shapes.js";
 
-const UP = new THREE.Vector3(0, 1, 0);
 const X = new THREE.Vector3(1, 0, 0);
 
 /** A part's transform: position, Euler rotation, and a per-axis scale. */
@@ -46,29 +45,8 @@ const M = (x, y, z, rot = [0, 0, 0], scale = [1, 1, 1]) =>
     new THREE.Vector3(...scale)
   );
 
-/** A transform that stands a Y-axis primitive on point `p`, pointing along `dir`. */
-const along = (p, dir, scale = [1, 1, 1]) =>
-  new THREE.Matrix4().compose(
-    p,
-    new THREE.Quaternion().setFromUnitVectors(UP, dir.clone().normalize()),
-    new THREE.Vector3(...scale)
-  );
-
-/**
- * A tapered tube from `a` to `b`: radius `r0` at `a`, `r1` at `b`. This is how
- * every limb is made, and it is why none of them has a gap at either end.
- */
-const between = (a, b, r0, r1, seg = 20) => {
-  const dir = b.clone().sub(a);
-  const len = dir.length();
-  return { geometry: new THREE.CylinderGeometry(r1, r0, len, seg, 1, false), matrix: along(a.clone().add(b).multiplyScalar(0.5), dir) };
-};
-
-/** A thin ring around a limb at `p`, perpendicular to `dir`: a seam, a cuff, a wrist. */
-const ring = (p, dir, r, tube = 0.007) => ({
-  geometry: new THREE.TorusGeometry(r, tube, 10, 28),
-  matrix: along(p, dir).multiply(new THREE.Matrix4().makeRotationX(Math.PI / 2)),
-});
+// `along`, `between` and `ring` — the joint-to-joint builders every limb is
+// made with — live in shapes.js now, because the chairs wanted them too.
 
 const sphere = (p, r, scale = [1, 1, 1], seg = 18) => ({
   geometry: new THREE.SphereGeometry(r, seg, Math.round(seg * 0.7)),

@@ -328,6 +328,28 @@ Cap, rim and bolt share one frame now, and the palm hangs below the wrist.
 `?players=gltf` brings back the RobotExpressive bodies and `?players=suit` the
 suited figures, both kept as the two earlier answers to this table.
 
+### The chairs, the card and the posters
+
+Once the players had bodies, the chairs under them were the poorest things in
+the room: a grey slab on four steel pins. They are dining chairs now — walnut like
+the table, four tapered legs splayed at the foot, an H of stretchers, the rear legs
+running on up as the uprights, and two curved slats across the back. Each slat is
+the region between two arcs extruded through its height, and its middle is set
+three centimetres behind the uprights so the ends land on their front faces and
+the back bows away between the posts, as a bentwood back does. The frame is one
+merged mesh with metric UVs, so the grain is the same size on a leg as on a slat;
+the leather pad is a second. `along`, `between` and `ring`, the joint-to-joint
+builders the players are made with, moved to `js/shapes.js` for this.
+
+The hint at the bottom of the screen was a translucent grey bar — the one thing on
+screen the room had not made. It is a parchment card now, in the sheet's own ink
+and type, with a small red die before the text. The back button matches.
+
+The posters are drawn at twice the size they are laid out at. The designs are
+written in 512 × 724 units, and at that resolution a 66 cm poster carried 7.7
+pixels to the centimetre — soft in any shot closer than the wide one. The layout
+stays in its own units; only the backing canvas doubled.
+
 ## What the players actually needed
 
 Three maps where there had been none, a clearcoat, cavity occlusion in the creases,

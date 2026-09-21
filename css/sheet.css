@@ -27,28 +27,57 @@ html, body {
 #ui { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
 #ui > * { pointer-events: auto; }
 
+/* The two controls that sit over the room are cards on the table, not a
+   toolbar: parchment, ink, a hairline rule, in the sheet's own type. The grey
+   translucent bar they replace was the one thing on screen the room had not
+   made. */
 .hint, .back {
   position: absolute;
-  padding: 10px 18px;
-  border-radius: 3px;
-  background: rgba(24, 18, 12, 0.78);
-  border: 1px solid rgba(200, 170, 120, 0.35);
-  color: #efe4cf;
-  font-size: 14px;
-  letter-spacing: 0.04em;
+  padding: 9px 22px 10px;
+  border-radius: 2px;
+  background:
+    linear-gradient(180deg, rgba(255, 250, 238, 0.35), rgba(0, 0, 0, 0.04)),
+    var(--parchment);
+  border: 1px solid var(--rule);
+  box-shadow:
+    inset 0 0 0 3px var(--parchment),
+    inset 0 0 0 4px rgba(140, 47, 34, 0.55),
+    0 6px 18px rgba(0, 0, 0, 0.45),
+    0 1px 0 rgba(255, 255, 255, 0.25);
+  color: var(--ink);
+  font-family: "Georgia", "Iowan Old Style", "Palatino Linotype", serif;
+  font-size: 13px;
+  font-style: italic;
+  letter-spacing: 0.03em;
+  line-height: 1.45;
+  text-align: center;
   cursor: pointer;
-  backdrop-filter: blur(6px);
-  transition: opacity 0.4s;
+  transition: opacity 0.4s, transform 0.25s;
+}
+.hint:hover, .back:hover { transform: translateX(-50%) translateY(-1px); }
+.back:hover { transform: translateY(-1px); }
+
+.hint { left: 50%; bottom: 26px; transform: translateX(-50%); max-width: min(680px, calc(100vw - 32px)); }
+.back { top: 20px; left: 20px; font-size: 13px; font-style: normal; }
+
+/* a small die before the text, in the sheet's red */
+.hint::before {
+  content: "";
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  margin: 0 10px -1px 0;
+  background: var(--accent);
+  clip-path: polygon(50% 0, 100% 27%, 100% 73%, 50% 100%, 0 73%, 0 27%);
 }
 
-.hint { left: 50%; bottom: 40px; transform: translateX(-50%); }
-.back { top: 20px; left: 20px; font-size: 13px; }
-
-.hint kbd {
+.hint kbd, .back kbd {
   font-family: inherit;
-  background: rgba(255, 255, 255, 0.12);
-  padding: 1px 6px;
-  border-radius: 3px;
+  font-style: normal;
+  background: rgba(43, 29, 18, 0.1);
+  border: 1px solid rgba(43, 29, 18, 0.25);
+  padding: 0 6px;
+  border-radius: 2px;
   margin: 0 2px;
 }
 

@@ -14,6 +14,8 @@ const SHOTS = {
   // each, for judging proportion and how the joints read.
   "closeup-perseus": { pos: [-0.3, 1.1, 0.15], target: [-0.46, 0.95, -1.08] },
   "closeup-codex": { pos: [0.25, 1.05, 1.0], target: [1.42, 0.9, 0.0] },
+  // CODEX's chair from behind and to the side, where a chair is actually seen.
+  "closeup-chair": { pos: [2.4, 1.05, 1.15], target: [1.45, 0.5, -0.05] },
 };
 const b = await chromium.launch({ channel: "chromium", args: ["--enable-unsafe-swiftshader"] });
 const p = await (await b.newContext({ viewport: { width: 1280, height: 704 } })).newPage();
