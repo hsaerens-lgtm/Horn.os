@@ -413,7 +413,9 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
   // The chairs are walnut, like the table, with a leather pad. The first
   // chairs were a grey slab on four steel pins, and once the players had
   // proper bodies they were the poorest things in the room.
-  const chairWood = new THREE.MeshStandardMaterial({ ...tex.table, color: 0x6a4630, normalScale: N(0.5), roughness: 0.48, envMapIntensity: 0.8 });
+  // Warmer and lighter than the table's edge colour: the chairs stand in the
+  // room's darker half, and at the table's own walnut they rendered near black.
+  const chairWood = new THREE.MeshStandardMaterial({ ...tex.table, color: 0x9a6a46, normalScale: N(0.5), roughness: 0.45, envMapIntensity: 0.9 });
   const chairLeather = new THREE.MeshStandardMaterial({ color: 0x3b2a22, ...tex.plastic, normalScale: N(0.35), roughness: 0.58, envMapIntensity: 0.6 });
   const shoeMat = new THREE.MeshStandardMaterial({ color: 0x14161d, roughness: 0.34, envMapIntensity: 0.9 });
   const handMat = new THREE.MeshStandardMaterial({ color: 0x474d5c, roughness: 0.72, envMapIntensity: 0.3 });

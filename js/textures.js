@@ -1689,31 +1689,64 @@ export function speechBubble(text, name, colour, { w = BUBBLE.w, h = BUBBLE.h } 
     ctx.closePath();
   };
 
+  // A card, not a cartoon balloon. The first bubble had a seven-pixel outline
+  // in the speaker's colour, which was the one comic-book thing left on a
+  // table that had gone to parchment everywhere else. This is the hint card's
+  // language: parchment with a faint wash, a hairline of ink, a second hairline
+  // inside it in the speaker's colour, the name in small capitals over a rule.
+  const INK = "#2b1d12";
+  const wash = ctx.createLinearGradient(0, 0, 0, bodyH);
+  wash.addColorStop(0, "#f4ecd9");
+  wash.addColorStop(1, "#e6d7b8");
+
   // the body, then the tail, drawn as one silhouette so the outline is continuous
-  ctx.fillStyle = "#f1e8d2";
-  ctx.strokeStyle = colour;
-  ctx.lineWidth = 7;
-  round(6, 6, w - 12, bodyH - 6, 28);
+  ctx.fillStyle = wash;
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = 3;
+  round(6, 6, w - 12, bodyH - 6, 10);
   ctx.fill();
   ctx.stroke();
 
   ctx.beginPath();
-  ctx.moveTo(w * 0.24, bodyH - 12);
-  ctx.lineTo(w * 0.19, h - 8);
-  ctx.lineTo(w * 0.38, bodyH - 12);
+  ctx.moveTo(w * 0.24, bodyH - 8);
+  ctx.lineTo(w * 0.19, h - 6);
+  ctx.lineTo(w * 0.36, bodyH - 8);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
   // paint over the seam the tail leaves in the body outline
-  ctx.fillStyle = "#f1e8d2";
+  ctx.fillStyle = "#e6d7b8";
   ctx.beginPath();
-  ctx.rect(w * 0.245, bodyH - 18, w * 0.13, 14);
+  ctx.rect(w * 0.245, bodyH - 12, w * 0.11, 9);
   ctx.fill();
+
+  // the inner hairline, in the speaker's colour, and a rule under the name
+  ctx.strokeStyle = colour;
+  ctx.lineWidth = 2;
+  round(16, 16, w - 32, bodyH - 26, 6);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(w * 0.3, 66);
+  ctx.lineTo(w * 0.7, 66);
+  ctx.stroke();
 
   ctx.textAlign = "center";
   ctx.fillStyle = colour;
-  ctx.font = "bold 27px Georgia, 'Times New Roman', serif";
-  ctx.fillText(name, w / 2, 52);
+  ctx.font = "bold 26px Georgia, 'Times New Roman', serif";
+  // tracked capitals by hand: canvas has no letter-spacing, so each glyph is
+  // placed from a running measure
+  {
+    const caps = String(name).toUpperCase();
+    const TRACK = 5;
+    const widths = [...caps].map((ch) => ctx.measureText(ch).width);
+    let x = w / 2 - (widths.reduce((a, b) => a + b, 0) + TRACK * (caps.length - 1)) / 2;
+    ctx.textAlign = "left";
+    [...caps].forEach((ch, i) => {
+      ctx.fillText(ch, x, 50);
+      x += widths[i] + TRACK;
+    });
+    ctx.textAlign = "center";
+  }
 
   const wrap = (size) => {
     ctx.font = `italic ${size}px Georgia, 'Times New Roman', serif`;

@@ -345,6 +345,15 @@ The hint at the bottom of the screen was a translucent grey bar — the one thin
 screen the room had not made. It is a parchment card now, in the sheet's own ink
 and type, with a small red die before the text. The back button matches.
 
+Three more from looking at those renders: the chair walnut, at the table's own
+colour, rendered near black in the room's darker half and is a warmer, lighter
+brown now; CODEX, seen from behind, was a plain box where every other player
+carries something, and has a power pack with a handle, two lit gauges and a hose
+down to the belt; and the speech bubble was the last comic-book thing on the
+table — a seven-pixel outline in the speaker's colour — and is a card in the
+hint's language now: parchment wash, a hairline of ink, a second hairline inside
+it in the speaker's colour, the name in tracked capitals over a rule.
+
 The posters are drawn at twice the size they are laid out at. The designs are
 written in 512 × 724 units, and at that resolution a 66 cm poster carried 7.7
 pixels to the centimetre — soft in any shot closer than the wide one. The layout

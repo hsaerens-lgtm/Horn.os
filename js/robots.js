@@ -280,6 +280,14 @@ export function buildRobotBody(a, seat, { tex, roundedBox, HIP_Y, TABLE_Y, N }) 
     // a tool belt at the waist, with a pouch either side
     add("upper", "dark", roundedBox(0.38 * k.w, 0.03, 0.28, 0.008), M(0, base + 0.03, -0.01));
     for (const s of [-1, 1]) add("upper", "dark", roundedBox(0.06, 0.07, 0.03, 0.008), M(s * 0.12, base + 0.02, 0.14));
+    // and a power pack on the back — a box with a carry handle, two lit
+    // gauges and a hose down to the belt. Seen from behind, the Artificer was
+    // a plain box; every other player carries something there.
+    add("upper", "dark", roundedBox(0.26, 0.24, 0.09, 0.016), M(0, torsoY + 0.02, -0.185));
+    add("upper", "shell", roundedBox(0.2, 0.16, 0.02, 0.008), M(0, torsoY + 0.02, -0.235));
+    add("upper", "dark", new THREE.TorusGeometry(0.05, 0.008, 8, 20, Math.PI), M(0, torsoY + 0.145, -0.185, [0, 0, 0]));
+    for (const s of [-1, 1]) add("upper", "glow", roundedBox(0.03, 0.012, 0.006, 0.002), M(s * 0.055, torsoY - 0.02, -0.247));
+    add("upper", "dark", new THREE.TorusGeometry(0.075, 0.009, 8, 24, Math.PI * 0.55), M(0.11, torsoY - 0.09, -0.19, [0, Math.PI / 2, Math.PI]));
   }
 
   // the yoke across the shoulders, and the neck the television stands on. A
