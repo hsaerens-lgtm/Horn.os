@@ -24,6 +24,7 @@ import { createChatter } from "./chatter.js";
 import { createEffects } from "./effects.js";
 import { dedupeMaterials } from "./palette.js";
 import { bakeFloorOcclusion, bakeCavityAO } from "./occlusion.js";
+import { buildRobotBody } from "./robots.js";
 import { createAmbience } from "./environment.js";
 import { roundedBox, boxProjectUVs } from "./shapes.js";
 
@@ -993,8 +994,46 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
 
   });
 
+  /* ------------------------------------------------------------------ *
+   *  The players as they are now: bodies built in js/robots.js, one
+   *  silhouette per agent, wearing the same television head. Everything
+   *  the rest of the scene needs from a player — the click box, the
+   *  bubble mount, the screen glow, the chair — is the shared contract
+   *  below, and the body is the only part that changed. Synchronous, so
+   *  there is nothing to wait for and nothing to arrive late.
+   * ------------------------------------------------------------------ */
+  const makeProceduralRobot = (a, seat) => {
+    const [x, z] = seat.fig;
+    const g = new THREE.Group();
+    g.position.set(x, 0, z);
+    g.rotation.y = seat.rot;
+    scene.add(g);
+
+    makeChair(g);
+    const body = buildRobotBody(a, seat, { tex, roundedBox, HIP_Y, TABLE_Y, N });
+    g.add(body.legs);
+    g.add(body.upper);
+    // Creases darkened once the figure is in its chair; legs and torso are
+    // baked separately so the chair does not join the pool.
+    bakeCavityAO(body.legs, { radius: 0.16, strength: 1.4, floor: 0.42 });
+    bakeCavityAO(body.upper, { radius: 0.16, strength: 1.4, floor: 0.42 });
+
+    const tv = buildTvHead(a, robotTrim, { neck: false });
+    tv.scale.setScalar(1.08);
+    tv.position.set(0, body.headY, 0.012);
+    tv.rotation.set(seat.tilt ?? 0, seat.turn ?? 0, 0);
+    body.upper.add(tv);
+
+    breathe(party.indexOf(a), body.upper);
+    mountSpeaker(g, a, body.headY + HIP_Y);
+    finishAgent(g, a, seat);
+    return g;
+  };
+
   // The figures sit behind their laptops, on the far side of the table.
-  const buildPlayer = players === "robot" ? makeRobotAgent : makeAgent;
+  // ?players=gltf brings back the RobotExpressive bodies, ?players=suit the
+  // suited figures; both are kept as the two earlier answers to this table.
+  const buildPlayer = players === "gltf" ? makeRobotAgent : players === "suit" ? makeAgent : makeProceduralRobot;
   party.slice(0, 4).forEach((a, i) => buildPlayer(a, SEATS[i]));
 
   // ---------- What each player brought with them ----------

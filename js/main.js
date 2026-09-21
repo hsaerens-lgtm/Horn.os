@@ -48,11 +48,11 @@ async function start3D() {
     sheetRoot: root,
     agentRoots,
     agents: content.party,
-    // The party is three.js's CC0 RobotExpressive, seated. ?players=suit brings
-    // back the hand-built suited figures, which are kept because they were the
-    // first version of this table and are one URL away if the tone ever wants
-    // to be a straighter one.
-    players: params.get("players") === "suit" ? "suit" : "robot",
+    // The party is four bodies built in js/robots.js, one silhouette each.
+    // ?players=gltf brings back the CC0 RobotExpressive bodies and
+    // ?players=suit the hand-built suited figures — the two earlier versions of
+    // this table, kept one URL away.
+    players: ["suit", "gltf"].includes(params.get("players")) ? params.get("players") : "robot",
     onEnter() {
       hint.classList.add("hidden");
       back.classList.remove("hidden");

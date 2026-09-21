@@ -248,6 +248,38 @@ full Chromium (`channel: "chromium"`), which runs on the machine's real GPU: wha
 users see, and roughly a hundred times faster than SwiftShader. The six-rig sweep
 that had timed out took seconds.
 
+## The players, rebuilt
+
+Four bodies, one per agent, built in `js/robots.js` from primitives — capsules,
+cylinders, extruded and rounded boxes — and placed in a seated pose by
+construction rather than by folding a skeleton. The television head is unchanged;
+it was always the part that said which agent this is.
+
+Each has its own silhouette, keyed by role, so you can tell them apart across the
+room with the screens off:
+
+| agent | role | body |
+|---|---|---|
+| PERSEUS | The Platform | broad, tapered chest, plated, shoulder pads, riveted |
+| HERMES | The Messenger | a slim spindle with rings, two back fins, lit aerials |
+| ODYSSEUS | The Navigator | a drum with a dish on one shoulder, a compass rose on the chest |
+| CODEX | The Artificer | a box with a front panel, gauntlets on both forearms, a tool rack |
+
+Each body is three merged meshes per moving group — painted shell, bare metal,
+lit accents — so twenty-odd parts cost six draw calls. Every part has UVs, so the
+painted-shell maps apply the ordinary way, and the cavity occlusion bakes on the
+result once it is posed. Nothing else in the scene changed: the click box, the
+bubble mount, the screen glow and the chair were already independent of the body.
+
+Two things fixed on sight from the harness rather than by eye: the Messenger's
+shoulders sat at 0.17 on a column only 0.11 across, and the arms hung three
+centimetres clear of it; and the Platform's first chest was a straight box, which
+read as a filing cabinet — it is an extruded trapezoid now, square at the shoulders
+and narrowing to the waist.
+
+`?players=gltf` brings back the RobotExpressive bodies and `?players=suit` the
+suited figures, both kept as the two earlier answers to this table.
+
 ## What the players actually needed
 
 Three maps where there had been none, a clearcoat, cavity occlusion in the creases,
@@ -537,6 +569,7 @@ js/sheet.js       renders the DM's sheet and each player's sheet
 js/scene.js       3D table, camera states, sheet projection and raising
 js/board.js       the board: the tray, and the terrain standing on the map
 js/props.js       what each player brought: a mug, a dice cup, a map, a notepad
+js/robots.js      the players' bodies: four seated silhouettes built from primitives
 js/chatter.js     the speech bubbles, one at a time
 js/effects.js     what a natural 20 and a natural 1 do to the room
 js/merge.js       baking small static pieces into single meshes
