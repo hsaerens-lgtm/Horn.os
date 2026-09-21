@@ -38,6 +38,8 @@ const TABLE_Y = 0.76;
 const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
 export function createScene({ container, sheetRoot, agentRoots, agents, players = "robot", onEnter, onExit, onAgent, onBoard }) {
+  const SCENE_T0 = performance.now();
+  let pendingFrameProbe = null;
   const width = () => container.clientWidth;
   const height = () => container.clientHeight;
 
@@ -1070,13 +1072,15 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
     scene.add(g);
 
     makeChair(g);
+    const t0 = performance.now();
     const body = buildRobotBody(a, seat, { tex, roundedBox, HIP_Y, TABLE_Y, N });
     g.add(body.legs);
     g.add(body.upper);
+    const t1 = performance.now();
     // Creases darkened once the figure is in its chair; legs and torso are
     // baked separately so the chair does not join the pool.
-    bakeCavityAO(body.legs, { radius: 0.16, strength: 1.4, floor: 0.42 });
-    bakeCavityAO(body.upper, { radius: 0.16, strength: 1.4, floor: 0.42 });
+    const cavity = bakeCavityAO(body.legs, { radius: 0.16, strength: 1.4, floor: 0.42 }) + bakeCavityAO(body.upper, { radius: 0.16, strength: 1.4, floor: 0.42 });
+    if (DEBUG_ROBOT) console.debug(`PROBE robot ${a.id}: built in ${Math.round(t1 - t0)} ms, cavity AO on ${cavity} verts in ${Math.round(performance.now() - t1)} ms`);
 
     const tv = buildTvHead(a, robotTrim, { neck: false });
     tv.scale.setScalar(1.08);
@@ -1793,16 +1797,57 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
   // skipping because a chair lost a texture. Found by a test harness that hit
   // the dev server hard enough to make it drop a request, which is exactly the
   // kind of thing a browser on somebody's train journey will do too.
-  Promise.allSettled(pending).then(() => {
-    tidy();
-    bakeOcclusion();
-  });
+  // The loop does not start until everything is built, baked and *compiled*.
+  // Left to itself the first frame compiled every shader in the scene on the
+  // spot: 3.2 seconds frozen on a cold shader cache, measured on a fast GPU,
+  // with the loader's die stuck mid-spin because the main thread was busy.
+  // compileAsync does the same work while the loader is still up, in
+  // parallel where the driver allows it (KHR_parallel_shader_compile), so the
+  // first frame drawn is a real frame. It also means nothing already in the
+  // scene — the bubble sprite, the sparks, the sheets' cut-outs — compiles
+  // later, at the moment it first appears, as a hitch.
+  //
+  // Two details, both measured. A program's cache key includes the colour
+  // space of the render target it is compiled against, and this scene is drawn
+  // into the composer's linear HalfFloat target, not the canvas — so compiled
+  // against the canvas, all 21 programs were the wrong ones and the first frame
+  // compiled 21 more. The target is set first. And compileAsync knows nothing
+  // of the shadow pass or the post-processing chain, so one warm-up frame is
+  // drawn under the loader to compile those (the loader covers the canvas).
+  const ready = Promise.allSettled(pending)
+    .then(async () => {
+      tidy();
+      bakeOcclusion();
+      const c0 = performance.now();
+      renderer.setRenderTarget(painter.target);
+      await renderer.compileAsync(scene, camera);
+      renderer.setRenderTarget(null);
+      const c1 = performance.now();
+      frame();
+      if (DEBUG_ROBOT) {
+        console.debug(
+          `PROBE compiled ${renderer.info.programs.length} programs: ${Math.round(c1 - c0)} ms async, then a warm-up frame of ${Math.round(performance.now() - c1)} ms` +
+            ` (parallel compile ${renderer.extensions.has("KHR_parallel_shader_compile")})`
+        );
+      }
+    })
+    .finally(() => renderer.setAnimationLoop(frame));
 
   // ---------- Loop ----------
   const clock = new THREE.Clock();
   let prevT = 0;
-  renderer.setAnimationLoop(() => {
+  let frames = 0;
+  if (DEBUG_ROBOT) console.debug(`PROBE createScene built in ${Math.round(performance.now() - SCENE_T0)} ms`);
+  // Started by `ready`, above, once the scene is compiled.
+  const frame = () => {
     const t = clock.getElapsedTime();
+    if (DEBUG_ROBOT && frames < 3) {
+      const f0 = performance.now();
+      frames++;
+      queueMicrotask(() => {});
+      // measured at the end of this callback, below
+      pendingFrameProbe = () => console.debug(`PROBE frame ${frames} took ${Math.round(performance.now() - f0)} ms, ${renderer.info.programs.length} programs`);
+    }
     // Clamped, because a backgrounded tab returns with a delta of several
     // seconds and every damped value would snap.
     const dt = Math.min(0.05, t - prevT);
@@ -1903,7 +1948,11 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
 
     painter.render();
     cssRenderer.render(scene, camera);
-  });
+    if (pendingFrameProbe) {
+      pendingFrameProbe();
+      pendingFrameProbe = null;
+    }
+  };
 
   // `celebrate` and `wreck` are returned so a natural 20 and a natural 1 can be
   // fired without waiting one in twenty rolls for the dice to produce one, which
@@ -1917,6 +1966,6 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
     isFocused: () => mode === "focused",
     // Settled rather than fulfilled, for the same reason: a missing armchair is
     // a missing armchair, not a reason to drop the whole page to the flat sheet.
-    ready: Promise.allSettled(pending),
+    ready,
   };
 }

@@ -11,7 +11,9 @@
     "shots:live": "node test/shots.mjs --live",
     "bench:lights": "node test/lights.mjs",
     "bench:lamp": "node test/lamp.mjs",
-    "bench:flicker": "node test/flicker.mjs"
+    "bench:flicker": "node test/flicker.mjs",
+    "bench:perf": "node test/perf.mjs",
+    "bench:load": "node test/loadtime.mjs \"?debug=1\""
   },
   "repository": {
     "type": "git",

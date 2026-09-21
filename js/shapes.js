@@ -152,7 +152,7 @@ export const along = (p, dir, scale = [1, 1, 1]) =>
   );
 
 /** A tapered tube from `a` to `b`: radius `r0` at `a`, `r1` at `b`. */
-export const between = (a, b, r0, r1, seg = 20) => {
+export const between = (a, b, r0, r1, seg = 14) => {
   const dir = b.clone().sub(a);
   return {
     geometry: new THREE.CylinderGeometry(r1, r0, dir.length(), seg, 1, false),
@@ -162,6 +162,6 @@ export const between = (a, b, r0, r1, seg = 20) => {
 
 /** A thin ring around a limb at `p`, perpendicular to `dir`: a seam, a cuff, a wrist. */
 export const ring = (p, dir, r, tube = 0.007) => ({
-  geometry: new THREE.TorusGeometry(r, tube, 10, 28),
+  geometry: new THREE.TorusGeometry(r, tube, 6, 16),
   matrix: along(p, dir).multiply(new THREE.Matrix4().makeRotationX(Math.PI / 2)),
 });

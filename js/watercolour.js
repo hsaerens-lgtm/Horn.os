@@ -196,5 +196,8 @@ export function createWatercolour(renderer, scene, camera) {
 
   setSize(renderer.domElement.width, renderer.domElement.height);
 
-  return { render: () => composer.render(), setSize, pass };
+  // `target` is exposed for the pre-compile at load: a shader's cache key
+  // includes the colour space of the target it is compiled against, and the
+  // scene is drawn into this one, not the canvas.
+  return { render: () => composer.render(), setSize, pass, target };
 }

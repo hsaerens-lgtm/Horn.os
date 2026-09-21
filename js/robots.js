@@ -48,7 +48,7 @@ const M = (x, y, z, rot = [0, 0, 0], scale = [1, 1, 1]) =>
 // `along`, `between` and `ring` — the joint-to-joint builders every limb is
 // made with — live in shapes.js now, because the chairs wanted them too.
 
-const sphere = (p, r, scale = [1, 1, 1], seg = 18) => ({
+const sphere = (p, r, scale = [1, 1, 1], seg = 12) => ({
   geometry: new THREE.SphereGeometry(r, seg, Math.round(seg * 0.7)),
   matrix: M(p.x, p.y, p.z, [0, 0, 0], scale),
 });
@@ -162,7 +162,7 @@ export function buildRobotBody(a, seat, { tex, roundedBox, HIP_Y, TABLE_Y, N }) 
     add(
       "legs",
       "shell",
-      new THREE.SphereGeometry(0.07 * L, 20, 12, 0, Math.PI * 2, 0, Math.PI * 0.58),
+      new THREE.SphereGeometry(0.07 * L, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.58),
       M(knee.x, knee.y + 0.004, knee.z + 0.008, [0.7, 0, 0], [1, 0.9, 0.95])
     );
     // shin, knee to ankle, with a plate down its front
@@ -183,8 +183,8 @@ export function buildRobotBody(a, seat, { tex, roundedBox, HIP_Y, TABLE_Y, N }) 
   const torsoY = base + T / 2;
   const top = base + T; // where the shoulders sit
   // the abdomen: the dark core the chest plate sits on, visible at the waist
-  add("upper", "dark", new THREE.CylinderGeometry(0.12 * k.w, 0.135 * k.w, 0.16, 26), M(0, 0.06, -0.01));
-  add("upper", "dark", new THREE.TorusGeometry(0.128 * k.w, 0.008, 10, 30), M(0, 0.1, -0.01, [Math.PI / 2, 0, 0]));
+  add("upper", "dark", new THREE.CylinderGeometry(0.12 * k.w, 0.135 * k.w, 0.16, 16), M(0, 0.06, -0.01));
+  add("upper", "dark", new THREE.TorusGeometry(0.128 * k.w, 0.008, 6, 18), M(0, 0.1, -0.01, [Math.PI / 2, 0, 0]));
 
   if (k.chest === "slab") {
     // The Platform: broad, plated, and tapered — a straight box read as a
@@ -202,7 +202,7 @@ export function buildRobotBody(a, seat, { tex, roundedBox, HIP_Y, TABLE_Y, N }) 
     add(
       "upper",
       "shell",
-      new THREE.ExtrudeGeometry(chest, { depth: 0.22, bevelEnabled: true, bevelSize: 0.028, bevelThickness: 0.026, bevelSegments: 5, curveSegments: 16 }),
+      new THREE.ExtrudeGeometry(chest, { depth: 0.22, bevelEnabled: true, bevelSize: 0.028, bevelThickness: 0.026, bevelSegments: 3, curveSegments: 8 }),
       M(0, torsoY, -0.13)
     );
     // a horizontal seam across the chest, two flanking panels, bolt rows
@@ -222,10 +222,10 @@ export function buildRobotBody(a, seat, { tex, roundedBox, HIP_Y, TABLE_Y, N }) 
     }
   } else if (k.chest === "spindle") {
     // The Messenger: a tapered column, light, with fins.
-    add("upper", "shell", new THREE.CylinderGeometry(0.115, 0.15, T, 26), M(0, torsoY, 0));
-    add("upper", "dark", new THREE.CylinderGeometry(0.125, 0.115, 0.035, 26), M(0, top - 0.005, 0));
-    add("upper", "dark", new THREE.TorusGeometry(0.14, 0.01, 10, 30), M(0, torsoY - 0.1, 0, [Math.PI / 2, 0, 0]));
-    add("upper", "dark", new THREE.TorusGeometry(0.128, 0.008, 10, 30), M(0, torsoY + 0.08, 0, [Math.PI / 2, 0, 0]));
+    add("upper", "shell", new THREE.CylinderGeometry(0.115, 0.15, T, 16), M(0, torsoY, 0));
+    add("upper", "dark", new THREE.CylinderGeometry(0.125, 0.115, 0.035, 16), M(0, top - 0.005, 0));
+    add("upper", "dark", new THREE.TorusGeometry(0.14, 0.01, 6, 18), M(0, torsoY - 0.1, 0, [Math.PI / 2, 0, 0]));
+    add("upper", "dark", new THREE.TorusGeometry(0.128, 0.008, 6, 18), M(0, torsoY + 0.08, 0, [Math.PI / 2, 0, 0]));
     for (const s of [-1, 1]) {
       // fins, swept back, with a dark leading edge
       add("upper", "shell", roundedBox(0.022, 0.26, 0.13, 0.008), M(s * 0.09, torsoY + 0.05, -0.13, [0, 0, s * 0.3]));
@@ -238,10 +238,10 @@ export function buildRobotBody(a, seat, { tex, roundedBox, HIP_Y, TABLE_Y, N }) 
     add("upper", "glow", roundedBox(0.012, 0.22, 0.006, 0.002), M(0, torsoY - 0.02, -0.14));
   } else if (k.chest === "barrel") {
     // The Navigator: a drum with a dish on one shoulder and a compass on its chest.
-    add("upper", "shell", new THREE.CylinderGeometry(0.155, 0.165, T, 28), M(0, torsoY, 0));
-    add("upper", "shell", new THREE.SphereGeometry(0.155, 28, 12, 0, Math.PI * 2, 0, Math.PI / 2), M(0, top, 0));
-    add("upper", "dark", new THREE.TorusGeometry(0.157, 0.009, 10, 32), M(0, torsoY + 0.1, 0, [Math.PI / 2, 0, 0]));
-    add("upper", "dark", new THREE.TorusGeometry(0.163, 0.009, 10, 32), M(0, torsoY - 0.12, 0, [Math.PI / 2, 0, 0]));
+    add("upper", "shell", new THREE.CylinderGeometry(0.155, 0.165, T, 18), M(0, torsoY, 0));
+    add("upper", "shell", new THREE.SphereGeometry(0.155, 18, 8, 0, Math.PI * 2, 0, Math.PI / 2), M(0, top, 0));
+    add("upper", "dark", new THREE.TorusGeometry(0.157, 0.009, 6, 18), M(0, torsoY + 0.1, 0, [Math.PI / 2, 0, 0]));
+    add("upper", "dark", new THREE.TorusGeometry(0.163, 0.009, 6, 18), M(0, torsoY - 0.12, 0, [Math.PI / 2, 0, 0]));
     // rivets around the upper hoop
     for (let i = 0; i < 12; i++) {
       const th = (i / 12) * Math.PI * 2;
@@ -249,15 +249,15 @@ export function buildRobotBody(a, seat, { tex, roundedBox, HIP_Y, TABLE_Y, N }) 
     }
     // the dish: a shallow cone, open, on a short stalk
     add("upper", "dark", new THREE.CylinderGeometry(0.006, 0.006, 0.07, 8), M(-0.2, top + 0.03, -0.03, [0, 0, 0.5]));
-    add("upper", "dark", new THREE.ConeGeometry(0.085, 0.035, 22, 1, true), M(-0.235, top + 0.08, -0.02, [-0.9, 0.3, 0.5]));
+    add("upper", "dark", new THREE.ConeGeometry(0.085, 0.035, 14, 1, true), M(-0.235, top + 0.08, -0.02, [-0.9, 0.3, 0.5]));
     add("upper", "glow", new THREE.SphereGeometry(0.009, 8, 8), M(-0.235, top + 0.083, -0.02));
     // compass rose: a lit ring with a needle
-    add("upper", "glow", new THREE.TorusGeometry(0.044, 0.005, 8, 28), M(0, torsoY + 0.02, 0.158));
+    add("upper", "glow", new THREE.TorusGeometry(0.044, 0.005, 6, 16), M(0, torsoY + 0.02, 0.158));
     add("upper", "glow", roundedBox(0.006, 0.064, 0.005, 0.002), M(0, torsoY + 0.02, 0.159, [0, 0, 0.6]));
     // a rolled chart slung across the back
-    add("upper", "shell", new THREE.CylinderGeometry(0.03, 0.03, 0.36, 16), M(0.02, torsoY + 0.02, -0.2, [0, 0, 1.15]));
+    add("upper", "shell", new THREE.CylinderGeometry(0.03, 0.03, 0.36, 10), M(0.02, torsoY + 0.02, -0.2, [0, 0, 1.15]));
     for (const e of [-1, 1]) {
-      add("upper", "dark", new THREE.CylinderGeometry(0.033, 0.033, 0.016, 16), M(0.02 + e * 0.165, torsoY + 0.02 - e * 0.075, -0.2, [0, 0, 1.15]));
+      add("upper", "dark", new THREE.CylinderGeometry(0.033, 0.033, 0.016, 10), M(0.02 + e * 0.165, torsoY + 0.02 - e * 0.075, -0.2, [0, 0, 1.15]));
     }
   } else {
     // The Artificer: a workshop box, a front panel, gauntlets and tools.
@@ -285,9 +285,9 @@ export function buildRobotBody(a, seat, { tex, roundedBox, HIP_Y, TABLE_Y, N }) 
     // a plain box; every other player carries something there.
     add("upper", "dark", roundedBox(0.26, 0.24, 0.09, 0.016), M(0, torsoY + 0.02, -0.185));
     add("upper", "shell", roundedBox(0.2, 0.16, 0.02, 0.008), M(0, torsoY + 0.02, -0.235));
-    add("upper", "dark", new THREE.TorusGeometry(0.05, 0.008, 8, 20, Math.PI), M(0, torsoY + 0.145, -0.185, [0, 0, 0]));
+    add("upper", "dark", new THREE.TorusGeometry(0.05, 0.008, 6, 12, Math.PI), M(0, torsoY + 0.145, -0.185, [0, 0, 0]));
     for (const s of [-1, 1]) add("upper", "glow", roundedBox(0.03, 0.012, 0.006, 0.002), M(s * 0.055, torsoY - 0.02, -0.247));
-    add("upper", "dark", new THREE.TorusGeometry(0.075, 0.009, 8, 24, Math.PI * 0.55), M(0.11, torsoY - 0.09, -0.19, [0, Math.PI / 2, Math.PI]));
+    add("upper", "dark", new THREE.TorusGeometry(0.075, 0.009, 6, 12, Math.PI * 0.55), M(0.11, torsoY - 0.09, -0.19, [0, Math.PI / 2, Math.PI]));
   }
 
   // the yoke across the shoulders, and the neck the television stands on. A
@@ -296,12 +296,12 @@ export function buildRobotBody(a, seat, { tex, roundedBox, HIP_Y, TABLE_Y, N }) 
   if (k.chest === "slab" || k.chest === "box") {
     add("upper", "dark", roundedBox(2 * k.shoulder - 0.02, 0.045, 0.15, 0.014), M(0, top + 0.02, -0.01));
   } else if (k.chest === "spindle") {
-    add("upper", "dark", new THREE.CylinderGeometry(0.135, 0.128, 0.04, 26), M(0, top + 0.02, 0));
+    add("upper", "dark", new THREE.CylinderGeometry(0.135, 0.128, 0.04, 16), M(0, top + 0.02, 0));
   }
-  add("upper", "dark", new THREE.CylinderGeometry(0.075, 0.085, 0.03, 20), M(0, top + 0.05, 0.005));
-  add("upper", "dark", new THREE.CylinderGeometry(0.036, 0.046, 0.09, 16), M(0, top + 0.1, 0.01));
+  add("upper", "dark", new THREE.CylinderGeometry(0.075, 0.085, 0.03, 14), M(0, top + 0.05, 0.005));
+  add("upper", "dark", new THREE.CylinderGeometry(0.036, 0.046, 0.09, 12), M(0, top + 0.1, 0.01));
   // bellows: a neck that reads as one that turns
-  for (let i = 0; i < 3; i++) add("upper", "dark", new THREE.TorusGeometry(0.043, 0.006, 8, 20), M(0, top + 0.075 + i * 0.02, 0.01, [Math.PI / 2, 0, 0]));
+  for (let i = 0; i < 3; i++) add("upper", "dark", new THREE.TorusGeometry(0.043, 0.006, 5, 12), M(0, top + 0.075 + i * 0.02, 0.01, [Math.PI / 2, 0, 0]));
   const headY = top + 0.145 + 0.104; // stalk top plus half the television's height
 
   /* ---------------- arms (in `upper`) ----------------
@@ -335,8 +335,8 @@ export function buildRobotBody(a, seat, { tex, roundedBox, HIP_Y, TABLE_Y, N }) 
       new THREE.Quaternion().setFromEuler(new THREE.Euler(0.15, 0, s * 0.35)),
       new THREE.Vector3(1, 1, 1)
     );
-    add("upper", "shell", new THREE.SphereGeometry(PR, 22, 12, 0, Math.PI * 2, 0, Math.PI / 2), padM.clone().scale(new THREE.Vector3(1, 0.8, 0.95)));
-    add("upper", "dark", new THREE.TorusGeometry(PR * 0.975, 0.006, 10, 30), padM.clone().multiply(M(0, 0, 0, [Math.PI / 2, 0, 0], [1, 0.95, 1])));
+    add("upper", "shell", new THREE.SphereGeometry(PR, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), padM.clone().scale(new THREE.Vector3(1, 0.8, 0.95)));
+    add("upper", "dark", new THREE.TorusGeometry(PR * 0.975, 0.006, 6, 18), padM.clone().multiply(M(0, 0, 0, [Math.PI / 2, 0, 0], [1, 0.95, 1])));
     add("upper", "dark", new THREE.CylinderGeometry(0.008, 0.008, 0.008, 10), padM.clone().multiply(M(0, PR * 0.8, 0)));
 
     // upper arm, shoulder to elbow, with a seam before the elbow
@@ -346,7 +346,7 @@ export function buildRobotBody(a, seat, { tex, roundedBox, HIP_Y, TABLE_Y, N }) 
     // elbow: a ball, and a hinge disc either side of it
     part("upper", "dark", sphere(elbow, 0.052 * A));
     for (const e of [-1, 1]) {
-      add("upper", "dark", new THREE.CylinderGeometry(0.036 * A, 0.036 * A, 0.014, 16), M(elbow.x + e * 0.05 * A, elbow.y, elbow.z, [0, 0, Math.PI / 2]));
+      add("upper", "dark", new THREE.CylinderGeometry(0.036 * A, 0.036 * A, 0.014, 12), M(elbow.x + e * 0.05 * A, elbow.y, elbow.z, [0, 0, Math.PI / 2]));
     }
 
     // forearm, elbow to wrist: wide at the elbow, narrowing to the wrist
@@ -379,19 +379,19 @@ export function buildRobotBody(a, seat, { tex, roundedBox, HIP_Y, TABLE_Y, N }) 
       const k0 = V(fx, -0.018, 0.078);
       const k1 = k0.clone().addScaledVector(V(0, -Math.sin(0.15), Math.cos(0.15)), 0.03);
       const k2 = k1.clone().addScaledVector(V(0, -Math.sin(0.42), Math.cos(0.42)), 0.024);
-      hand("dark", new THREE.SphereGeometry(0.0105, 10, 8), M(k0.x, k0.y, k0.z));
-      hand("dark", between(k0, k1, 0.0095, 0.009, 10));
-      hand("dark", new THREE.SphereGeometry(0.0092, 10, 8), M(k1.x, k1.y, k1.z));
-      hand("dark", between(k1, k2, 0.0088, 0.0075, 10));
-      hand("dark", new THREE.SphereGeometry(0.0078, 10, 8), M(k2.x, k2.y, k2.z));
+      hand("dark", new THREE.SphereGeometry(0.0105, 7, 5), M(k0.x, k0.y, k0.z));
+      hand("dark", between(k0, k1, 0.0095, 0.009, 7));
+      hand("dark", new THREE.SphereGeometry(0.0092, 7, 5), M(k1.x, k1.y, k1.z));
+      hand("dark", between(k1, k2, 0.0088, 0.0075, 7));
+      hand("dark", new THREE.SphereGeometry(0.0078, 7, 5), M(k2.x, k2.y, k2.z));
     }
     {
       // the thumb, on the inner side, pointing in and forward
       const t0 = V(-s * 0.038, -0.02, 0.03);
       const t1 = t0.clone().addScaledVector(V(-s * 0.7, -0.15, 0.65).normalize(), 0.03);
-      hand("dark", new THREE.SphereGeometry(0.0105, 10, 8), M(t0.x, t0.y, t0.z));
-      hand("dark", between(t0, t1, 0.0095, 0.008, 10));
-      hand("dark", new THREE.SphereGeometry(0.008, 10, 8), M(t1.x, t1.y, t1.z));
+      hand("dark", new THREE.SphereGeometry(0.0105, 7, 5), M(t0.x, t0.y, t0.z));
+      hand("dark", between(t0, t1, 0.0095, 0.008, 7));
+      hand("dark", new THREE.SphereGeometry(0.008, 7, 5), M(t1.x, t1.y, t1.z));
     }
   }
 

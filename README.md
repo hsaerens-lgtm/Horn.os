@@ -657,6 +657,48 @@ so nothing laid flat on the floor later can tie with it. The room's flipping pix
 went from bursts of 0.9% to a steady 0.07%, which is edge crawl on a drifting
 camera and the rain doing what rain does.
 
+## Compiling at load
+
+The page stopped loading on one machine, and on a fast one the loader stayed up
+for 25 seconds. `test/loadtime.mjs` times navigation to loader-hidden for a query
+string, and `test/perf.mjs` collects nine hundred frame times, the shader count
+over time and the worst frame. Three things, in order of size:
+
+**The cavity bake was quadratic.** The rebuilt players are 330 000 non-indexed
+vertices packed into half a cubic metre, and the bake compared every vertex with
+every neighbour within 16 cm — thousands each — through a string-keyed grid.
+Twenty-one seconds of the load, and never finishing on a slower machine. The grid
+keys are integers now and each vertex samples at most twelve neighbours per cell,
+striding evenly through the bucket; an estimate of enclosure over thirty spread
+neighbours is as good as one over three thousand. Every primitive also lost
+segments it did not need (a torus at 6 × 16 rather than 10 × 28, spheres at 12
+rather than 18) — 190 000 vertices, the same picture. The four bodies now build
+and bake in about a quarter of a second.
+
+**The first frame compiled every shader on the spot.** 3.2 seconds frozen on a
+cold shader cache, after the loader had already gone, with the die stuck mid-spin
+because the main thread was busy. `renderer.compileAsync` moves that under the
+loader and, where the driver allows (`KHR_parallel_shader_compile`, and it does
+here), off the main thread. Two details had to be measured: a program's cache key
+includes the colour space of the render target it is compiled against, and the
+scene is drawn into the composer's linear HalfFloat target — compiled against the
+canvas, all 21 programs were the wrong ones and the first frame compiled 21 more.
+The target is set first. And compileAsync knows nothing of the shadow pass or the
+post-processing chain, so one warm-up frame is drawn under the loader for those.
+
+| cold load, fast GPU | before | after |
+|---|---|---|
+| loader hidden at | 23.6 s | about 5 s |
+| first visible frame | frozen 3.2 s | 11 ms |
+| shader programs | 48 | 29 |
+| worst frame in the first 15 s | 744 ms | 20–31 ms |
+| frames over 33 ms | 1 | 0 |
+
+**Nothing compiles later.** The bubble, the sparks, the sheets' cut-outs are all
+in the scene from the start, so the 744 ms hitch a few frames in — a material
+meeting the GPU for the first time — is gone; the shader count does not move
+after load.
+
 ## Run locally
 
 ```bash

@@ -321,15 +321,29 @@ export function bakeCavityAO(root, { radius = 0.17, strength = 1.5, floor = 0.42
   }
 
   // A uniform grid at the search radius, so a neighbour query touches 27 cells.
+  // Integer keys, not strings: the first version built a "x,y,z" string for
+  // every one of 27 lookups per vertex, and on the rebuilt players that alone
+  // was seconds.
   const cell = radius;
-  const key = (x, y, z) => `${Math.floor(x / cell)},${Math.floor(y / cell)},${Math.floor(z / cell)}`;
+  const OFF = 1 << 10;
+  const key = (cx, cy, cz) => ((cx + OFF) << 22) | ((cy + OFF) << 11) | (cz + OFF);
   const grid = new Map();
   for (let i = 0; i < total; i++) {
-    const k = key(px[i], py[i], pz[i]);
+    const k = key(Math.floor(px[i] / cell), Math.floor(py[i] / cell), Math.floor(pz[i] / cell));
     let bucket = grid.get(k);
     if (!bucket) grid.set(k, (bucket = []));
     bucket.push(i);
   }
+
+  // How many neighbours a vertex looks at, per cell. This is an *estimate* of
+  // how enclosed a vertex is, and an estimate over thirty well-spread
+  // neighbours is as good as one over three thousand. Without the cap the
+  // cost is vertices × neighbours-in-range, and the rebuilt players — three
+  // hundred thousand non-indexed vertices packed into half a cubic metre —
+  // took twenty-one seconds of the load on a fast machine and never finished
+  // on a slow one. The stride walks each bucket evenly so the sample is not
+  // biased towards whichever part happened to be merged first.
+  const PER_CELL = 12;
 
   const occ = new Float32Array(total);
   const r2 = radius * radius;
@@ -342,9 +356,11 @@ export function bakeCavityAO(root, { radius = 0.17, strength = 1.5, floor = 0.42
     for (let a = -1; a <= 1; a++) {
       for (let b = -1; b <= 1; b++) {
         for (let c = -1; c <= 1; c++) {
-          const bucket = grid.get(`${cxi + a},${cyi + b},${czi + c}`);
+          const bucket = grid.get(key(cxi + a, cyi + b, czi + c));
           if (!bucket) continue;
-          for (const j of bucket) {
+          const stride = Math.max(1, Math.floor(bucket.length / PER_CELL));
+          for (let s = (i * 7) % stride; s < bucket.length; s += stride) {
+            const j = bucket[s];
             if (j === i) continue;
             const dx = px[j] - px[i];
             const dy = py[j] - py[i];
