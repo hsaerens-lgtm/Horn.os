@@ -1418,7 +1418,10 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
   scene.add(new THREE.HemisphereLight(0x4a3d34, 0x161209, 0.12));
 
   // ---------- Dust ----------
-  const DUST = 170;
+  // Fewer and fainter than they were. At 170 motes and half opacity, every one
+  // that happened to sit in front of the wall read as a fleck on the wall — a
+  // second source of the "specks" the watercolour pass was also making.
+  const DUST = 90;
   const dustPos = new Float32Array(DUST * 3);
   for (let i = 0; i < DUST; i++) {
     dustPos[i * 3] = (Math.random() - 0.5) * 3.2;
@@ -1429,7 +1432,7 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
   dustGeo.setAttribute("position", new THREE.BufferAttribute(dustPos, 3));
   const dust = new THREE.Points(
     dustGeo,
-    new THREE.PointsMaterial({ color: 0xfff1d6, size: 0.007, transparent: true, opacity: 0.5, sizeAttenuation: true })
+    new THREE.PointsMaterial({ color: 0xfff1d6, size: 0.006, transparent: true, opacity: 0.28, sizeAttenuation: true })
   );
   scene.add(dust);
 
@@ -1717,6 +1720,7 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
         renderer,
         camera,
         ao: mesh,
+        painter,
         pin: (pos, target) =>
           (pinned = pos ? { pos: new THREE.Vector3(...pos), target: new THREE.Vector3(...target) } : null),
       };

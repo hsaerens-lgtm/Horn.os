@@ -23,9 +23,20 @@ const WatercolourShader = {
     tPaper: { value: null },
     uTexel: { value: new THREE.Vector2(1 / 1280, 1 / 800) },
     uPaperScale: { value: new THREE.Vector2(3, 2) },
-    uBleed: { value: 1.45 },
-    uEdge: { value: 1.4 },
-    uGrain: { value: 0.2 },
+    // Tamed, all of it. At uBleed 1.45 / uEdge 1.4 / a 0.22 quantise, the pass
+    // inked every luminance step in the frame at up to 70% — including the
+    // centre dot of every wallpaper motif, which is what the "wall covered in
+    // black specks" complaint was, and the grain of every scan. The Sobel now
+    // runs through a threshold (uEdgeLo..uEdgeHi) so a 2% texture ripple is
+    // left alone and only an actual boundary — a silhouette against the wall,
+    // a table edge — gets pigment, and it gets less of it.
+    uBleed: { value: 0.5 },
+    uEdge: { value: 1.0 },
+    uEdgeLo: { value: 0.09 },
+    uEdgeHi: { value: 0.42 },
+    uStep: { value: 0.0 },
+    uGrain: { value: 0.12 },
+    uVignette: { value: 0.3 },
     uExposure: { value: 0.88 },
   },
 
@@ -44,7 +55,11 @@ const WatercolourShader = {
     uniform vec2 uPaperScale;
     uniform float uBleed;
     uniform float uEdge;
+    uniform float uEdgeLo;
+    uniform float uEdgeHi;
+    uniform float uStep;
     uniform float uGrain;
+    uniform float uVignette;
     uniform float uExposure;
     varying vec2 vUv;
 
@@ -95,15 +110,18 @@ const WatercolourShader = {
       float l22 = luma(filmic(texture2D(tDiffuse, vUv + vec2(uTexel.x, uTexel.y)).rgb));
       float gx = (l20 + 2.0 * l21 + l22) - (l00 + 2.0 * l01 + l02);
       float gy = (l02 + 2.0 * l12 + l22) - (l00 + 2.0 * l10 + l20);
-      float edge = clamp(sqrt(gx * gx + gy * gy) * 2.1, 0.0, 1.0);
-      col *= 1.0 - edge * 0.5 * uEdge;
+      //    Through a threshold: below uEdgeLo is texture and is ignored, above
+      //    uEdgeHi is a contour and is fully inked. Between the two the ink
+      //    fades in, so a soft shadow edge gets a little and a silhouette a lot.
+      float mag = sqrt(gx * gx + gy * gy);
+      float edge = smoothstep(uEdgeLo, uEdgeHi, mag);
+      col *= 1.0 - edge * 0.42 * uEdge;
 
-      // 4. Quantise gently. Full posterisation reads as cel shading; a partial
-      //    mix keeps the gradient while suggesting separate washes. Kept light,
-      //    and on a fine ladder: a large near-flat surface such as a wall shows
-      //    every step as a blotch, and the room now has a lot of wall in it.
+      // 4. Quantise, if asked (uStep 0 leaves it off). Full posterisation reads
+      //    as cel shading; even the fine ladder that was here showed as blotches
+      //    on the wall once the room had a lot of wall in it.
       vec3 stepped = floor(col * 18.0 + 0.5) / 18.0;
-      col = mix(col, stepped, 0.22);
+      col = mix(col, stepped, uStep);
 
       // The paper itself: tooth over the whole image, strongest in the mid tones
       // where a real wash is thinnest.
@@ -114,8 +132,13 @@ const WatercolourShader = {
       // Pigment is never quite as saturated as a rendered specular, and the
       // lightest areas are simply paper left bare.
       float l = luma(col);
-      col = mix(vec3(l), col, 0.88);
-      col = mix(col, vec3(min(1.0, l * 1.12)), smoothstep(0.82, 1.0, l) * 0.35);
+      col = mix(vec3(l), col, 0.94);
+      col = mix(col, vec3(min(1.0, l * 1.12)), smoothstep(0.82, 1.0, l) * 0.18);
+
+      // A vignette, which is the cheapest thing that makes a frame look
+      // composed: the corners were fighting the table for attention.
+      float r = length((vUv - 0.5) * vec2(1.0, 0.8)) * 1.45;
+      col *= 1.0 - uVignette * smoothstep(0.55, 1.15, r);
 
       gl_FragColor = vec4(col, base.a);
     }

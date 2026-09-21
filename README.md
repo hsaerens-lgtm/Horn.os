@@ -293,6 +293,38 @@ to 52% of the screen's and sets lightness to that of a paint under lacquer, so t
 four read as sage, teal, ochre and mauve on metal. The small lit accents keep the
 full screen colour, which is what still says whose body it is.
 
+### Joints, housed
+
+The first cut of these bodies was capsules and spheres set next to each other,
+and the wide shot read it as what it was: a tube for an arm, a ball for an elbow,
+two blocks for a hand, each floating beside the next. The difference between a
+designed robot and a stack of primitives is not the count of parts. It is that
+every joint is *housed* and every limb runs joint to joint with no gap.
+
+So the limbs are now solved from three explicit points a side — shoulder, elbow,
+wrist — and built *between* them as tapered tubes, which is why none has a gap at
+either end. The shoulder joint sits under a painted pauldron with a dark rim and a
+bolt; the elbow is a ball with a hinge disc either side; the wrist is a ring; the
+knee is a ball under a painted cap; the ankle a ring above a booted foot with a
+painted toe. Seam rings sit where one shell meets the next, a dark abdomen shows
+at the waist, a yoke crosses the shoulders and the neck is a bellows. The hands
+are palms with three curled fingers and a thumb, resting on the table.
+
+Resting *on* it: the arms live in the `upper` group, which leans, and the table
+does not. Placing the wrist at table height in the leaning frame put it seven
+centimetres into the wood for the player who leans most. The wrist is now placed
+in the room and rotated back by the lean, and the palm is pitched by the same
+angle, so every hand lies on the table plane whatever the posture.
+
+The bare-metal parts went from roughness 0.9 to 0.45. A metal with no highlight
+on it is a grey, and the joints and hands were the flattest things on the bodies.
+
+Two of the new parts were wrong in the first render and fixed from the close-ups:
+the pauldron's rim had its own tilt and leaned the other way from its cap, a hoop
+floating beside a dome; and the palms hovered a centimetre over their own shadows.
+Cap, rim and bolt share one frame now, and the palm hangs below the wrist.
+`test/closeup.mjs` frames PERSEUS head-on and CODEX from the side for this.
+
 `?players=gltf` brings back the RobotExpressive bodies and `?players=suit` the
 suited figures, both kept as the two earlier answers to this table.
 
@@ -398,6 +430,17 @@ allocates one with no samples, and a renderer's `antialias: true` only ever appl
 to the default framebuffer — which a composer bypasses. From the day the watercolour
 chain was added until this was found, the scene rendered with no antialiasing at all,
 and the Sobel in the paint pass was sharpening the jaggies.
+
+That Sobel was also what covered the wall in black specks. At its original
+settings the pass inked every luminance step in the frame at up to 70% — a
+silhouette against the wall, yes, but also the centre dot of every wallpaper motif,
+the grain of every scan and the text on every poster, which is why "PRESS START"
+read as "FRESO STARR" from across the room. The edge now goes through a threshold:
+a gradient under 0.09 is texture and is left alone, over 0.42 is a contour and gets
+its pigment, and it gets less of it (42% rather than 70%). The sampling wobble is a
+third of what it was, the quantise step is off, the grain is lighter and there is a
+vignette. The dust motes, which were the other source of specks on the wall, are
+fewer and fainter. Same shader, same alpha carry-through for the CSS3D sheet.
 
 There is no ambient-occlusion pass, and that is measured rather than assumed. GTAOPass
 works here and is safe for the alpha cut-out, but it costs ten times the frame: 55 fps
