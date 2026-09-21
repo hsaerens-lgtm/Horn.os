@@ -33,9 +33,7 @@ const CASES = [
   { name: "widest           1.4rad/9m", angle: 1.4, distance: 9, intensity: 38 },
 ];
 
-const browser = await chromium.launch({
-  args: ["--enable-unsafe-swiftshader", "--use-gl=angle", "--use-angle=swiftshader"],
-});
+const browser = await chromium.launch({ channel: "chromium", args: ["--enable-unsafe-swiftshader"] });
 const page = await (await browser.newContext({ viewport: { width: 1280, height: 704 } })).newPage();
 page.on("pageerror", (e) => console.log("  [page error]", e.message));
 await page.goto("http://localhost:4330/?debug=1", { waitUntil: "load" });

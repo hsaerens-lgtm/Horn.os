@@ -51,9 +51,7 @@ const RIGS = [
   },
 ];
 
-const browser = await chromium.launch({
-  args: ["--enable-unsafe-swiftshader", "--use-gl=angle", "--use-angle=swiftshader"],
-});
+const browser = await chromium.launch({ channel: "chromium", args: ["--enable-unsafe-swiftshader"] });
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 704 }, deviceScaleFactor: 1 });
 const page = await ctx.newPage();
 page.on("pageerror", (e) => console.log("  [page error]", e.message));

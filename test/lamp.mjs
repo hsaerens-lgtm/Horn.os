@@ -26,9 +26,7 @@ const CASES = [
   { name: "aim-flatter", head: [-1.02, 1.12, 0.42], aim: [0.6, 0.76, -0.1] },
 ];
 
-const browser = await chromium.launch({
-  args: ["--enable-unsafe-swiftshader", "--use-gl=angle", "--use-angle=swiftshader"],
-});
+const browser = await chromium.launch({ channel: "chromium", args: ["--enable-unsafe-swiftshader"] });
 const page = await (await browser.newContext({ viewport: { width: 1280, height: 704 } })).newPage();
 page.on("pageerror", (e) => console.log("  [page error]", e.message));
 await page.goto("http://localhost:4330/?debug=1", { waitUntil: "load" });

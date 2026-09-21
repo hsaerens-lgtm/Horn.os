@@ -100,9 +100,10 @@ npm run shots:live     # against GitHub Pages
 
 `test/rays.mjs` traces every light through every object to where its shadow lands,
 and `test/visible.mjs` adds the question that mattered most: whether the camera can
-see that place. `test/lights.mjs`, `test/lamp.mjs` and `test/cone.mjs` are the
-bench — they try whole rigs, head positions and cone widths rather than parameters,
-and score each one. Nothing in `test/` ships — the page is still static files with no
+see that place. `test/lights.mjs`, `test/lamp.mjs`, `test/cone.mjs` and
+`test/variants.mjs` are the bench — they try whole rigs, head positions, cone widths
+and complete lighting setups rather than single parameters, write each to a PNG,
+and score it. Nothing in `test/` ships — the page is still static files with no
 build step.
 
 ## Why there were no shadows
@@ -211,6 +212,41 @@ What this does not do is give everything a shadow. Twelve of eighteen traced sha
 are still hidden even with the window light, and that is inherent — the room is
 dense and most shadows land behind some other piece of furniture. The claim is only
 that the ones which *can* be seen now are.
+
+### The fill was the rest of it
+
+Still reported as not enough, and the remaining cause was the one the ray tests
+had pointed at without naming: **too much fill**. Sixteen lights, three of which
+cast, and every one of the other thirteen pouring light into every shadow the three
+made. The worst offender sat 4 cm from the key light — an unshadowed point light put
+there to give back the sideways spill of a bare bulb, which meant it filled the
+key's own shadows from the key's own position, unblockable by construction.
+
+Six complete rigs were rendered side by side (`test/variants.mjs`) and looked at,
+not just measured. The one kept: that spill light removed, the environment halved
+from 0.65 to 0.35, the window light raised from 2.2 to 3.2, hearth and player key
+untouched. A stronger variant that also halved the hearth scored higher on deep
+shadow and was rejected on sight — it darkened by putting out the room's warmest
+source, and the posters went with it.
+
+| pixels darkened >25% | start | + lamp + window | + this |
+|---|---|---|---|
+| wide | 0.07% | 1.30% | **3.73%** |
+| table | 0.06% | 2.65% | **4.14%** |
+| players | 0.00% | 2.61% | **2.92%** |
+| floor | 0.07% | 0.79% | **3.11%** |
+
+The environment at 0.65 was set to open up the corners after they were reported
+as blocked. Halving it will darken them again, but the dark is shaped now — a wall
+with a gradient, a floor with a pool — where before it was a flat band. If the
+corners still read as blocked, the lever is the +Z panel in `environment.js`, which
+lights what faces the camera without filling the table.
+
+A note on the harness: Playwright's `headless_shell` lost WebGL entirely partway
+through the day — every flag set returned no context. The scripts now launch the
+full Chromium (`channel: "chromium"`), which runs on the machine's real GPU: what
+users see, and roughly a hundred times faster than SwiftShader. The six-rig sweep
+that had timed out took seconds.
 
 ## What the players actually needed
 

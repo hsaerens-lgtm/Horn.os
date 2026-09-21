@@ -8,7 +8,11 @@
 // of elapsed time, so no two captures could be compared.
 //
 // This pins the camera, waits for the scene to finish loading, and writes PNGs
-// to test/out. It also measures shadow depth the only way that means anything:
+// to test/out. It launches the full Chromium (channel "chromium"), not
+// Playwright's headless_shell: the shell lost WebGL entirely partway through the
+// day — every flag set returned no context — while the full binary runs on the
+// machine's real GPU, which is both what users see and about a hundred times
+// faster than SwiftShader. It also measures shadow depth the only way that means anything:
 // render the frame twice, once with the casting light's shadow on and once
 // with it off, and count how many pixels moved and by how much. "There are no
 // shadows" is then a number rather than an impression.
@@ -38,16 +42,7 @@ const SHOTS = {
 };
 
 const page = await (async () => {
-  const browser = await chromium.launch({
-    args: [
-      // Headless Chromium has no GPU; SwiftShader gives it a real WebGL2 that
-      // renders the same thing, slowly. Without this the page falls back to the
-      // flat sheet and there is nothing to photograph.
-      "--enable-unsafe-swiftshader",
-      "--use-gl=angle",
-      "--use-angle=swiftshader",
-    ],
-  });
+  const browser = await chromium.launch({ channel: "chromium", args: ["--enable-unsafe-swiftshader"] });
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 704 }, deviceScaleFactor: 1 });
   const p = await ctx.newPage();
   p.on("console", (m) => {

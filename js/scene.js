@@ -69,7 +69,11 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
   const ambience = createAmbience();
   scene.environment = pmrem.fromScene(ambience, 0.035).texture;
   ambience.traverse((o) => o.isMesh && (o.geometry.dispose(), o.material.dispose()));
-  scene.environmentIntensity = 0.65;
+  // 0.35, down from 0.65. The higher figure was set to open up the corners and
+  // it opened every shadow with them: rendered side by side, the wall behind
+  // the players had no gradient at all and the floor no pool. The corners are
+  // the +Z panel's job in environment.js, not this number's.
+  scene.environmentIntensity = 0.35;
   pmrem.dispose();
 
   // ---------- Materials ----------
@@ -1189,11 +1193,12 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
   scene.add(keyLight);
   scene.add(keyLight.target);
 
-  // The cone leaves the rest of the room unlit, which a bare bulb in a shade
-  // does not, so a small unshadowed point light puts the spill back.
-  const spill = new THREE.PointLight(0xffc489, 2.6, 3.4, 2);
-  spill.position.set(0, 1.86, -0.05);
-  scene.add(spill);
+  // There used to be an unshadowed point light here, 4 cm from the key, to put
+  // back the sideways spill a bare bulb in a shade would give. Measured against
+  // six complete rigs it was the single worst thing in the room for shadows:
+  // sitting on top of the one light that casts, it poured light straight back
+  // into every shadow that light made. A shadow is a ratio of blocked to
+  // unblocked light, and this light was unblockable by construction. Gone.
 
   /* ---------------- The DM's task lamp ----------------
    *
@@ -1339,7 +1344,7 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
    * all, so a shadow three metres away is exactly as dark as one three
    * centimetres away.
    */
-  const moon = new THREE.DirectionalLight(0xa8c6f0, 2.2);
+  const moon = new THREE.DirectionalLight(0xa8c6f0, 3.2);
   moon.position.set(-3.5, 2.9, -2.6);
   moon.target.position.set(0.3, 0.3, 0.6);
   moon.castShadow = true;
