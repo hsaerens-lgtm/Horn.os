@@ -634,6 +634,29 @@ leg is. It reads 85 against 49 beside it now.
 
 Twenty-four quads became one.
 
+### The flicker
+
+Something still flickered after all of that, and it was measured rather than
+guessed at: `test/flicker.mjs` captures the canvas as displayed — after the paint
+pass — on ten consecutive frames with the camera on its idle drift, and flags every
+pixel whose frame-to-frame change flips sign on most of them with real amplitude.
+Smooth motion (breathing, rain, the hearth) does not flip; a depth fight, shadow
+acne, a sparkling highlight or a one-pixel edge popping in the ink does. It then
+repeats with one suspect at a time switched off — dust, shadows, ink, wobble,
+clearcoat, the floor's specular, each light — four times each, median kept, because
+the idle camera's speed varies and a single capture is noise.
+
+No suspect moved the number. What the overlay showed was a solid patch of flipping
+pixels with a straight, slightly tilted top edge, on the floor between the sofa and
+the television — the shape of the rug. The rug sits 4 mm above the floor. The baked
+occlusion quad, drawn over the floor with multiply blending and no depth write, sat
+at 4 mm too: exactly coplanar, so the depth test between them was decided by
+rounding, per pixel, per frame, and the whole rug flickered between darkened and not
+whenever the camera moved. The quad sits at 8 mm now with a polygon offset besides,
+so nothing laid flat on the floor later can tie with it. The room's flipping pixels
+went from bursts of 0.9% to a steady 0.07%, which is edge crawl on a drifting
+camera and the rain doing what rain does.
+
 ## Run locally
 
 ```bash

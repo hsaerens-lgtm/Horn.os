@@ -214,12 +214,28 @@ export function bakeFloorOcclusion(
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
 
+  // Above everything that lies flat on the floor. The rug sits at 4 mm, and
+  // this quad used to sit at 4 mm too — exactly coplanar — so the depth test
+  // between them was decided by rounding, per pixel, per frame, and the whole
+  // rug flickered between darkened and not as the camera drifted. Measured by
+  // test/flicker.mjs as a solid patch of sign-flipping pixels the shape of the
+  // rug. It sits at 8 mm now, and the polygon offset pulls it a little towards
+  // the camera in depth besides, so nothing laid on the floor later can tie
+  // with it again.
   const mesh = new THREE.Mesh(
     new THREE.PlaneGeometry(spanX, spanZ),
-    new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, toneMapped: false })
+    new THREE.MeshBasicMaterial({
+      map: tex,
+      transparent: true,
+      depthWrite: false,
+      toneMapped: false,
+      polygonOffset: true,
+      polygonOffsetFactor: -1,
+      polygonOffsetUnits: -2,
+    })
   );
   mesh.rotation.x = -Math.PI / 2;
-  mesh.position.set(cx, 0.004, cz);
+  mesh.position.set(cx, 0.008, cz);
   mesh.renderOrder = -1;
 
   return { mesh, ms: Math.round(performance.now() - t0), size: [W, H] };

@@ -10,7 +10,8 @@
     "shots": "node test/shots.mjs",
     "shots:live": "node test/shots.mjs --live",
     "bench:lights": "node test/lights.mjs",
-    "bench:lamp": "node test/lamp.mjs"
+    "bench:lamp": "node test/lamp.mjs",
+    "bench:flicker": "node test/flicker.mjs"
   },
   "repository": {
     "type": "git",
