@@ -578,7 +578,66 @@ function drawLogo(ctx, id, cx, cy, r, colour) {
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
 
-  if (id === "perseus") {
+  if (id === "book") {
+    // an open book: two pages curving away from a spine, a line of text on each
+    ctx.beginPath();
+    ctx.moveTo(0, -r * 0.55);
+    ctx.lineTo(0, r * 0.75);
+    ctx.stroke();
+    for (const s of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(0, -r * 0.55);
+      ctx.quadraticCurveTo(s * r * 0.55, -r * 0.95, s * r * 0.98, -r * 0.6);
+      ctx.lineTo(s * r * 0.98, r * 0.55);
+      ctx.quadraticCurveTo(s * r * 0.55, r * 0.35, 0, r * 0.75);
+      ctx.stroke();
+      ctx.lineWidth = Math.max(2, r * 0.07);
+      for (let i = 0; i < 3; i++) {
+        const y = -r * 0.28 + i * r * 0.26;
+        ctx.beginPath();
+        ctx.moveTo(s * r * 0.22, y - r * 0.02);
+        ctx.lineTo(s * r * 0.8, y - r * 0.13);
+        ctx.stroke();
+      }
+      ctx.lineWidth = Math.max(3, r * 0.14);
+    }
+  } else if (id === "twins") {
+    // two four-pointed stars, one a little higher than the other
+    const star = (x, y, R) => {
+      ctx.beginPath();
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2 - Math.PI / 2;
+        const rr = i % 2 === 0 ? R : R * 0.36;
+        const px = x + Math.cos(a) * rr;
+        const py = y + Math.sin(a) * rr;
+        i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+      }
+      ctx.closePath();
+      ctx.fill();
+    };
+    star(-r * 0.42, -r * 0.2, r * 0.62);
+    star(r * 0.48, r * 0.3, r * 0.48);
+  } else if (id === "home") {
+    // a house, with a small lit core inside: it runs at home
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.85, -r * 0.05);
+    ctx.lineTo(0, -r * 0.9);
+    ctx.lineTo(r * 0.85, -r * 0.05);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.rect(-r * 0.62, -r * 0.1, r * 1.24, r * 1.0);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.rect(-r * 0.2, r * 0.2, r * 0.4, r * 0.4);
+    ctx.fill();
+    ctx.lineWidth = Math.max(2, r * 0.07);
+    for (const [x, y] of [[-r * 0.2, r * 0.4], [r * 0.2, r * 0.4], [0, r * 0.2], [0, r * 0.6]]) {
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + (x === 0 ? 0 : Math.sign(x) * r * 0.18), y + (x === 0 ? Math.sign(y - r * 0.4) * r * 0.18 : 0));
+      ctx.stroke();
+    }
+  } else if (id === "shield") {
     // a mirrored shield
     ctx.beginPath();
     ctx.moveTo(0, -r);
@@ -597,7 +656,7 @@ function drawLogo(ctx, id, cx, cy, r, colour) {
     ctx.lineTo(0, r * 0.38);
     ctx.lineTo(r * 0.36, -r * 0.1);
     ctx.stroke();
-  } else if (id === "hermes") {
+  } else if (id === "staff") {
     // a winged staff
     ctx.beginPath();
     ctx.moveTo(0, -r * 0.9);
@@ -616,7 +675,7 @@ function drawLogo(ctx, id, cx, cy, r, colour) {
     ctx.beginPath();
     ctx.arc(0, -r * 0.92, r * 0.16, 0, Math.PI * 2);
     ctx.fill();
-  } else if (id === "odysseus") {
+  } else if (id === "wheel") {
     // a ship's wheel
     ctx.beginPath();
     ctx.arc(0, 0, r * 0.62, 0, Math.PI * 2);
@@ -632,7 +691,7 @@ function drawLogo(ctx, id, cx, cy, r, colour) {
       ctx.stroke();
     }
   } else {
-    // codex: braces around a stack of lines
+    // braces around a stack of lines
     ctx.beginPath();
     ctx.moveTo(-r * 0.42, -r * 0.95);
     ctx.quadraticCurveTo(-r * 0.92, -r * 0.95, -r * 0.92, 0);
@@ -666,7 +725,9 @@ export function agentFace(agent, { w = 512, h = 384, seed = 4 } = {}) {
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, w, h);
 
-  drawLogo(ctx, agent.id, w / 2, h * 0.41, h * 0.23, agent.colour);
+  // The emblem is chosen by `mark` in content.js — book, twins, home, braces,
+  // and the older shield, staff and wheel — never by the agent's name.
+  drawLogo(ctx, agent.mark ?? "braces", w / 2, h * 0.41, h * 0.23, agent.colour);
 
   ctx.textAlign = "center";
   ctx.fillStyle = agent.colour;
@@ -1348,7 +1409,7 @@ function refTable(ctx, x, y, w, rows, title, rand) {
  * The DM's side of one panel. `index` picks which tables it carries, so the
  * three panels together read as one reference spread rather than three copies.
  */
-export function dmScreenTables(index, { w = 512, h = 430, seed = 81 } = {}) {
+export function dmScreenTables(index, { w = 512, h = 430, seed = 81, names = ["Fable", "Codex", "Gemini", "Qwen"] } = {}) {
   const rand = rng(seed + index * 17);
   const [c, ctx] = canvas(w, h);
   screenStock(ctx, w, h, rand);
@@ -1388,11 +1449,10 @@ export function dmScreenTables(index, { w = 512, h = 430, seed = 81 } = {}) {
     ctx.fillText("the rules are a starting point", w / 2, y + 42);
   } else {
     // the initiative order, pencilled in and scratched out as a session does
+    // the party's names come from content.js, so a renamed player is renamed here too
+    const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
     let y = refTable(ctx, M, 20, iw, [
-      ["Perseus", "18"],
-      ["Codex", "15"],
-      ["Hermes", "12"],
-      ["Odysseus", "9"],
+      ...names.slice(0, 4).map((n, i) => [cap(n), String([18, 15, 12, 9][i])]),
       ["The backlog", "4"],
     ], "INITIATIVE", rand);
 

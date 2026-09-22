@@ -56,16 +56,18 @@ const sphere = (p, r, scale = [1, 1, 1], seg = 12) => ({
 /** The point `t` of the way from `a` to `b`. */
 const lerp = (a, b, t) => a.clone().lerp(b, t);
 
-// One entry per agent id. Numbers are relative to the Platform, which is the
-// broadest of the four and sets the scale everything else deviates from.
+// One entry per body, chosen by the agent's `body` field in content.js — so
+// the players can be renamed without touching this file. Numbers are relative
+// to the slab, which is the broadest of the four and sets the scale everything
+// else deviates from.
 const ARCHETYPES = {
-  perseus: { chest: "slab", w: 1.22, torsoH: 0.42, shoulder: 0.25, arm: 1.12, leg: 1.12 },
+  slab: { chest: "slab", w: 1.22, torsoH: 0.42, shoulder: 0.25, arm: 1.12, leg: 1.12 },
   // The spindle is narrow, and the first cut hung its arms three centimetres
   // clear of it. The pauldrons cover that now, so the shoulder can sit where a
   // shoulder should rather than where the column happens to end.
-  hermes: { chest: "spindle", w: 0.86, torsoH: 0.48, shoulder: 0.165, arm: 0.86, leg: 0.92 },
-  odysseus: { chest: "barrel", w: 1.0, torsoH: 0.44, shoulder: 0.215, arm: 1.0, leg: 1.0 },
-  codex: { chest: "box", w: 1.06, torsoH: 0.42, shoulder: 0.225, arm: 1.0, leg: 1.02 },
+  spindle: { chest: "spindle", w: 0.86, torsoH: 0.48, shoulder: 0.165, arm: 0.86, leg: 0.92 },
+  barrel: { chest: "barrel", w: 1.0, torsoH: 0.44, shoulder: 0.215, arm: 1.0, leg: 1.0 },
+  box: { chest: "box", w: 1.06, torsoH: 0.42, shoulder: 0.225, arm: 1.0, leg: 1.02 },
 };
 
 /**
@@ -79,7 +81,7 @@ const ARCHETYPES = {
  * rounded-box factory, the seat and table heights.
  */
 export function buildRobotBody(a, seat, { tex, roundedBox, HIP_Y, TABLE_Y, N }) {
-  const k = ARCHETYPES[a.id] ?? ARCHETYPES.odysseus;
+  const k = ARCHETYPES[a.body] ?? ARCHETYPES.barrel;
   const { lean = 0, reach = 0 } = seat;
   const accent = new THREE.Color(a.colour);
 

@@ -90,7 +90,9 @@ export function createProps(scene, { tableY = 0.76 } = {}) {
     add(g, roundedBox(0.07, 0.0025, 0.048, 0.002, 2), mat.card, -0.082, 0.004, 0.049, [0, -0.35, 0]);
   };
 
-  const BUILDERS = { perseus: mug, hermes: diceCup, odysseus: scroll, codex: notepad };
+  // Keyed by the agent's `prop` field in content.js, not by its name, so the
+  // players can be renamed without touching this file.
+  const BUILDERS = { mug, diceCup, scroll, notepad };
 
   /**
    * Stands one prop on the table in front of a seat. `at` is in table
@@ -98,7 +100,7 @@ export function createProps(scene, { tableY = 0.76 } = {}) {
    */
   return {
     place(agent, at, facing) {
-      const build = BUILDERS[agent.id] ?? mug;
+      const build = BUILDERS[agent.prop] ?? mug;
       const g = new THREE.Group();
       g.position.set(at[0], tableY, at[1]);
       g.rotation.y = facing + Math.PI; // props face their owner, not the board

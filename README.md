@@ -2,9 +2,10 @@
 
 A 3D table set for a D&D session, in somebody's living room: a fire going, a
 television left on, posters that have been up since about 2003. I am the DM; the
-players are the AI agents I actually run — **Perseus**, **Hermes**, **Odysseus** and
-**Codex**. They sit around the table on chairs, one colour each, each wearing a
-television for a head with that agent's mark on the screen: two opposite, one at each
+players are the models I actually run — **Fable** (Claude Code), **Gemini**, **Qwen**
+(an open model on local hardware) and **Codex**. They sit around the table on
+chairs, one colour each, each wearing a television for a head with that model's
+mark on the screen: two opposite, one at each
 end, the DM where the camera is. In front of every player lies their character sheet.
 
 Three things are clickable:
@@ -260,10 +261,18 @@ room with the screens off:
 
 | agent | role | body |
 |---|---|---|
-| PERSEUS | The Platform | broad, tapered chest, plated, shoulder pads, riveted |
-| HERMES | The Messenger | a slim spindle with rings, two back fins, lit aerials |
-| ODYSSEUS | The Navigator | a drum with a dish on one shoulder, a compass rose on the chest |
-| CODEX | The Artificer | a box with a front panel, gauntlets on both forearms, a tool rack |
+| FABLE | The Chronicler | broad, tapered chest, plated, shoulder pads, a server rack on its back |
+| GEMINI | The Scribe | a slim spindle with rings, two back fins, lit aerials |
+| QWEN | The Local | a drum with a dish on one shoulder, a compass rose on the chest, a rolled chart |
+| CODEX | The Artificer | a box with a front panel, gauntlets on both forearms, a tool rack, a power pack |
+
+The body, the prop on the table and the emblem on the screen are chosen by three
+fields on each player in `js/content.js` — `body`, `prop`, `mark` — so renaming a
+player is a change to that file alone; nothing in the scene modules knows a player
+by name. The players were first named after Greek heroes; they are named for what
+they are now, because the picture is a Dungeon Master directing his agents, and the
+projects on the sheets in front of them are real work described without the agents'
+names in it.
 
 Each body is three merged meshes per moving group — painted shell, bare metal,
 lit accents — so twenty-odd parts cost six draw calls. Every part has UVs, so the
@@ -323,7 +332,7 @@ Two of the new parts were wrong in the first render and fixed from the close-ups
 the pauldron's rim had its own tilt and leaned the other way from its cap, a hoop
 floating beside a dome; and the palms hovered a centimetre over their own shadows.
 Cap, rim and bolt share one frame now, and the palm hangs below the wrist.
-`test/closeup.mjs` frames PERSEUS head-on and CODEX from the side for this.
+`test/closeup.mjs` frames the slab body head-on and the box body from the side for this.
 
 `?players=gltf` brings back the RobotExpressive bodies and `?players=suit` the
 suited figures, both kept as the two earlier answers to this table.
@@ -347,7 +356,7 @@ and type, with a small red die before the text. The back button matches.
 
 Three more from looking at those renders: the chair walnut, at the table's own
 colour, rendered near black in the room's darker half and is a warmer, lighter
-brown now; CODEX, seen from behind, was a plain box where every other player
+brown now; the Artificer, seen from behind, was a plain box where every other player
 carries something, and has a power pack with a handle, two lit gauges and a hose
 down to the belt; and the speech bubble was the last comic-book thing on the
 table — a seven-pixel outline in the speaker's colour — and is a card in the

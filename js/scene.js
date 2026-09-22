@@ -247,7 +247,7 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
     const py = Math.round((px * PANEL_H) / w);
     const faces = [mat.parchment, mat.parchment, mat.parchment, mat.parchment];
     faces.push(printMat(dmScreenArt(index, { w: px, h: py })));
-    faces.push(printMat(dmScreenTables(index, { w: px, h: py })));
+    faces.push(printMat(dmScreenTables(index, { w: px, h: py, names: (agents ?? []).map((a) => a.name) })));
     const p = new THREE.Mesh(new THREE.BoxGeometry(w, PANEL_H, 0.009), faces);
     p.position.set(x, PANEL_H / 2, z);
     p.rotation.y = rotY;
