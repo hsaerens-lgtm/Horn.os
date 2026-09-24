@@ -13,6 +13,8 @@ import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUnifo
 import { roundedBox, between } from "../lib/shapes.js";
 import { mergeParts, at } from "../lib/merge.js";
 import { plant } from "../lib/plants.js";
+import { buildCat, buildGuitar, buildClock } from "./props.js";
+import { PHASES, PRESETS, phaseFor, mixPreset, skyTextures } from "./daycycle.js";
 
 /* ------------------------------------------------------------------ *
  *  Dimensions (metres)
@@ -199,64 +201,22 @@ function buildRoom(scene) {
   scene.add(sill);
 
   // Outside: a painted sky with a tree line and a few far buildings.
-  const sky = new THREE.Mesh(
-    new THREE.PlaneGeometry(24, 12),
-    new THREE.MeshBasicMaterial({ map: skyTexture(), toneMapped: false }),
-  );
-  sky.rotation.y = Math.PI / 2;
-  sky.position.set(x0 - 7, 3.2, -0.6);
-  scene.add(sky);
-
-  return { sill };
-}
-
-function skyTexture() {
-  return canvasTexture(2048, 1024, (g, w, h) => {
-    const sky = g.createLinearGradient(0, 0, 0, h * 0.72);
-    sky.addColorStop(0, "#6fa6dc");
-    sky.addColorStop(0.55, "#a9cbe8");
-    sky.addColorStop(1, "#e8eef0");
-    g.fillStyle = sky;
-    g.fillRect(0, 0, w, h);
-    const r = seeded(4);
-    // clouds
-    for (let c = 0; c < 9; c++) {
-      const cx = r() * w;
-      const cy = h * (0.08 + r() * 0.3);
-      for (let i = 0; i < 14; i++) {
-        g.fillStyle = `rgba(255,255,255,${0.1 + r() * 0.12})`;
-        g.beginPath();
-        g.ellipse(cx + (r() - 0.5) * 260, cy + (r() - 0.5) * 40, 60 + r() * 90, 18 + r() * 26, 0, 0, Math.PI * 2);
-        g.fill();
-      }
-    }
-    // far buildings, hazy
-    for (let i = 0; i < 26; i++) {
-      const bw = 50 + r() * 120;
-      const bh = 60 + r() * 200;
-      const x = r() * w;
-      g.fillStyle = `rgba(${176 + r() * 20},${188 + r() * 16},${200 + r() * 12},0.9)`;
-      g.fillRect(x, h * 0.72 - bh, bw, bh);
-    }
-    // tree line
-    for (let i = 0; i < 1400; i++) {
-      const x = r() * w;
-      const y = h * (0.7 + r() * 0.1);
-      const s = 10 + r() * 26;
-      const gcol = [
-        [96, 138, 84],
-        [78, 120, 70],
-        [118, 156, 96],
-        [66, 104, 64],
-      ][Math.floor(r() * 4)];
-      g.fillStyle = `rgba(${gcol[0]},${gcol[1]},${gcol[2]},0.95)`;
-      g.beginPath();
-      g.arc(x, y, s, 0, Math.PI * 2);
-      g.fill();
-    }
-    g.fillStyle = "#5c8452";
-    g.fillRect(0, h * 0.78, w, h * 0.22);
+  // One plane per phase, stacked; the day cycle fades between them.
+  const tex = skyTextures();
+  const skies = {};
+  PHASES.forEach((name, i) => {
+    const m = new THREE.Mesh(
+      new THREE.PlaneGeometry(24, 12),
+      new THREE.MeshBasicMaterial({ map: tex[name], toneMapped: false, transparent: true, opacity: name === "day" ? 1 : 0, depthWrite: false }),
+    );
+    m.rotation.y = Math.PI / 2;
+    m.position.set(x0 - 7 + i * 0.01, 3.2, -0.6);
+    m.renderOrder = -10 + i;
+    scene.add(m);
+    skies[name] = m;
   });
+
+  return { sill, skies };
 }
 
 /* ------------------------------------------------------------------ *
@@ -378,6 +338,15 @@ function buildDesk(scene) {
   head.position.copy(p2).add(new THREE.Vector3(0.02, -0.03, 0));
   head.rotation.z = 0.6;
   lamp.add(head);
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.018, 16, 12), new THREE.MeshStandardMaterial({ color: 0xfff4e0, emissive: 0xffd9a0, emissiveIntensity: 0 }));
+  bulb.position.copy(head.position).add(new THREE.Vector3(0.01, -0.02, 0));
+  lamp.add(bulb);
+  const lampLight = new THREE.SpotLight(0xffd6a0, 0, 3, 0.75, 0.6, 2);
+  lampLight.position.copy(bulb.position);
+  const lampTarget = new THREE.Object3D();
+  lampTarget.position.set(0.45, -0.1, 0.25);
+  lamp.add(lampLight, lampTarget);
+  lampLight.target = lampTarget;
   group.add(lamp);
 
   // Succulent on the desk, and a pencil pot.
@@ -385,13 +354,13 @@ function buildDesk(scene) {
   succ.position.set(0.66, TOP, -0.2);
   group.add(succ);
 
-  return { group, screen, lampHead: head };
+  return { group, screen, lampLight, bulb };
 }
 
 function buildChair(scene) {
   const chair = new THREE.Group();
-  chair.position.set(DESK.x + 0.32, 0, DESK.z + 0.78);
-  chair.rotation.y = -0.45;
+  chair.position.set(DESK.x - 0.3, 0, DESK.z + 0.78);
+  chair.rotation.y = 0.55;
   const parts = [];
   for (let i = 0; i < 5; i++) {
     const a = (i / 5) * Math.PI * 2;
@@ -607,10 +576,15 @@ function buildLights(scene, renderer) {
 
   // The screen's own glow on the desk, faint by day.
   const glow = new THREE.PointLight(0xcfe3ff, 0.35, 1.6, 2);
-  glow.position.copy(SCREEN_POS).add(new THREE.Vector3(0, -0.05, 0.25));
+  glow.position.copy(SCREEN_POS).add(new THREE.Vector3(0, -0.12, 0.4));
   scene.add(glow);
 
-  return { sun, sky, hemi, glow };
+  // At night, a warm LED strip hidden on top of the bookcase.
+  const fill = new THREE.PointLight(0xffc98a, 0, 5, 2);
+  fill.position.set(0.95, 1.85, ROOM.z0 + 0.35);
+  scene.add(fill);
+
+  return { sun, sky, hemi, glow, fill };
 }
 
 function buildDust(scene) {
@@ -643,7 +617,7 @@ function buildDust(scene) {
 /* ------------------------------------------------------------------ *
  *  The scene
  * ------------------------------------------------------------------ */
-export function createOffice({ container, osElement, onFocus = () => {}, onWide = () => {} }) {
+export function createOffice({ container, osElement, onFocus = () => {}, onWide = () => {}, onPhase = () => {}, phase: initialPhase = phaseFor(new Date()) }) {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(container.clientWidth, container.clientHeight);
@@ -678,6 +652,65 @@ export function createOffice({ container, osElement, onFocus = () => {}, onWide 
   const swaying = buildPlants(scene, { sill: room.sill, shelf });
   const lights = buildLights(scene, renderer);
   const dust = buildDust(scene);
+
+  // The cat asleep on the sill, in the sun.
+  const cat = buildCat();
+  cat.group.position.set(ROOM.x0 + 0.1, WIN.y0 + 0.001, -0.62);
+  cat.group.rotation.y = 0.15;
+  scene.add(cat.group);
+
+  // The guitar, between the desk and the bookcase.
+  const guitar = buildGuitar();
+  guitar.position.set(0.12, 0, ROOM.z0 + 0.32);
+  guitar.rotation.y = -0.35;
+  scene.add(guitar);
+
+  // The wall clock, left of the print.
+  const wallClock = buildClock();
+  wallClock.group.position.set(DESK.x - 0.62, 1.9, ROOM.z0 + 0.012);
+  scene.add(wallClock.group);
+
+  /* --- the day cycle --- */
+  const SUN_TARGET = lights.sun.target.position.clone();
+  function applyPreset(p) {
+    lights.sun.color.copy(p.sunColor);
+    lights.sun.intensity = p.sunI;
+    lights.sun.position.copy(p.sunPos);
+    lights.sun.target.position.copy(SUN_TARGET);
+    lights.hemi.color.copy(p.hemiSky);
+    lights.hemi.groundColor.copy(p.hemiGround);
+    lights.hemi.intensity = p.hemiI;
+    scene.environmentIntensity = p.env;
+    lights.sky.color.copy(p.skyLightColor);
+    lights.sky.intensity = p.skyLightI;
+    desk.lampLight.intensity = p.lampI;
+    desk.bulb.material.emissiveIntensity = p.bulb * 2.5;
+    lights.glow.intensity = p.glowI;
+    lights.fill.intensity = p.fillI;
+    dust.material.opacity = p.dust;
+    renderer.toneMappingExposure = p.exposure;
+  }
+  let phase = PHASES.includes(initialPhase) ? initialPhase : "day";
+  let phaseTween = null;
+  // The incoming sky sits in front of the outgoing one and fades in over it.
+  const setSkies = (from, to, w) => {
+    for (const name of PHASES) {
+      const m = room.skies[name];
+      m.material.opacity = name === to ? w : name === from ? 1 : 0;
+      m.renderOrder = name === to ? 0 : -1;
+    }
+  };
+  applyPreset(PRESETS[phase]);
+  setSkies(phase, phase, 1);
+  function setPhase(next, ms = 2500) {
+    if (!PHASES.includes(next) || next === phase) return;
+    phaseTween = { from: phase, to: next, t0: performance.now(), ms };
+    phase = next;
+    onPhase(next);
+  }
+  function nextPhase() {
+    setPhase(PHASES[(PHASES.indexOf(phase) + 1) % PHASES.length]);
+  }
 
   // Horn.os on the monitor.
   osElement.style.width = `${OS_PX.w}px`;
@@ -720,21 +753,29 @@ export function createOffice({ container, osElement, onFocus = () => {}, onWide 
   /* --- picking --- */
   const raycaster = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
-  const hitsScreen = (e) => {
+  // What is under the pointer: "screen", "clock", "cat" or null.
+  const pick = (e) => {
     const r = container.getBoundingClientRect();
     ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
     raycaster.setFromCamera(ndc, camera);
-    const hit = raycaster.intersectObjects(scene.children, true)[0];
-    return hit?.object === desk.screen;
+    const hit = raycaster.intersectObjects(scene.children, true).find((h) => h.object.type !== "Points");
+    if (!hit) return null;
+    if (hit.object === desk.screen) return "screen";
+    for (let o = hit.object; o; o = o.parent) if (o.userData.kind) return o.userData.kind;
+    return null;
   };
   const mouse = new THREE.Vector2();
   container.addEventListener("pointermove", (e) => {
     const r = container.getBoundingClientRect();
     mouse.set(((e.clientX - r.left) / r.width) * 2 - 1, ((e.clientY - r.top) / r.height) * 2 - 1);
-    if (mode === "wide") container.style.cursor = hitsScreen(e) ? "pointer" : "default";
+    if (mode === "wide") container.style.cursor = pick(e) ? "pointer" : "default";
   });
   container.addEventListener("click", (e) => {
-    if (mode === "wide" && hitsScreen(e)) focus();
+    if (mode !== "wide") return;
+    const what = pick(e);
+    if (what === "screen") focus();
+    else if (what === "clock") nextPhase();
+    else if (what === "cat") cat.poke(performance.now());
   });
 
   /* --- resize --- */
@@ -787,6 +828,17 @@ export function createOffice({ container, osElement, onFocus = () => {}, onWide 
     }
     dustPos.needsUpdate = true;
 
+    const now = performance.now();
+    if (phaseTween) {
+      const k = Math.min(1, (now - phaseTween.t0) / phaseTween.ms);
+      const w = ease(k);
+      applyPreset(mixPreset(PRESETS[phaseTween.from], PRESETS[phaseTween.to], w));
+      setSkies(phaseTween.from, phaseTween.to, w);
+      if (k === 1) phaseTween = null;
+    }
+    cat.update(t, now);
+    wallClock.update(new Date());
+
     renderer.render(scene, camera);
     css.render(cssScene, camera);
   }
@@ -801,6 +853,11 @@ export function createOffice({ container, osElement, onFocus = () => {}, onWide 
     ready,
     focus,
     wide,
+    setPhase,
+    nextPhase,
+    get phase() {
+      return phase;
+    },
     get mode() {
       return mode;
     },

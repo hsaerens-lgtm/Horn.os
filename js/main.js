@@ -49,9 +49,15 @@ async function start3D() {
   osElement.className = "os-screen";
 
   let os = null;
+  const forcedPhase = params.get("phase");
   const office = createOffice({
     container: stage,
     osElement,
+    phase: ["day", "sunset", "night"].includes(forcedPhase) ? forcedPhase : undefined,
+    // Horn.os goes dark with the room at night.
+    onPhase(phase) {
+      if (!forced) os?.setTheme(phase === "night" ? "dark" : "light");
+    },
     onFocus() {
       os?.focus();
       hint.hidden = true;
@@ -65,7 +71,8 @@ async function start3D() {
   });
   // Horn.os is built once its element is in the DOM with its size (the office
   // put it there), so the windows can place themselves.
-  os = createHornOS(osElement, { profile, dialogue, theme, onStream });
+  const roomTheme = forced ? theme : office.phase === "night" ? "dark" : "light";
+  os = createHornOS(osElement, { profile, dialogue, theme: roomTheme, onStream });
   os.blur();
 
   back.addEventListener("click", () => office.wide());
