@@ -14,6 +14,7 @@ import { roundedBox, between } from "../lib/shapes.js";
 import { mergeParts, at } from "../lib/merge.js";
 import { plant } from "../lib/plants.js";
 import { buildCat, buildGuitar, buildClock } from "./props.js";
+import { model, planter } from "./models.js";
 import { PHASES, PRESETS, phaseFor, mixPreset, skyTextures } from "./daycycle.js";
 
 /* ------------------------------------------------------------------ *
@@ -27,7 +28,7 @@ const OS_PX = { w: 1280, h: 800 };
 const TOP = DESK.y + DESK.t / 2;
 const SCREEN_POS = new THREE.Vector3(DESK.x, TOP + 0.335, DESK.z - 0.13);
 
-const WIDE = { pos: new THREE.Vector3(0.95, 1.48, 1.15), target: new THREE.Vector3(-0.9, 0.98, -1.45) };
+const WIDE = { pos: new THREE.Vector3(0.78, 1.46, 0.95), target: new THREE.Vector3(-1.02, 1.0, -1.5) };
 
 /* ------------------------------------------------------------------ *
  *  Small helpers
@@ -113,6 +114,7 @@ const M = {
   graphite: new THREE.MeshStandardMaterial({ color: 0x232427, roughness: 0.35, metalness: 0.45 }),
   alu: new THREE.MeshStandardMaterial({ color: 0xb9bcc0, roughness: 0.3, metalness: 0.9 }),
   keycap: new THREE.MeshStandardMaterial({ color: 0xe9e6df, roughness: 0.55 }),
+  bezel: new THREE.MeshStandardMaterial({ color: 0x0e0f11, roughness: 0.18, metalness: 0.2 }),
   keybase: new THREE.MeshStandardMaterial({ color: 0x3a3c40, roughness: 0.5, metalness: 0.3 }),
   ceramic: new THREE.MeshStandardMaterial({ color: 0xece5d8, roughness: 0.35 }),
   brass: new THREE.MeshStandardMaterial({ color: 0xb08a4a, roughness: 0.3, metalness: 0.85 }),
@@ -244,22 +246,36 @@ function buildDesk(scene) {
   legParts.push({ geometry: new THREE.BoxGeometry(DESK.w - 0.2, 0.05, 0.02), matrix: at(0, DESK.y - 0.08, -DESK.d / 2 + 0.07) });
   group.add(mesh(mergeParts(legParts), M.steel));
 
-  // Monitor
+  // Monitor: a slim panel with a chin, a thicker housing behind, and an
+  // aluminium stand whose neck curves down to an oval foot.
   const mon = new THREE.Group();
   mon.position.copy(SCREEN_POS).sub(group.position);
   group.add(mon);
-  const bezel = 0.012;
-  mon.add(mesh(roundedBox(SCREEN.w + 2 * bezel, SCREEN.h + 2 * bezel + 0.012, 0.022, 0.006), M.graphite));
-  const backShell = mesh(roundedBox(SCREEN.w * 0.6, SCREEN.h * 0.55, 0.03, 0.01), M.graphite);
-  backShell.position.set(0, 0, -0.022);
-  mon.add(backShell);
-  const neck = mesh(roundedBox(0.05, 0.3, 0.018, 0.006), M.alu);
-  neck.position.set(0, -0.2, -0.05);
-  neck.rotation.x = -0.08;
+  const bez = 0.008;
+  const chin = 0.022;
+  const panel = mesh(roundedBox(SCREEN.w + 2 * bez, SCREEN.h + bez + chin, 0.014, 0.005), M.bezel);
+  panel.position.y = -(chin - bez) / 2;
+  mon.add(panel);
+  const chinStrip = mesh(roundedBox(SCREEN.w + 2 * bez - 0.002, chin - 0.004, 0.0142, 0.004), M.alu);
+  chinStrip.position.y = -SCREEN.h / 2 - chin / 2 + 0.001;
+  mon.add(chinStrip);
+  const housing = mesh(roundedBox(SCREEN.w * 0.94, SCREEN.h * 0.9, 0.022, 0.02), M.alu);
+  housing.position.set(0, -0.01, -0.016);
+  mon.add(housing);
+  const drop = SCREEN_POS.y - TOP;
+  const neckCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0, -0.02, -0.03),
+    new THREE.Vector3(0, -0.12, -0.075),
+    new THREE.Vector3(0, -drop + 0.12, -0.085),
+    new THREE.Vector3(0, -drop + 0.012, -0.03),
+  ]);
+  const neck = mesh(new THREE.TubeGeometry(neckCurve, 40, 0.014, 16, false), M.alu);
+  neck.scale.x = 2.4;
   mon.add(neck);
-  const base = mesh(roundedBox(0.24, 0.012, 0.17, 0.005), M.alu);
-  base.position.set(0, SCREEN_POS.y - TOP - 0.006 < 0 ? 0 : -(SCREEN_POS.y - TOP) + 0.006, -0.03);
-  mon.add(base);
+  const foot = mesh(new THREE.CylinderGeometry(0.11, 0.115, 0.008, 48), M.alu);
+  foot.scale.z = 0.7;
+  foot.position.set(0, -drop + 0.004, -0.02);
+  mon.add(foot);
 
   // The screen: a cut-out that lets the CSS3D layer show through.
   const screen = new THREE.Mesh(
@@ -321,64 +337,20 @@ function buildDesk(scene) {
     group.add(b);
   });
 
-  // Desk lamp: base, two arms, a head.
+  // Desk lamp: the body is a real model (see furnish); the bulb and the spot
+  // live here so the day cycle can drive them.
   const lamp = new THREE.Group();
-  lamp.position.set(-0.66, TOP, -0.2);
-  lamp.rotation.y = 0.5;
-  const lampParts = [];
-  const p0 = new THREE.Vector3(0, 0.02, 0);
-  const p1 = new THREE.Vector3(0.06, 0.32, 0.02);
-  const p2 = new THREE.Vector3(0.28, 0.44, 0.04);
-  lampParts.push({ geometry: new THREE.CylinderGeometry(0.07, 0.075, 0.02, 32), matrix: at(0, 0.01, 0) });
-  lampParts.push(between(p0, p1, 0.007, 0.007));
-  lampParts.push(between(p1, p2, 0.006, 0.006));
-  lampParts.push({ geometry: new THREE.SphereGeometry(0.013, 12, 8), matrix: at(p1.x, p1.y, p1.z) });
-  lamp.add(mesh(mergeParts(lampParts), M.steel));
-  const head = mesh(new THREE.ConeGeometry(0.06, 0.1, 28, 1, true), M.steel);
-  head.position.copy(p2).add(new THREE.Vector3(0.02, -0.03, 0));
-  head.rotation.z = 0.6;
-  lamp.add(head);
-  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.018, 16, 12), new THREE.MeshStandardMaterial({ color: 0xfff4e0, emissive: 0xffd9a0, emissiveIntensity: 0 }));
-  bulb.position.copy(head.position).add(new THREE.Vector3(0.01, -0.02, 0));
+  lamp.position.set(-0.64, TOP, -0.2);
+  lamp.rotation.y = 0.85;
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.016, 16, 12), new THREE.MeshStandardMaterial({ color: 0xfff4e0, emissive: 0xffd9a0, emissiveIntensity: 0 }));
   lamp.add(bulb);
   const lampLight = new THREE.SpotLight(0xffd6a0, 0, 3, 0.75, 0.6, 2);
-  lampLight.position.copy(bulb.position);
   const lampTarget = new THREE.Object3D();
-  lampTarget.position.set(0.45, -0.1, 0.25);
   lamp.add(lampLight, lampTarget);
   lampLight.target = lampTarget;
   group.add(lamp);
 
-  // Succulent on the desk, and a pencil pot.
-  const succ = plant("succulent", { r: 0.045, h: 0.06, pot: "cream", scale: 0.8, seed: 117 });
-  succ.position.set(0.66, TOP, -0.2);
-  group.add(succ);
-
-  return { group, screen, lampLight, bulb };
-}
-
-function buildChair(scene) {
-  const chair = new THREE.Group();
-  chair.position.set(DESK.x - 0.3, 0, DESK.z + 0.78);
-  chair.rotation.y = 0.55;
-  const parts = [];
-  for (let i = 0; i < 5; i++) {
-    const a = (i / 5) * Math.PI * 2;
-    const end = new THREE.Vector3(Math.sin(a) * 0.3, 0.07, Math.cos(a) * 0.3);
-    parts.push(between(new THREE.Vector3(0, 0.1, 0), end, 0.016, 0.012));
-    parts.push({ geometry: new THREE.SphereGeometry(0.025, 12, 8), matrix: at(end.x, 0.028, end.z) });
-  }
-  parts.push({ geometry: new THREE.CylinderGeometry(0.022, 0.022, 0.34, 16), matrix: at(0, 0.27, 0) });
-  parts.push(between(new THREE.Vector3(0, 0.46, 0.2), new THREE.Vector3(0, 0.6, 0.24), 0.012, 0.012));
-  chair.add(mesh(mergeParts(parts), M.steel));
-  const seat = mesh(roundedBox(0.48, 0.07, 0.46, 0.03), M.fabric);
-  seat.position.y = 0.47;
-  chair.add(seat);
-  const back = mesh(roundedBox(0.44, 0.5, 0.06, 0.03), M.fabric);
-  back.position.set(0, 0.86, 0.23);
-  back.rotation.x = -0.12;
-  chair.add(back);
-  scene.add(chair);
+  return { group, screen, lampLight, lampTarget, bulb, lamp };
 }
 
 function buildShelf(scene) {
@@ -396,32 +368,6 @@ function buildShelf(scene) {
   for (const y of shelfY) parts.push({ geometry: new THREE.BoxGeometry(W, 0.025, D), matrix: at(0, y, 0) });
   g.add(mesh(mergeParts(parts), wood));
 
-  // Books, merged, one colour per spine.
-  const r = seeded(21);
-  const spines = [0x2f4f4f, 0x8b3a2f, 0xd8c8a8, 0x395b7a, 0x6b7f52, 0xc9a24a, 0x3a3a3a, 0xe8e1d3, 0x7a5c8a];
-  const books = [];
-  for (let s = 0; s < 3; s++) {
-    let x = -W / 2 + 0.03;
-    const y = shelfY[s] + 0.0125;
-    const stop = s === 1 ? 0.05 : W / 2 - 0.05;
-    while (x < stop) {
-      const bw = 0.022 + r() * 0.03;
-      const bh = 0.22 + r() * 0.12;
-      const lean = r() < 0.08 ? 0.18 : 0;
-      books.push({
-        geometry: new THREE.BoxGeometry(bw, bh, 0.2 + r() * 0.06),
-        matrix: at(x + bw / 2, y + bh / 2, 0.01, [0, 0, lean]),
-        colour: new THREE.Color(spines[Math.floor(r() * spines.length)]),
-      });
-      x += bw + 0.003 + (lean ? 0.04 : 0);
-    }
-  }
-  g.add(mesh(mergeParts(books, { colours: true }), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.75 })));
-
-  // A few objects: a vase, a small frame.
-  const vase = mesh(new THREE.CylinderGeometry(0.05, 0.07, 0.2, 24), M.ceramic);
-  vase.position.set(0.3, shelfY[1] + 0.0125 + 0.1, 0);
-  g.add(vase);
   scene.add(g);
   return { group: g, shelfY };
 }
@@ -500,23 +446,6 @@ function buildPlants(scene, { sill, shelf }) {
   const sillY = WIN.y0 + 0.001;
   const sx = ROOM.x0 + 0.12;
 
-  // Floor, by the window: a big monstera and a palm.
-  potted("monstera", ROOM.x0 + 0.45, 0, 0.95, { r: 0.2, h: 0.3, pot: "terracotta", scale: 1.45, seed: 11, sway: 0.012 });
-  potted("palm", ROOM.x0 + 0.4, 0, -1.72, { r: 0.16, h: 0.26, pot: "slate", scale: 0.95, seed: 23, sway: 0.01 });
-  // Floor, right of the bookcase and in the front corner.
-  potted("fern", 1.78, 0, ROOM.z0 + 0.3, { r: 0.17, h: 0.24, pot: "cream", scale: 1.1, seed: 53, sway: 0.012 });
-  potted("monstera", ROOM.x1 - 0.45, 0, 1.2, { r: 0.18, h: 0.28, pot: "cream", scale: 1.2, seed: 29, sway: 0.01 });
-
-  // On the sill.
-  potted("herb", sx, sillY, -1.45, { r: 0.07, h: 0.09, pot: "terracotta", scale: 0.9, seed: 67 });
-  potted("succulent", sx, sillY, -1.2, { r: 0.055, h: 0.065, pot: "slate", scale: 1, seed: 71 });
-  potted("pothos", sx, sillY, 0.25, { r: 0.08, h: 0.1, pot: "cream", scale: 1.1, seed: 79, fall: Math.PI / 2, sway: 0.02 });
-
-  // On the bookcase.
-  potted("pothos", 0.7, shelf.shelfY[4] + 0.0125, ROOM.z0 + 0.2, { r: 0.08, h: 0.095, pot: "terracotta", scale: 1.2, seed: 91, fall: 0, sway: 0.022 });
-  potted("herb", 1.25, shelf.shelfY[4] + 0.0125, ROOM.z0 + 0.2, { r: 0.07, h: 0.085, pot: "slate", scale: 0.9, seed: 103 });
-  potted("succulent", 1.2, shelf.shelfY[1] + 0.0125, ROOM.z0 + 0.2, { r: 0.05, h: 0.06, pot: "cream", seed: 111 });
-
   // Hanging in front of the window, on ropes.
   for (const [z, seed] of [
     [-0.95, 131],
@@ -535,6 +464,71 @@ function buildPlants(scene, { sill, shelf }) {
   }
   void sill;
   return swaying;
+}
+
+/* ------------------------------------------------------------------ *
+ *  Real models (Poly Haven, CC0)
+ * ------------------------------------------------------------------ */
+async function furnish(scene, { desk, shelf, swaying }) {
+  const put = (obj, x, y, z, ry = 0, parent = scene) => {
+    obj.position.set(x, y, z);
+    obj.rotation.y = ry;
+    parent.add(obj);
+    return obj;
+  };
+  const sway = (obj, amp) => swaying.push({ p: obj, phase: swaying.length * 2.1, amp });
+  const inPlanter = async (id, opts, { r, h, glaze }, x, y, z, ry = 0) => {
+    const pot = planter(r, h, glaze);
+    const g = new THREE.Group();
+    g.add(pot.group);
+    const plantModel = await model(id, opts);
+    plantModel.position.y = pot.top - 0.01;
+    g.add(plantModel);
+    return put(g, x, y, z, ry);
+  };
+  const sillY = WIN.y0 + 0.001;
+  const sillX = ROOM.x0 + 0.12;
+  const shelfTop = shelf.shelfY[4] + 0.0125;
+
+  const jobs = [
+    // Floor: a money tree by the window, a tall leafy plant right of the bookcase,
+    // a bushy one under the sill.
+    inPlanter("pachira_aquatica_01", { variant: "a", height: 1.45 }, { r: 0.2, h: 0.36, glaze: "charcoal" }, ROOM.x0 + 0.5, 0, -1.62, 0.6).then((o) => sway(o, 0.006)),
+    model("potted_plant_01", { height: 1.4 }).then((o) => sway(put(o, 1.78, 0, ROOM.z0 + 0.38, 0.4), 0.006)),
+    model("potted_plant_02", { height: 0.8 }).then((o) => sway(put(o, ROOM.x0 + 0.5, 0, -0.2, 1.2), 0.008)),
+    // On the sill, beside the cat.
+    inPlanter("anthurium_botany_01", { variant: "a", height: 0.32 }, { r: 0.075, h: 0.11, glaze: "white" }, sillX, sillY, -1.45, 0.3),
+    model("potted_plant_04", { height: 0.22 }).then((o) => put(o, sillX, sillY, -1.12, 0.5)),
+    // On top of the bookcase, and on its middle shelf.
+    inPlanter("calathea_orbifolia_01", { variant: "a", height: 0.34 }, { r: 0.11, h: 0.15, glaze: "sage" }, 0.72, shelfTop, ROOM.z0 + 0.2, 0.2),
+    model("ceramic_vase_01", { height: 0.26 }).then((o) => put(o, 0.28, shelf.shelfY[1] + 0.0125, 0, 0, shelf.group)),
+    // Books on three shelves.
+    ...[
+      [0, -0.24],
+      [0, 0.24],
+      [1, -0.22],
+      [2, -0.24],
+      [2, 0.24],
+      [3, 0.2],
+    ].map(([row, x]) => model("book_encyclopedia_set_01", { scale: 0.85 }).then((o) => put(o, x, shelf.shelfY[row] + 0.0125, 0.02, 0, shelf.group))),
+    // On the desk: the lamp, a succulent, a pencil cup.
+    model("desk_lamp_arm_01", { height: 0.6 }).then((o) => {
+      // Measured before it is parented, the box is in the lamp's own frame:
+      // the shade is at the top of the far end of the arm.
+      o.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(o);
+      const head = new THREE.Vector3((box.min.x + box.max.x) / 2, box.max.y - 0.06, box.max.z - 0.06);
+      desk.lamp.add(o);
+      desk.bulb.position.copy(head);
+      desk.lampLight.position.copy(head);
+      desk.lampTarget.position.copy(head).add(new THREE.Vector3(0, -0.6, 0.2));
+    }),
+    model("potted_plant_04", { height: 0.2 }).then((o) => put(o, 0.64, TOP, -0.2, 0.3, desk.group)),
+    model("stationery_supplies", { height: 0.15 }).then((o) => put(o, -0.42, TOP, -0.25, 0.4, desk.group)),
+    // The chair, pulled out and turned towards the room.
+    model("modern_arm_chair_01", { height: 0.9 }).then((o) => put(o, DESK.x + 0.05, 0, DESK.z + 0.95, Math.PI + 0.2)),
+  ];
+  await Promise.all(jobs);
 }
 
 /* ------------------------------------------------------------------ *
@@ -645,7 +639,6 @@ export function createOffice({ container, osElement, onFocus = () => {}, onWide 
 
   const room = buildRoom(scene);
   const desk = buildDesk(scene);
-  buildChair(scene);
   const shelf = buildShelf(scene);
   buildRug(scene);
   buildArt(scene);
@@ -844,6 +837,7 @@ export function createOffice({ container, osElement, onFocus = () => {}, onWide 
   }
 
   const ready = (async () => {
+    await furnish(scene, { desk, shelf, swaying });
     await renderer.compileAsync(scene, camera);
     frame();
     renderer.setAnimationLoop(frame);

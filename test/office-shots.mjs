@@ -12,7 +12,7 @@ import { startServer, openPage } from "./e2e/harness.mjs";
 const OUT = join(dirname(fileURLToPath(import.meta.url)), "out");
 mkdirSync(OUT, { recursive: true });
 
-const WIDE = [[0.95, 1.48, 1.15], [-0.9, 0.98, -1.45]];
+const WIDE = [[0.78, 1.46, 0.95], [-1.02, 1.0, -1.5]];
 const CLOSE = {
   cat: [[-1.3, 1.25, 0.2], [-2.2, 0.85, -0.62]],
   guitar: [[0.6, 1.0, -0.6], [0.1, 0.55, -1.8]],

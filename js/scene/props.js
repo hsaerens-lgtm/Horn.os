@@ -169,8 +169,28 @@ export function buildGuitar() {
   for (const p of pts) shape.lineTo(p.x, p.y);
   for (let i = pts.length - 1; i >= 0; i--) shape.lineTo(-pts[i].x, pts[i].y);
   const bodyGeo = new THREE.ExtrudeGeometry(shape, { depth: 0.085, bevelEnabled: true, bevelSize: 0.006, bevelThickness: 0.006, bevelSegments: 3, curveSegments: 4 });
-  const spruce = new THREE.MeshStandardMaterial({ color: 0xe6c48c, roughness: 0.35 });
-  const mahogany = new THREE.MeshStandardMaterial({ color: 0x6e3520, roughness: 0.35 });
+  // Wood grain painted on canvases: fine straight grain on the spruce top,
+  // a deeper, wavier figure on the mahogany sides, neck and head.
+  const grain = (base, lines, count, wave, seed) =>
+    canvasTexture(512, 512, (c, w, h) => {
+      c.fillStyle = base;
+      c.fillRect(0, 0, w, h);
+      let s = seed;
+      const r = () => ((s = (s * 1664525 + 1013904223) >>> 0), s / 4294967296);
+      for (let i = 0; i < count; i++) {
+        const x0 = r() * w;
+        c.strokeStyle = lines[Math.floor(r() * lines.length)];
+        c.globalAlpha = 0.18 + r() * 0.3;
+        c.lineWidth = 0.6 + r() * 1.8;
+        c.beginPath();
+        for (let y = 0; y <= h; y += 8) c.lineTo(x0 + Math.sin(y * 0.02 + i) * wave, y);
+        c.stroke();
+      }
+    });
+  const spruceMap = grain("#e8c896", ["#c9a066", "#d9b27a", "#b98f58"], 180, 1.5, 3);
+  const mahoganyMap = grain("#6e3520", ["#4a2012", "#8a4a2c", "#3a180c"], 140, 6, 7);
+  const spruce = new THREE.MeshPhysicalMaterial({ map: spruceMap, roughness: 0.32, clearcoat: 0.6, clearcoatRoughness: 0.2 });
+  const mahogany = new THREE.MeshPhysicalMaterial({ map: mahoganyMap, roughness: 0.35, clearcoat: 0.6, clearcoatRoughness: 0.2 });
   const rosewood = new THREE.MeshStandardMaterial({ color: 0x2b1810, roughness: 0.5 });
   const metal = new THREE.MeshStandardMaterial({ color: 0xd8d8d8, roughness: 0.25, metalness: 0.9 });
   const body = shadowed(new THREE.Mesh(bodyGeo, [spruce, mahogany]));
