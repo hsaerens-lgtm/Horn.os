@@ -39,6 +39,7 @@ export function createChat(
   let typed = "";
   let busy = false; // typing out, thinking or streaming
   let alive = true;
+  let streaming = false; // true while an onStream(true)…onStream(false) pair is open
 
   const wait = (ms) => new Promise((r) => setTimeout(r, reducedMotion ? 0 : ms));
   const scrollDown = () => {
@@ -116,11 +117,22 @@ export function createChat(
     setOptions(option.id);
   }
 
+  // Fires onStream(false) at most once per onStream(true) — called either at
+  // the natural end of an answer, or immediately from dispose() if the
+  // window closes mid-stream. Whichever happens first wins; the other is a
+  // no-op, so Plan 2's screen light never sees an unbalanced pair.
+  function endStream() {
+    if (!streaming) return;
+    streaming = false;
+    onStream(false);
+  }
+
   async function answer(blocks) {
     const dots = h("div", { class: "typing", "aria-label": "Assistant is typing" }, h("span"), h("span"), h("span"));
     log.append(dots);
     scrollDown();
     await wait(thinkingDelay(rand));
+    if (!alive) return;
     dots.remove();
 
     const msg = h("div", { class: "msg msg-bot" });
@@ -130,24 +142,31 @@ export function createChat(
       skipped = true;
     };
     msg.addEventListener("click", skip);
+    streaming = true;
     onStream(true);
     for (const block of blocks) {
+      if (!alive) break;
       if (block.p !== undefined) await stream(msg.appendChild(h("p")), block.p, () => skipped);
       else if (block.list) {
         const ul = msg.appendChild(h("ul"));
-        for (const item of block.list) await stream(ul.appendChild(h("li")), item, () => skipped);
+        for (const item of block.list) {
+          if (!alive) break;
+          await stream(ul.appendChild(h("li")), item, () => skipped);
+        }
       } else if (block.project) msg.append(projectCard(block.project));
       else if (block.open) msg.append(h("button", { type: "button", class: "msg-action", onclick: () => onOpen(block.open) }, block.label));
+      if (!alive) break;
       scrollDown();
     }
     msg.removeEventListener("click", skip);
-    onStream(false);
+    endStream();
   }
 
   async function stream(el, text, isSkipped) {
     const segments = parseInline(text);
     const nodes = new Map();
     for (const token of wordTokens(segments)) {
+      if (!alive) return;
       let node = nodes.get(token.seg);
       if (!node) {
         node = segmentEl(segments[token.seg], "");
@@ -182,14 +201,16 @@ export function createChat(
   // Returns true when the key was used, so the caller can preventDefault.
   function handleKey(e) {
     if (e.ctrlKey || e.metaKey || e.altKey) return false;
+    // Enter/Space on a focusable control — a chip, a project card, "Open the
+    // résumé", a link inside an answer, the send button — is that control's
+    // own activation. Never hijack it into typing or submitting a chip.
+    if ((e.key === "Enter" || e.key === " ") && e.target?.closest?.("button, a")) return false;
     const printable = e.key.length === 1;
     if (busy) return printable || e.key === "Enter";
     if (!options.length) return false;
     if (e.key === "ArrowRight" || e.key === "ArrowDown") return move(1), true;
     if (e.key === "ArrowLeft" || e.key === "ArrowUp") return move(-1), true;
     if (e.key === "Enter") {
-      // Enter on a focused chip is that chip's own click.
-      if (e.target?.closest?.(".chip")) return false;
       setTyped(options[hot].label);
       submit();
       return true;
@@ -210,6 +231,7 @@ export function createChat(
     handleKey,
     dispose() {
       alive = false;
+      endStream();
     },
   };
 }

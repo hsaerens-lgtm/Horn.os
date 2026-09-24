@@ -17,7 +17,17 @@ function themeFor(date) {
 
 const forced = params.get("theme");
 const theme = forced === "light" || forced === "dark" ? forced : themeFor(new Date());
-const os = createHornOS(document.getElementById("os"), { profile, dialogue, theme });
 
-// A handle for tests and the console; ?debug only.
-if (params.has("debug")) window.__os = os;
+// A handle for tests and the console; ?debug only. __streamLog is a small
+// debug hook Plan 2 will reuse to verify the screen light against onStream.
+const debug = params.has("debug");
+if (debug) window.__streamLog = [];
+
+const os = createHornOS(document.getElementById("os"), {
+  profile,
+  dialogue,
+  theme,
+  onStream: debug ? (isStreaming) => window.__streamLog.push(isStreaming) : undefined,
+});
+
+if (debug) window.__os = os;

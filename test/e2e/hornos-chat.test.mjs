@@ -114,6 +114,30 @@ test("clicking a streaming answer finishes it", async () => {
   }
 });
 
+// Fix round 1, finding 2: closing the chat mid-stream must balance onStream
+// (Plan 2 drives the screen light off it) and must not keep streaming into a
+// detached message afterwards.
+test("closing the chat mid-stream balances onStream and stops the stream", async () => {
+  const { page, close } = await openPage(`${server.url}?debug=1`);
+  try {
+    await page.waitForSelector(CHIP, { timeout: 10000 });
+    await chipNamed(page, "Who is Horn?").click();
+    await page.waitForFunction(() => document.querySelectorAll(".msg-bot").length === 2);
+    await page.click('.win[data-win="chat"] [data-act="close"]');
+    const afterClose = await page.evaluate(() => window.__streamLog.slice());
+    assert.deepEqual(
+      afterClose.slice(-2),
+      [true, false],
+      `expected the "Who is Horn?" stream's own true/false pair at the end, got ${JSON.stringify(afterClose)}`,
+    );
+    await page.waitForTimeout(1500);
+    const later = await page.evaluate(() => window.__streamLog.slice());
+    assert.deepEqual(later, afterClose, "no further onStream calls after dispose");
+  } finally {
+    await close();
+  }
+});
+
 test("a project card opens the Projects window on that project", async () => {
   const { page, close } = await openPage(server.url, { reducedMotion: "reduce" });
   try {
@@ -122,6 +146,27 @@ test("a project card opens the Projects window on that project", async () => {
     await page.click('.project-card[data-project="freescout"]');
     await page.locator('.win[data-win="projects"]').waitFor({ state: "visible" });
     assert.equal(await page.textContent(".proj-detail h1"), "FreeScout AI Copilot");
+  } finally {
+    await close();
+  }
+});
+
+// Fix round 1, finding 1: Enter on a focused control (a project card here)
+// must be that control's own activation, never hijacked into sending the
+// currently highlighted chip.
+test("Enter on a focused project card opens it, not the highlighted chip", async () => {
+  const { page, close } = await openPage(server.url, { reducedMotion: "reduce" });
+  try {
+    await page.waitForSelector(CHIP, { timeout: 10000 });
+    await chipNamed(page, "What has he built?").click();
+    const card = page.locator('.project-card[data-project="freescout"]');
+    await card.waitFor({ state: "visible" });
+    const usersBefore = await page.locator(".msg-user").count();
+    await card.focus();
+    await page.keyboard.press("Enter");
+    await page.locator('.win[data-win="projects"]').waitFor({ state: "visible" });
+    assert.equal(await page.textContent(".proj-detail h1"), "FreeScout AI Copilot");
+    assert.equal(await page.locator(".msg-user").count(), usersBefore, "no chip was sent");
   } finally {
     await close();
   }
