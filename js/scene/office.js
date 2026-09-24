@@ -26,13 +26,13 @@ import { buildCity } from "./city.js";
  * ------------------------------------------------------------------ */
 const ROOM = { x0: -2.3, x1: 2.3, z0: -2.1, z1: 2.9, h: 2.7 };
 const WIN = { z0: -1.95, z1: 0.55, y0: 0.78, y1: 2.45 }; // opening in the left wall
-const DESK = { x: -0.95, z: -1.72, w: 1.6, d: 0.72, y: 0.74, t: 0.035 };
+const DESK = { x: -0.8, z: -1.72, w: 1.6, d: 0.72, y: 0.74, t: 0.035 };
 const SCREEN = { w: 0.6, h: 0.375 }; // 16:10
 const OS_PX = { w: 1280, h: 800 };
 const TOP = DESK.y + DESK.t / 2;
 const SCREEN_POS = new THREE.Vector3(DESK.x, TOP + 0.335, DESK.z - 0.13);
 
-const WIDE = { pos: new THREE.Vector3(0.78, 1.46, 0.95), target: new THREE.Vector3(-1.02, 1.0, -1.5) };
+const WIDE = { pos: new THREE.Vector3(0.9, 1.46, 0.95), target: new THREE.Vector3(-0.9, 1.0, -1.5) };
 
 /* ------------------------------------------------------------------ *
  *  Small helpers
@@ -527,6 +527,60 @@ function buildPlants(scene, { sill, shelf }) {
 /* ------------------------------------------------------------------ *
  *  Real models (Poly Haven, CC0)
  * ------------------------------------------------------------------ */
+
+// The stationery set lays its pens and pencils out on the desk beside the
+// cup. Stand them in it instead: each one is baked into world space, turned
+// upright about its own centre, dropped to the bottom of the cup and leant
+// against the rim, fanned round it.
+function standPensInCup(stationery, scene) {
+  scene.updateMatrixWorld(true); // the desk group may not have been positioned in world space yet
+  let cup = null;
+  const pens = [];
+  const loose = [];
+  stationery.traverse((o) => {
+    if (!o.isMesh) return;
+    if (/pencilcup/.test(o.name)) cup = o;
+    else if (/pen|pencil/.test(o.name)) pens.push(o);
+    else loose.push(o);
+  });
+  if (!cup) return;
+  const cupBox = new THREE.Box3().setFromObject(cup);
+  const c = cupBox.getCenter(new THREE.Vector3());
+  const cupR = Math.min(cupBox.max.x - cupBox.min.x, cupBox.max.z - cupBox.min.z) / 2;
+  const floor = cupBox.min.y + 0.012;
+  pens.forEach((pen, i) => {
+    const geo = pen.geometry.clone().applyMatrix4(pen.matrixWorld);
+    geo.computeBoundingBox();
+    const size = geo.boundingBox.getSize(new THREE.Vector3());
+    // turn the long axis upright
+    if (size.x >= size.y && size.x >= size.z) geo.rotateZ(Math.PI / 2);
+    else if (size.z >= size.y && size.z >= size.x) geo.rotateX(Math.PI / 2);
+    geo.center();
+    geo.computeBoundingBox();
+    const len = geo.boundingBox.max.y - geo.boundingBox.min.y;
+    geo.translate(0, len / 2, 0); // origin at the bottom end
+    // foot on the far side of the cup, top leaning out over the near rim
+    const a = (i / pens.length) * Math.PI * 2 + 0.4;
+    const dir = new THREE.Vector3(Math.cos(a), 0, Math.sin(a));
+    const lean = 0.1 + (i % 3) * 0.045;
+    const m = new THREE.Mesh(geo, pen.material);
+    m.castShadow = m.receiveShadow = true;
+    m.position.copy(c).addScaledVector(dir, -cupR * 0.22); // the cup narrows towards its foot
+    m.position.y = floor;
+    const tilt = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0).cross(dir).normalize(), lean);
+    const spin = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), i * 1.7);
+    m.quaternion.copy(tilt).multiply(spin);
+    scene.add(m);
+    pen.visible = false;
+  });
+  // whatever else was lying on the pencils (the eraser) goes down on the desk
+  const deskTop = cupBox.min.y;
+  for (const o of loose) {
+    const box = new THREE.Box3().setFromObject(o);
+    const lift = box.min.y - deskTop;
+    if (lift > 0.002) o.position.y -= lift / o.parent.getWorldScale(new THREE.Vector3()).y;
+  }
+}
 async function furnish(scene, { desk, shelf, swaying }) {
   const put = (obj, x, y, z, ry = 0, parent = scene) => {
     obj.position.set(x, y, z);
@@ -551,7 +605,7 @@ async function furnish(scene, { desk, shelf, swaying }) {
   const jobs = [
     // Floor: a money tree by the window, a tall leafy plant right of the bookcase,
     // a bushy one under the sill.
-    inPlanter("pachira_aquatica_01", { variant: "a", height: 1.45 }, { r: 0.2, h: 0.36, glaze: "charcoal" }, ROOM.x0 + 0.34, 0, -1.72, 0.6).then((o) => sway(o, 0.006)),
+    inPlanter("pachira_aquatica_01", { variant: "a", height: 1.45 }, { r: 0.18, h: 0.36, glaze: "charcoal" }, ROOM.x0 + 0.52, 0, -1.74, 2.4).then((o) => sway(o, 0.006)),
     model("potted_plant_01", { height: 1.4 }).then((o) => sway(put(o, 1.78, 0, ROOM.z0 + 0.38, 0.4), 0.006)),
     model("potted_plant_02", { height: 0.8 }).then((o) => sway(put(o, ROOM.x0 + 0.5, 0, -0.2, 1.2), 0.008)),
     // On the sill, beside the cat.
@@ -575,7 +629,10 @@ async function furnish(scene, { desk, shelf, swaying }) {
       desk.lampTarget.position.copy(head).add(new THREE.Vector3(0, -0.6, 0.2));
     }),
     model("potted_plant_04", { height: 0.2 }).then((o) => put(o, 0.64, TOP, -0.2, 0.3, desk.group)),
-    model("stationery_supplies", { height: 0.15 }).then((o) => put(o, -0.42, TOP, -0.25, 0.4, desk.group)),
+    model("stationery_supplies", { height: 0.15 }).then((o) => {
+      put(o, -0.52, TOP, -0.22, 0.4, desk.group);
+      standPensInCup(o, scene);
+    }),
     // The chair, pulled out and turned towards the room.
     // A leather chair pushed in at the desk; the lounge chair by the window.
     model("dining_chair_02", { height: 0.95 }).then((o) => put(o, DESK.x + 0.12, 0, DESK.z + 0.66, Math.PI - 0.25)),
@@ -708,7 +765,7 @@ export function createOffice({ container, osElement, onFocus = () => {}, onWide 
 
   // The guitar, between the desk and the bookcase.
   const guitar = buildGuitar();
-  guitar.position.set(0.12, 0, ROOM.z0 + 0.32);
+  guitar.position.set(0.24, 0, ROOM.z0 + 0.32);
   guitar.rotation.y = -0.35;
   scene.add(guitar);
 
