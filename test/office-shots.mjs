@@ -24,6 +24,7 @@ const CLOSE = {
   mouse: [[-0.37, 0.9, -1.28], [-0.49, 0.77, -1.55]],
   pens: [[-1.15, 1.02, -1.5], [-1.3, 0.86, -1.94]],
   corner: [[-1.2, 1.3, -0.6], [-2.05, 0.9, -1.75]],
+  lamp: [[-0.9, 1.25, -1.0], [-1.35, 0.95, -1.8]],
   poster: [[-0.8, 1.6, -0.9], [-0.83, 1.68, -2.1]],
 };
 
@@ -52,6 +53,8 @@ try {
     await shot(`office-${phase}`);
     await page.evaluate((p) => window.__debug.pin(...p), CLOSE.window);
     await shot(`office-window-${phase}`);
+    await page.evaluate((p) => window.__debug.pin(...p), CLOSE.lamp);
+    await shot(`office-lamp-${phase}`);
   }
   await page.evaluate(() => window.__office.setPhase("day", 10));
   await page.evaluate(() => window.__debug.pin(null));

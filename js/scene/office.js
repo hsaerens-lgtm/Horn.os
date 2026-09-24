@@ -347,8 +347,9 @@ function buildDesk(scene) {
   // Desk lamp: the body is a real model (see furnish); the bulb and the spot
   // live here so the day cycle can drive them.
   const lamp = new THREE.Group();
-  lamp.position.set(-0.64, TOP, -0.2);
-  lamp.rotation.y = 0.85;
+  // clamped to the back edge of the desk, on the left; the arm reaches forward
+  lamp.position.set(-0.6, TOP, -0.16);
+  lamp.rotation.y = Math.PI - 0.55;
   const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.016, 16, 12), new THREE.MeshStandardMaterial({ color: 0xfff4e0, emissive: 0xffd9a0, emissiveIntensity: 0 }));
   lamp.add(bulb);
   const lampLight = new THREE.SpotLight(0xffd6a0, 0, 3, 0.75, 0.6, 2);
@@ -618,15 +619,29 @@ async function furnish(scene, { desk, shelf, swaying }) {
     model("book_encyclopedia_set_01", { scale: 0.85 }).then((o) => put(o, -0.22, shelf.shelfY[1] + 0.0125, 0.02, 0, shelf.group)),
     // On the desk: the lamp, a succulent, a pencil cup.
     model("desk_lamp_arm_01", { height: 0.6 }).then((o) => {
-      // Measured before it is parented, the box is in the lamp's own frame:
-      // the shade is at the top of the far end of the arm.
-      o.updateMatrixWorld(true);
-      const box = new THREE.Box3().setFromObject(o);
-      const head = new THREE.Vector3((box.min.x + box.max.x) / 2, box.max.y - 0.06, box.max.z - 0.06);
+      // A clamp lamp: its origin is the tabletop and the clamp hangs below it,
+      // so undo the lift model() gave it to stand on its lowest point.
+      o.position.y -= 0.088 * o.scale.y;
       desk.lamp.add(o);
-      desk.bulb.position.copy(head);
-      desk.lampLight.position.copy(head);
-      desk.lampTarget.position.copy(head).add(new THREE.Vector3(0, -0.6, 0.2));
+      desk.lamp.updateWorldMatrix(true, true);
+      // The shade is at the far end of the arm; its bulb is its own small mesh.
+      // Put our glow and the spot exactly there, aimed out of the shade's mouth.
+      let bulbMesh = null;
+      o.traverse((m) => {
+        if (m.isMesh && /_1$/.test(m.name)) bulbMesh = m;
+      });
+      const bulbWorld = new THREE.Box3().setFromObject(bulbMesh ?? o).getCenter(new THREE.Vector3());
+      const bulbLocal = desk.lamp.worldToLocal(bulbWorld.clone());
+      desk.bulb.position.copy(bulbLocal);
+      desk.bulb.scale.setScalar(0.7);
+      desk.lampLight.position.copy(bulbLocal);
+      desk.lampTarget.position.copy(bulbLocal).add(new THREE.Vector3(0, -0.45, -0.22));
+      if (bulbMesh) {
+        bulbMesh.material = bulbMesh.material.clone();
+        bulbMesh.material.emissive = new THREE.Color(0xffd9a0);
+        bulbMesh.material.emissiveIntensity = desk.bulb.material.emissiveIntensity;
+        desk.bulbExtra = bulbMesh.material;
+      }
     }),
     model("potted_plant_04", { height: 0.2 }).then((o) => put(o, 0.64, TOP, -0.2, 0.3, desk.group)),
     model("stationery_supplies", { height: 0.15 }).then((o) => {
@@ -790,6 +805,7 @@ export function createOffice({ container, osElement, onFocus = () => {}, onWide 
     lights.sky.intensity = p.skyLightI;
     desk.lampLight.intensity = p.lampI;
     desk.bulb.material.emissiveIntensity = p.bulb * 2.5;
+    if (desk.bulbExtra) desk.bulbExtra.emissiveIntensity = p.bulb * 2.5;
     lights.glow.intensity = p.glowI;
     lights.fill.intensity = p.fillI;
     dust.material.opacity = p.dust;
