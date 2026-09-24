@@ -15,7 +15,7 @@ test("the desktop renders with its dock and no errors", async () => {
   try {
     await page.waitForSelector(".hornos-dock");
     const labels = await page.$$eval(".dock-item", (els) => els.map((e) => e.getAttribute("aria-label")));
-    assert.deepEqual(labels, ["Resume", "Skills", "Projects", "Contact", "DnD"]);
+    assert.deepEqual(labels, ["Horn.os", "Resume", "Skills", "Projects", "Contact", "DnD"]);
     assert.deepEqual(errors, []);
     assert.deepEqual(failed, []);
   } finally {

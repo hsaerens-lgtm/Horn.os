@@ -3,6 +3,7 @@
 // phones and browsers without WebGL.
 
 import { profile } from "./content/profile.js";
+import { dialogue } from "./content/dialogue.js";
 import { createHornOS } from "./os/hornos.js";
 
 const params = new URLSearchParams(location.search);
@@ -16,7 +17,7 @@ function themeFor(date) {
 
 const forced = params.get("theme");
 const theme = forced === "light" || forced === "dark" ? forced : themeFor(new Date());
-const os = createHornOS(document.getElementById("os"), { profile, theme });
+const os = createHornOS(document.getElementById("os"), { profile, dialogue, theme });
 
 // A handle for tests and the console; ?debug only.
 if (params.has("debug")) window.__os = os;

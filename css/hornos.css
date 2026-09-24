@@ -239,6 +239,10 @@
   .win { left: 0 !important; top: 0 !important; width: 100% !important; height: 100% !important; border: 0; border-radius: 0; }
   .win-bar { cursor: default; }
   .hornos-who { display: none; }
+  /* A sixth dock icon (chat) no longer fits the old 16px side margins at
+     narrow widths (e.g. 390px) without the dock forcing the page 2px wider
+     than the viewport — tighten the margin so six items fit. */
+  .hornos-dock { margin: 0 6px 14px; }
   .dock-item { width: 52px; }
   .dock-label { font-size: 10px; }
   .projects { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
@@ -251,4 +255,113 @@
 @media (prefers-reduced-motion: reduce) {
   .win { animation: none; }
   .dock-item { transition: none; }
+}
+
+/* chat */
+.chat { display: grid; grid-template-rows: 1fr auto; height: 100%; }
+.chat-log { display: flex; flex-direction: column; gap: 14px; padding: 20px 20px 8px; overflow: auto; }
+.msg { max-width: 88%; }
+.msg p { margin: 0 0 8px; }
+.msg p:last-child { margin-bottom: 0; }
+.msg ul { margin: 4px 0 8px; padding-left: 20px; }
+.msg li { margin: 3px 0; }
+.msg-user {
+  align-self: flex-end;
+  padding: 8px 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 18px 18px 4px 18px;
+}
+.msg-bot { position: relative; align-self: flex-start; padding-left: 38px; }
+.msg-bot::before {
+  content: "H";
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+.typing { align-self: flex-start; display: flex; gap: 4px; margin-left: 38px; padding: 10px 12px; border-radius: 14px; background: var(--surface-2); }
+.typing span { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); animation: blink 1s infinite ease-in-out; }
+.typing span:nth-child(2) { animation-delay: 0.15s; }
+.typing span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes blink {
+  0%, 80%, 100% { opacity: 0.25; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(-2px); }
+}
+.project-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin: 8px 0;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.project-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+.project-card .icon { flex: none; width: 22px; height: 22px; color: var(--accent); }
+.project-card-text { display: grid; }
+.project-card-text span { font-size: 12px; color: var(--muted); }
+.project-card-go { margin-left: auto; color: var(--accent); }
+.msg-action {
+  margin-top: 6px;
+  padding: 6px 14px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--accent) !important;
+  font-weight: 600;
+  cursor: pointer;
+}
+.chat-bottom { padding: 10px 16px 16px; border-top: 1px solid var(--line); }
+.chat-chips { display: flex; flex-wrap: wrap; gap: 6px; min-height: 32px; margin-bottom: 10px; }
+.chip {
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+.chip:hover,
+.chip.is-hot { border-color: var(--accent); background: var(--accent-soft); }
+.chip-back { color: var(--muted) !important; }
+.chat-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 6px 6px 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface-2);
+}
+.chat-field { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--text); font: inherit; outline: none; }
+.chat-send {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--accent-ink) !important;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .typing span { animation: none; }
+  .project-card,
+  .chip { transition: none; }
 }

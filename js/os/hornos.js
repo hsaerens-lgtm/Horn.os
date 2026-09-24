@@ -4,6 +4,7 @@
 
 import { h } from "./dom.js";
 import { ICONS } from "./icons.js";
+import { createChat } from "./chat.js";
 import { createWindowManager } from "./wm.js";
 import { renderResume } from "./windows/resume.js";
 import { renderSkills } from "./windows/skills.js";
@@ -12,6 +13,7 @@ import { renderContact } from "./windows/contact.js";
 import { renderDnd } from "./windows/dnd.js";
 
 const DOCK = [
+  { id: "chat", label: "Horn.os" },
   { id: "resume", label: "Resume" },
   { id: "skills", label: "Skills" },
   { id: "projects", label: "Projects" },
@@ -19,7 +21,7 @@ const DOCK = [
   { id: "dnd", label: "DnD" },
 ];
 
-export function createHornOS(root, { profile, theme = "light", onBack = null, dndHref = "dnd/" } = {}) {
+export function createHornOS(root, { profile, dialogue, theme = "light", onBack = null, onStream = () => {}, dndHref = "dnd/" } = {}) {
   const desktop = h("div", { class: "hornos-desktop" });
   const clock = h("span", { class: "hornos-clock" });
   const bar = h(
@@ -35,6 +37,13 @@ export function createHornOS(root, { profile, theme = "light", onBack = null, dn
   root.replaceChildren(shell);
 
   const wm = createWindowManager(desktop, { onChange: syncDock });
+  wm.register("chat", {
+    title: "Horn.os — assistant",
+    width: 600,
+    height: 660,
+    center: true,
+    render: (b) => createChat(b, { dialogue, profile, onStream, onOpen: (id, arg) => wm.open(id, arg) }),
+  });
   wm.register("resume", { title: "Resume", width: 720, height: 560, render: (b) => renderResume(b, profile) });
   wm.register("skills", { title: "Skills", width: 620, height: 500, render: (b) => renderSkills(b, profile) });
   wm.register("projects", { title: "Projects", width: 840, height: 560, render: (b) => renderProjects(b, profile) });
@@ -67,6 +76,17 @@ export function createHornOS(root, { profile, theme = "light", onBack = null, dn
   setInterval(tick, 30_000);
 
   let active = true;
+  // Keys go to the chat when it is the front window and the visitor is not
+  // using the keyboard somewhere else (a dock button, a link in another window).
+  document.addEventListener("keydown", (e) => {
+    if (!active || wm.top() !== "chat") return;
+    const focused = document.activeElement;
+    const onPage = !focused || focused === document.body || focused.closest?.('.win[data-win="chat"]');
+    if (onPage && wm.api("chat")?.handleKey(e)) e.preventDefault();
+  });
+
+  wm.open("chat");
+
   return {
     wm,
     open: (id, arg) => wm.open(id, arg),
