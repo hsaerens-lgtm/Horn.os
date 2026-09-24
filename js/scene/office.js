@@ -15,6 +15,8 @@ import { mergeParts, at } from "../lib/merge.js";
 import { plant } from "../lib/plants.js";
 import { buildCat, buildGuitar, buildClock } from "./props.js";
 import { model, planter } from "./models.js";
+import { shelfBooks } from "./books.js";
+import { hangingPlant } from "./hanging.js";
 import { PHASES, PRESETS, phaseFor, mixPreset } from "./daycycle.js";
 import { buildCity } from "./city.js";
 
@@ -354,6 +356,14 @@ function buildShelf(scene) {
   for (const y of shelfY) parts.push({ geometry: new THREE.BoxGeometry(W, 0.025, D), matrix: at(0, y, 0) });
   g.add(mesh(mergeParts(parts), wood));
 
+  // Books: every shelf filled differently, standing, leaning and stacked.
+  const top = (i) => shelfY[i] + 0.0125;
+  const L = -W / 2 + 0.03;
+  const R = W / 2 - 0.03;
+  g.add(shelfBooks(top(0), L, R, [{ kind: "row", type: "art", width: 0.3 }, { kind: "gap", width: 0.04 }, { kind: "stack", type: "art", count: 4 }, { kind: "row", width: 0.3 }], 11));
+  g.add(shelfBooks(top(1), 0.05, R, [{ kind: "gap", width: 0.22 }, { kind: "row", width: 0.2, type: "paperback", lean: true }], 12));
+  g.add(shelfBooks(top(2), L, R, [{ kind: "row", width: 0.42, lean: true }, { kind: "gap", width: 0.1 }, { kind: "stack", type: "hardback", count: 3 }, { kind: "row", type: "paperback", width: 0.2 }], 13));
+  g.add(shelfBooks(top(3), L, R, [{ kind: "stack", type: "paperback", count: 5 }, { kind: "gap", width: 0.06 }, { kind: "row", width: 0.36, type: "paperback" }, { kind: "gap", width: 0.2 }, { kind: "row", width: 0.2, type: "hardback", lean: true }], 14));
   scene.add(g);
   return { group: g, shelfY };
 }
@@ -432,21 +442,19 @@ function buildPlants(scene, { sill, shelf }) {
   const sillY = WIN.y0 + 0.001;
   const sx = ROOM.x0 + 0.12;
 
-  // Hanging in front of the window, on ropes.
-  for (const [z, seed] of [
-    [-0.95, 131],
-    [0.05, 137],
+  // Golden pothos in macramé hangers, in front of the window and over the
+  // bookcase. Each group's origin is its ceiling hook, so the sway is a pendulum.
+  for (const [x, z, seed, glaze, length] of [
+    [ROOM.x0 + 0.42, -1.05, 131, "white", 0.95],
+    [ROOM.x0 + 0.46, 0.1, 137, "terracotta", 0.8],
+    [1.55, ROOM.z0 + 0.45, 139, "sage", 0.7],
   ]) {
-    const y = 1.95;
-    const hx = ROOM.x0 + 0.42;
-    const p = potted("pothos", hx, y, z, { r: 0.09, h: 0.11, pot: "cream", scale: 1.15, seed, sway: 0.03 });
-    const ropes = [];
-    for (let i = 0; i < 3; i++) {
-      const a = (i / 3) * Math.PI * 2;
-      ropes.push(between(new THREE.Vector3(hx + Math.sin(a) * 0.085, y + 0.1, z + Math.cos(a) * 0.085), new THREE.Vector3(hx, ROOM.h, z), 0.003, 0.003, 5));
-    }
-    scene.add(mesh(mergeParts(ropes), M.rope, { cast: false }));
-    void p;
+    const hookY = ROOM.h - 0.22;
+    const hp = hangingPlant({ seed, glaze, length, drop: 0.42 });
+    hp.position.set(x, hookY, z);
+    scene.add(hp);
+    swaying.push({ p: hp, phase: swaying.length * 2.1, amp: 0.02 });
+    scene.add(mesh(mergeParts([between(new THREE.Vector3(x, hookY, z), new THREE.Vector3(x, ROOM.h, z), 0.003, 0.003, 5)]), M.rope, { cast: false }));
   }
   void sill;
   return swaying;
@@ -487,16 +495,9 @@ async function furnish(scene, { desk, shelf, swaying }) {
     model("potted_plant_04", { height: 0.22 }).then((o) => put(o, sillX, sillY, -1.12, 0.5)),
     // On top of the bookcase, and on its middle shelf.
     inPlanter("calathea_orbifolia_01", { variant: "a", height: 0.34 }, { r: 0.11, h: 0.15, glaze: "sage" }, 0.72, shelfTop, ROOM.z0 + 0.2, 0.2),
-    model("ceramic_vase_01", { height: 0.26 }).then((o) => put(o, 0.28, shelf.shelfY[1] + 0.0125, 0, 0, shelf.group)),
-    // Books on three shelves.
-    ...[
-      [0, -0.24],
-      [0, 0.24],
-      [1, -0.22],
-      [2, -0.24],
-      [2, 0.24],
-      [3, 0.2],
-    ].map(([row, x]) => model("book_encyclopedia_set_01", { scale: 0.85 }).then((o) => put(o, x, shelf.shelfY[row] + 0.0125, 0.02, 0, shelf.group))),
+    model("ceramic_vase_01", { height: 0.26 }).then((o) => put(o, 0.14, shelf.shelfY[1] + 0.0125, 0, 0, shelf.group)),
+    // One encyclopedia set on the middle shelf; the rest are painted spines.
+    model("book_encyclopedia_set_01", { scale: 0.85 }).then((o) => put(o, -0.22, shelf.shelfY[1] + 0.0125, 0.02, 0, shelf.group)),
     // On the desk: the lamp, a succulent, a pencil cup.
     model("desk_lamp_arm_01", { height: 0.6 }).then((o) => {
       // Measured before it is parented, the box is in the lamp's own frame:
