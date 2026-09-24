@@ -4,10 +4,11 @@
 // of the dark. Shoot them, dodge them, pick up power-ups that change the gun,
 // survive until the mothership arrives and bring it down. Three lives.
 //
-// Controls: arrows / WASD to move, Space to fire, P to pause, Enter to start.
+// Controls: arrows / WASD to move, Space to fire, P to pause, M for sound, Enter to start.
 // With a mouse or a finger: hold and drag, the ship follows and fires.
 
 import * as THREE from "three";
+import { createSound } from "./sound.js";
 
 const BOUNDS = { x: 8.5, y: 4.2 };
 const SPAWN_Z = -150;
@@ -147,6 +148,7 @@ function buildBoss() {
  *  The game
  * ------------------------------------------------------------------ */
 export function createSpaceGame(container) {
+  const sound = createSound();
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -253,12 +255,20 @@ export function createSpaceGame(container) {
       <div class="game-score">0</div>
       <div class="game-progress"><div class="game-progress-bar"></div></div>
       <div class="game-lives"></div>
+      <button type="button" class="game-mute" data-act="mute" aria-label="Sound on or off (M)"></button>
     </div>
     <div class="game-weapon"></div>
     <div class="game-boss hidden"><span>MOTHERSHIP</span><div class="game-boss-bar"><div></div></div></div>
     <div class="game-overlay"></div>`;
   container.append(hud);
   const $ = (sel) => hud.querySelector(sel);
+  const speakerOn = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 8.5a4.5 4.5 0 0 1 0 7M18.5 6a8 8 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`;
+  const speakerOff = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 9.5l5 5M21.5 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`;
+  const paintMute = () => {
+    const b = $(".game-mute");
+    b.innerHTML = sound.muted ? speakerOff : speakerOn;
+    b.classList.toggle("off", sound.muted);
+  };
   const heart = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.3 3 4.5 6.7 4.5c2.1 0 3.5 1.2 4.3 2.4.8-1.2 2.2-2.4 4.3-2.4 3.7 0 5.8 3.8 4.3 7.3C19.5 16.4 12 21 12 21z"/></svg>`;
 
   // --- state ---------------------------------------------------------------
@@ -317,7 +327,7 @@ export function createSpaceGame(container) {
         <div class="game-kicker">Horn.os Arcade</div>
         <h2>NEBULA RUN</h2>
         <p>Dodge the asteroids, shoot the drones, grab power-ups and bring down the mothership.</p>
-        <div class="game-keys"><span><kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd> move</span><span><kbd>Space</kbd> fire</span><span><kbd>P</kbd> pause</span></div>
+        <div class="game-keys"><span><kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd> move</span><span><kbd>Space</kbd> fire</span><span><kbd>P</kbd> pause</span><span><kbd>M</kbd> sound</span></div>
         <div class="game-pus"><span class="pu double">Twin</span><span class="pu spread">Spread</span><span class="pu laser">Laser</span></div>
         <button type="button" class="game-btn" data-act="start">Start · <kbd>Enter</kbd></button>
         ${best ? `<div class="game-best">Best: ${best}</div>` : ""}
@@ -325,7 +335,12 @@ export function createSpaceGame(container) {
   }
   hud.addEventListener("click", (e) => {
     const act = e.target.closest("[data-act]")?.dataset.act;
+    sound.unlock();
     if (act === "start" || act === "retry") start();
+    if (act === "mute") {
+      sound.toggleMute();
+      paintMute();
+    }
   });
 
   function updateHud() {
@@ -362,6 +377,10 @@ export function createSpaceGame(container) {
     state = "playing";
     overlay("");
     updateHud();
+    sound.unlock();
+    sound.music.stop();
+    sound.music.intense(false);
+    sound.music.start();
   }
 
   // --- spawning ----------------------------------------------------------
@@ -396,6 +415,8 @@ export function createSpaceGame(container) {
     mesh.position.set(0, 3.5, -120);
     scene.add(mesh);
     boss = { mesh, hp: 90, max: 90, fire: 2, t: 0 };
+    sound.bossWarn();
+    sound.music.intense(true);
   }
 
   // --- effects -----------------------------------------------------------
@@ -420,6 +441,7 @@ export function createSpaceGame(container) {
   function fire() {
     const w = WEAPONS[weapon];
     fireCool = w.rate;
+    sound.shoot(weapon);
     const origin = new THREE.Vector3(shipPos.x, shipPos.y, -1.2);
     const shots = [];
     if (weapon === "single") shots.push([0, 0]);
@@ -441,6 +463,7 @@ export function createSpaceGame(container) {
     if (invuln > 0 || state !== "playing") return;
     lives -= 1;
     shake = 0.6;
+    sound.hurt();
     explode(new THREE.Vector3(shipPos.x, shipPos.y, 0), 0x7cf2ff, 50, 8, 0.4);
     weapon = "single";
     weaponLeft = 0;
@@ -460,12 +483,16 @@ export function createSpaceGame(container) {
     explode(p, 0xffffff, 60, 20, 0.35);
     timeScale = 0.35;
     saveBest();
+    sound.music.stop();
+    sound.bigExplosion();
+    sound.lose();
   }
 
   function win() {
     state = "won";
     endT = 0;
     saveBest();
+    sound.music.stop();
   }
 
   function saveBest() {
@@ -482,6 +509,12 @@ export function createSpaceGame(container) {
   // --- input -------------------------------------------------------------
   const KEYMAP = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down", a: "left", d: "right", w: "up", s: "down", q: "left", z: "up", " ": "fire" };
   function onKey(e, down) {
+    if (down) sound.unlock();
+    if (down && (e.key === "m" || e.key === "M")) {
+      sound.toggleMute();
+      paintMute();
+      return true;
+    }
     const k = KEYMAP[e.key] ?? KEYMAP[e.key?.toLowerCase?.()];
     if (down && e.key === "Enter" && state !== "playing" && state !== "paused") {
       start();
@@ -489,6 +522,8 @@ export function createSpaceGame(container) {
     }
     if (down && (e.key === "p" || e.key === "P") && (state === "playing" || state === "paused")) {
       state = state === "playing" ? "paused" : "playing";
+      if (state === "paused") sound.music.stop();
+      else sound.music.start();
       overlay(state === "paused" ? `<div class="game-card small"><h2>PAUSED</h2><p>Press <kbd>P</kbd> to resume</p></div>` : "");
       return true;
     }
@@ -625,6 +660,7 @@ export function createSpaceGame(container) {
         if (b.hit.has(a) || !hitR(b.mesh.position, a.mesh.position, a.size + 0.3)) continue;
         a.hp -= b.dmg;
         explode(b.mesh.position, 0xffd08a, 8, 5, 0.3);
+        sound.hit();
         if (b.pierce) b.hit.add(a);
         else {
           scene.remove(b.mesh);
@@ -634,6 +670,7 @@ export function createSpaceGame(container) {
       }
       if (dead) {
         explode(a.mesh.position, 0xc9a27a, 30 + a.size * 10, 7, 0.45);
+        sound.explode(a.size * 0.7);
         score += Math.round(50 * a.size);
         if (a.size > 1.6) for (let k = 0; k < 2; k++) spawnAsteroid(a.size * 0.5, a.mesh.position.clone().add(new THREE.Vector3((rnd() - 0.5) * 2, (rnd() - 0.5) * 2, 0)));
         scene.remove(a.mesh);
@@ -669,6 +706,7 @@ export function createSpaceGame(container) {
           const dir = new THREE.Vector3(shipPos.x, shipPos.y, 0).sub(m.position).normalize();
           scene.add(bolt);
           bolts.push({ mesh: bolt, vel: dir.multiplyScalar(26) });
+          sound.enemyShot();
         }
       }
       let dead = false;
@@ -677,6 +715,7 @@ export function createSpaceGame(container) {
         if (b.hit.has(e) || !hitR(b.mesh.position, m.position, 1.3)) continue;
         e.hp -= b.dmg;
         explode(b.mesh.position, 0xff6688, 8, 5, 0.3);
+        sound.hit();
         if (b.pierce) b.hit.add(e);
         else {
           scene.remove(b.mesh);
@@ -687,6 +726,7 @@ export function createSpaceGame(container) {
       if (dead) {
         explode(m.position, 0xff3355, 60, 10, 0.5);
         explode(m.position, 0xffc070, 30, 6, 0.4);
+        sound.explode(1.3);
         score += 250;
         if (rnd() < 0.3) spawnPowerup(undefined, m.position.clone());
         scene.remove(m);
@@ -729,6 +769,7 @@ export function createSpaceGame(container) {
       if (playing && hitR(p.mesh.position, ship.position, 1.6)) {
         weapon = p.kind;
         weaponLeft = WEAPON_TIME;
+        sound.pickup();
         explode(p.mesh.position, WEAPONS[p.kind].color, 40, 6, 0.4);
         score += 100;
         scene.remove(p.mesh);
@@ -758,12 +799,14 @@ export function createSpaceGame(container) {
             scene.add(bolt);
             bolts.push({ mesh: bolt, vel: dir.multiplyScalar(24) });
           }
+          sound.enemyShot();
         }
         for (let j = bullets.length - 1; j >= 0; j--) {
           const b = bullets[j];
           if (b.hit.has(boss) || !hitR(b.mesh.position, m.position, 4.6)) continue;
           boss.hp -= b.dmg;
           explode(b.mesh.position, 0xff6688, 10, 6, 0.35);
+          sound.hit();
           if (b.pierce) b.hit.add(boss);
           else {
             scene.remove(b.mesh);
@@ -806,6 +849,7 @@ export function createSpaceGame(container) {
         if (Math.floor(endT * 8) !== Math.floor((endT - dt) * 8)) {
           explode(boss.mesh.position.clone().add(new THREE.Vector3((rnd() - 0.5) * 8, (rnd() - 0.5) * 3, (rnd() - 0.5) * 6)), [0xffa040, 0xff3355, 0xffffff][Math.floor(rnd() * 3)], 70, 12, 0.8);
           shake = 0.5;
+          sound.explode(1.8);
         }
       } else if (boss) {
         explode(boss.mesh.position, 0xffffff, 200, 25, 1);
@@ -813,6 +857,8 @@ export function createSpaceGame(container) {
         scene.remove(boss.mesh);
         boss = null;
         shake = 1;
+        sound.bigExplosion();
+        sound.win();
       }
       // a victory roll, then the jump to warp
       if (endT > 1.2 && endT < 2.4) ship.rotation.z = -((endT - 1.2) / 1.2) * Math.PI * 2;
@@ -877,6 +923,7 @@ export function createSpaceGame(container) {
   resize();
   titleScreen();
   updateHud();
+  paintMute();
   renderer.setAnimationLoop(frame);
 
   return {
@@ -888,19 +935,22 @@ export function createSpaceGame(container) {
       }
       running = false;
       renderer.setAnimationLoop(null);
+      sound.suspend();
     },
     resume() {
+      sound.resume();
       running = true;
       clock.getDelta();
       renderer.setAnimationLoop(frame);
     },
     dispose() {
+      sound.dispose();
       running = false;
       renderer.setAnimationLoop(null);
       ro.disconnect();
       renderer.dispose();
       renderer.forceContextLoss?.();
     },
-    debug: { start, spawnBoss, win, lose, state: () => state, setWeapon: (w) => ((weapon = w), (weaponLeft = WEAPON_TIME)) },
+    debug: { sound, start, spawnBoss, win, lose, state: () => state, setWeapon: (w) => ((weapon = w), (weaponLeft = WEAPON_TIME)) },
   };
 }

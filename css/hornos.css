@@ -382,6 +382,10 @@
 .game-progress { flex: 1; height: 5px; border-radius: 99px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
 .game-progress-bar { height: 100%; width: 0; background: linear-gradient(90deg, #7cf2ff, #ff5ad8); border-radius: 99px; }
 .game-lives { display: flex; gap: 4px; }
+.game-mute { pointer-events: auto; display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 50%; background: rgba(255, 255, 255, 0.06); color: #eef3ff !important; cursor: pointer; }
+.game-mute svg { width: 17px; height: 17px; fill: currentColor; }
+.game-mute.off { color: #8c95ad !important; }
+.game-mute:hover { background: rgba(255, 255, 255, 0.14); }
 .game-lives svg { width: 22px; height: 22px; fill: rgba(255, 255, 255, 0.15); transition: fill 0.2s, transform 0.2s; }
 .game-lives .on svg { fill: #ff4d6d; filter: drop-shadow(0 0 6px rgba(255, 77, 109, 0.7)); }
 .game-weapon { position: absolute; left: 16px; bottom: 14px; display: flex; flex-direction: column; gap: 5px; width: 120px; }
