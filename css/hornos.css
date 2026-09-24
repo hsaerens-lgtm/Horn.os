@@ -1,0 +1,254 @@
+/* Horn.os — a calm, modern desktop. Two themes on the same tokens; the room
+   sets the theme from its day cycle (plan 3), ?theme= forces it. */
+
+.hornos {
+  --font: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --radius: 14px;
+  --bg: radial-gradient(120% 90% at 20% 10%, #f4efe4 0%, #e3eadf 55%, #cfdcd2 100%);
+  --surface: #ffffff;
+  --surface-2: #f4f3ef;
+  --text: #1c1c1a;
+  --muted: #6a6963;
+  --line: rgba(20, 20, 10, 0.09);
+  --accent: #2f6f5e;
+  --accent-ink: #ffffff;
+  --accent-soft: #e2eee8;
+  --shadow: 0 18px 50px rgba(30, 40, 30, 0.18), 0 2px 6px rgba(30, 40, 30, 0.08);
+  --bar: rgba(255, 255, 255, 0.62);
+  --dock: rgba(255, 255, 255, 0.72);
+
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: 36px 1fr auto;
+  font: 15px/1.55 var(--font);
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+.hornos[data-theme="dark"] {
+  --bg: radial-gradient(120% 90% at 20% 10%, #23302b 0%, #181c1e 60%, #111315 100%);
+  --surface: #1e1f22;
+  --surface-2: #27292d;
+  --text: #ebebe7;
+  --muted: #9b9b95;
+  --line: rgba(255, 255, 255, 0.08);
+  --accent: #7cc3aa;
+  --accent-ink: #0f1a16;
+  --accent-soft: #22332d;
+  --shadow: 0 18px 50px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.3);
+  --bar: rgba(20, 22, 24, 0.7);
+  --dock: rgba(28, 30, 33, 0.78);
+}
+.hornos *,
+.hornos *::before,
+.hornos *::after { box-sizing: border-box; }
+.hornos button { font: inherit; color: inherit; }
+.hornos a { color: var(--accent); }
+.hornos :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* top bar */
+.hornos-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 16px;
+  font-size: 13px;
+  background: var(--bar);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line);
+}
+.hornos-brand { font-weight: 700; letter-spacing: 0.02em; }
+.hornos-who { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hornos-clock { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
+.hornos-back {
+  padding: 3px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.hornos-desktop { position: relative; overflow: hidden; }
+
+/* dock */
+.hornos-dock {
+  justify-self: center;
+  display: flex;
+  gap: 6px;
+  margin: 0 16px 14px;
+  padding: 8px;
+  background: var(--dock);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+}
+.dock-item {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  width: 68px;
+  padding: 8px 4px 6px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
+}
+.dock-item:hover { background: var(--surface-2); transform: translateY(-2px); }
+.dock-item .icon { width: 26px; height: 26px; }
+.dock-item[data-open="chat"] { color: var(--accent); }
+.dock-label { font-size: 11px; color: var(--muted); }
+.dock-item.is-open::after {
+  content: "";
+  position: absolute;
+  bottom: 1px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--text);
+  opacity: 0.5;
+}
+.dock-item.is-front::after { background: var(--accent); opacity: 1; }
+.icon { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+/* windows */
+.win {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  animation: win-in 0.18s ease-out;
+}
+.win[hidden] { display: none; }
+.win.is-front { border-color: color-mix(in srgb, var(--accent) 30%, var(--line)); }
+@keyframes win-in {
+  /* Deviation from the brief: dropped the translateY/scale transform. It kept
+     interpolating past the moment the window is marked visible, so geometry
+     reads (boundingBox, drag deltas) taken right after open were off by a few
+     px — opacity-only keeps the fade without perturbing layout. */
+  from { opacity: 0; }
+}
+.win-bar {
+  display: flex;
+  align-items: center;
+  height: 40px;
+  flex: none;
+  padding: 0 8px 0 16px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--line);
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+.win-bar:active { cursor: grabbing; }
+.win-title { font-size: 13px; font-weight: 600; }
+.win-ctrl { margin-left: auto; display: flex; gap: 2px; }
+.win-btn {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+.win-btn:hover { background: var(--line); color: var(--text); }
+.win-body { flex: 1; min-height: 0; overflow: auto; }
+
+/* documents */
+.doc { max-width: 760px; padding: 28px 32px 36px; }
+.doc h1,
+.proj-detail h1 { margin: 0 0 4px; font-size: 26px; line-height: 1.2; letter-spacing: -0.01em; }
+.doc h2,
+.proj-detail h2 {
+  margin: 28px 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.doc h3 { margin: 0; font-size: 15px; }
+.doc ul { margin: 8px 0 0; padding-left: 20px; }
+.doc li { margin: 4px 0; }
+.doc-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.doc-sub { margin: 0; font-weight: 500; }
+.doc-meta { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
+.doc-lead { margin: 20px 0 0; font-size: 16px; }
+.doc-kicker { margin: 0 0 6px; font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); }
+.role { margin-top: 16px; }
+.role-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
+.role-dates { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 20px;
+  padding: 8px 16px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text) !important;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+.btn-primary { background: var(--accent); border-color: transparent; color: var(--accent-ink) !important; }
+.doc-head .btn { margin-top: 0; }
+.badges { display: flex; flex-wrap: wrap; gap: 6px; list-style: none; padding: 0 !important; margin: 8px 0 0; }
+.badge { margin: 0 !important; padding: 4px 10px; border-radius: 999px; background: var(--accent-soft); font-size: 13px; }
+.contact-list { list-style: none; padding: 0 !important; }
+.contact-list li { display: grid; grid-template-columns: 90px 1fr; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.contact-list span { color: var(--muted); }
+
+/* projects */
+.projects { display: grid; grid-template-columns: 240px 1fr; height: 100%; }
+.proj-list { margin: 0; padding: 8px; list-style: none; overflow: auto; background: var(--surface-2); border-right: 1px solid var(--line); }
+.proj-item {
+  display: grid;
+  gap: 1px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.proj-item:hover { background: var(--line); }
+.proj-item.is-active { background: var(--surface); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08); }
+.proj-name { font-size: 14px; font-weight: 600; }
+.proj-kind { font-size: 12px; color: var(--muted); }
+.proj-detail { padding: 28px 32px 36px; overflow: auto; }
+.proj-detail p { max-width: 62ch; }
+.proj-status { margin: 0; font-size: 13px; color: var(--muted); }
+
+@media (max-width: 700px) {
+  .win { left: 0 !important; top: 0 !important; width: 100% !important; height: 100% !important; border: 0; border-radius: 0; }
+  .win-bar { cursor: default; }
+  .hornos-who { display: none; }
+  .dock-item { width: 52px; }
+  .dock-label { font-size: 10px; }
+  .projects { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  .proj-list { display: flex; gap: 4px; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+  .proj-item { width: max-content; }
+  .doc,
+  .proj-detail { padding: 20px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .win { animation: none; }
+  .dock-item { transition: none; }
+}
