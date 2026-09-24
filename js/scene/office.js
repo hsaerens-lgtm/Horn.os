@@ -17,6 +17,7 @@ import { buildCat, buildGuitar, buildClock } from "./props.js";
 import { model, planter } from "./models.js";
 import { shelfBooks } from "./books.js";
 import { hangingPlant } from "./hanging.js";
+import { buildKeyboard, buildMouse, buildMug, buildDeskMat } from "./deskobjects.js";
 import { PHASES, PRESETS, phaseFor, mixPreset } from "./daycycle.js";
 import { buildCity } from "./city.js";
 
@@ -265,6 +266,46 @@ function buildDesk(scene) {
   foot.scale.z = 0.7;
   foot.position.set(0, -drop + 0.004, -0.02);
   mon.add(foot);
+  // a power LED and a quiet maker's mark on the chin
+  const led = new THREE.Mesh(new THREE.CircleGeometry(0.0016, 12), new THREE.MeshBasicMaterial({ color: 0xbfe6ff }));
+  led.position.set(SCREEN.w / 2 - 0.012, -SCREEN.h / 2 - chin / 2 + 0.001, 0.0074);
+  mon.add(led);
+  const mark = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.03, 0.006),
+    new THREE.MeshStandardMaterial({
+      map: canvasTexture(256, 52, (g, w, h) => {
+        g.clearRect(0, 0, w, h);
+        g.fillStyle = "#3a3d42";
+        g.font = "600 34px Inter, Arial, sans-serif";
+        g.textAlign = "center";
+        g.textBaseline = "middle";
+        g.fillText("HORN", w / 2, h / 2 + 2);
+      }),
+      transparent: true,
+      roughness: 0.4,
+    }),
+  );
+  mark.position.set(0, -SCREEN.h / 2 - chin / 2 + 0.001, 0.0074);
+  mon.add(mark);
+  // cables: one from the back of the neck down behind the desk, one coiled
+  // from the keyboard to the monitor
+  const cableMat = new THREE.MeshStandardMaterial({ color: 0x1b1c1e, roughness: 0.6 });
+  const neckBack = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0, -0.14, -0.1),
+    new THREE.Vector3(0.02, -drop + 0.05, -0.16),
+    new THREE.Vector3(0.05, -drop + 0.004, -0.2),
+    new THREE.Vector3(0.08, -drop + 0.002, -0.24),
+    new THREE.Vector3(0.1, -drop - 0.12, -0.25),
+  ]);
+  mon.add(mesh(new THREE.TubeGeometry(neckBack, 40, 0.0028, 8, false), cableMat));
+  const coil = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(-0.04, -drop + 0.012, 0.215),
+    new THREE.Vector3(-0.05, -drop + 0.004, 0.17),
+    new THREE.Vector3(-0.08, -drop + 0.003, 0.08),
+    new THREE.Vector3(-0.07, -drop + 0.003, -0.02),
+    new THREE.Vector3(-0.03, -drop + 0.02, -0.06),
+  ]);
+  mon.add(mesh(new THREE.TubeGeometry(coil, 60, 0.0022, 8, false), new THREE.MeshStandardMaterial({ color: 0xd86a2c, roughness: 0.5 })));
 
   // The screen: a cut-out that lets the CSS3D layer show through.
   const screen = new THREE.Mesh(
@@ -275,47 +316,24 @@ function buildDesk(scene) {
   screen.name = "screen";
   mon.add(screen);
 
-  // Keyboard: an aluminium base and a merged grid of keycaps.
-  const kb = new THREE.Group();
-  kb.position.set(0.0, TOP, 0.14);
-  group.add(kb);
-  kb.add(mesh(roundedBox(0.36, 0.012, 0.125, 0.004), M.keybase));
-  const keys = [];
-  const kw = 0.0205;
-  for (let row = 0; row < 5; row++) {
-    for (let col = 0; col < 15; col++) {
-      if (row === 4 && col > 3 && col < 11) {
-        if (col === 4) keys.push({ geometry: roundedBox(kw * 7 - 0.003, 0.008, kw - 0.003, 0.002), matrix: at(-0.1535 + 7 * kw, 0.009, -0.045 + row * kw) });
-        continue;
-      }
-      keys.push({ geometry: roundedBox(kw - 0.003, 0.008, kw - 0.003, 0.002), matrix: at(-0.1535 + col * kw, 0.009, -0.045 + row * kw) });
-    }
-  }
-  kb.add(mesh(mergeParts(keys), M.keycap));
-
-  // Mouse
-  const mouse = mesh(roundedBox(0.06, 0.028, 0.1, 0.013), M.keycap);
-  mouse.position.set(0.3, TOP + 0.014, 0.16);
+  // A felt mat under a mechanical keyboard and a sculpted mouse.
+  const deskMat = buildDeskMat(0.8, 0.33);
+  deskMat.position.set(0.1, TOP, 0.15);
+  group.add(deskMat);
+  const kb = buildKeyboard();
+  kb.group.position.set(-0.02, TOP + 0.003, 0.14);
+  kb.group.rotation.y = 0.03;
+  group.add(kb.group);
+  const mouse = buildMouse();
+  mouse.position.set(0.31, TOP + 0.003, 0.17);
+  mouse.rotation.y = Math.PI - 0.18; // buttons towards the screen
   group.add(mouse);
 
-  // Mug
-  const mug = new THREE.Group();
-  mug.position.set(0.52, TOP, 0.06);
-  mug.add(mesh(new THREE.CylinderGeometry(0.04, 0.037, 0.095, 24, 1, true), M.ceramic));
-  const inside = mesh(new THREE.CircleGeometry(0.038, 24), new THREE.MeshStandardMaterial({ color: 0x3b2417, roughness: 0.2 }));
-  inside.rotation.x = -Math.PI / 2;
-  inside.position.y = 0.075;
-  mug.add(inside);
-  const bottom = mesh(new THREE.CircleGeometry(0.037, 24), M.ceramic);
-  bottom.rotation.x = Math.PI / 2;
-  bottom.position.y = -0.0475;
-  mug.add(bottom);
-  mug.children.forEach((c) => (c.position.y += 0.0475));
-  const handle = mesh(new THREE.TorusGeometry(0.024, 0.006, 8, 20, Math.PI * 1.2), M.ceramic);
-  handle.position.set(0.042, 0.05, 0);
-  handle.rotation.z = -Math.PI * 0.6;
-  mug.add(handle);
-  group.add(mug);
+  // A mug of coffee, steaming.
+  const mug = buildMug();
+  mug.group.position.set(0.55, TOP, 0.05);
+  mug.group.rotation.y = -0.6;
+  group.add(mug.group);
 
   // Notebooks
   const r = seeded(5);
@@ -339,7 +357,7 @@ function buildDesk(scene) {
   lampLight.target = lampTarget;
   group.add(lamp);
 
-  return { group, screen, lampLight, lampTarget, bulb, lamp, top, legs };
+  return { group, screen, lampLight, lampTarget, bulb, lamp, top, legs, mug };
 }
 
 function buildShelf(scene) {
@@ -392,42 +410,87 @@ function buildRug(scene) {
 }
 
 function buildArt(scene) {
-  // A framed botanical print above the desk.
-  const tex = canvasTexture(768, 1024, (g, w, h) => {
-    g.fillStyle = "#f3eee4";
+  // An architecture print above the desk — a nod to the architecture studies
+  // in Grenoble: a Swiss-style composition on paper, in a white mat, a thin
+  // oak frame and a pane of glass that catches the room.
+  const W = 0.5;
+  const H = 0.7;
+  const art = canvasTexture(1400, 1960, (g, w, h) => {
+    // paper, with a little grain
+    g.fillStyle = "#f2ede2";
     g.fillRect(0, 0, w, h);
     const r = seeded(12);
-    g.strokeStyle = "#2f5d50";
-    g.fillStyle = "rgba(47,93,80,0.85)";
-    g.lineWidth = 6;
-    g.beginPath();
-    g.moveTo(w / 2, h * 0.9);
-    g.bezierCurveTo(w * 0.52, h * 0.6, w * 0.46, h * 0.4, w * 0.5, h * 0.12);
-    g.stroke();
-    for (let i = 0; i < 9; i++) {
-      const t = 0.18 + i * 0.08;
-      const y = h * (0.9 - t * 0.85);
-      const side = i % 2 ? 1 : -1;
-      g.save();
-      g.translate(w / 2 + side * 6, y);
-      g.rotate(side * (0.9 + r() * 0.3));
-      g.beginPath();
-      g.ellipse(0, -60, 34, 70, 0, 0, Math.PI * 2);
-      g.fill();
-      g.restore();
+    for (let i = 0; i < 40000; i++) {
+      g.fillStyle = r() < 0.5 ? "rgba(120,100,70,0.04)" : "rgba(255,255,255,0.05)";
+      g.fillRect(r() * w, r() * h, 1 + r() * 2, 1 + r() * 2);
     }
-    g.fillStyle = "#c98f5a";
+    const u = w / 14;
+    // the composition: a sun, a slab, a column, a stair — a building reduced to shapes
+    g.fillStyle = "#c8553d";
     g.beginPath();
-    g.arc(w * 0.72, h * 0.22, 60, 0, Math.PI * 2);
+    g.arc(u * 9.2, u * 5.2, u * 3.1, 0, Math.PI * 2);
     g.fill();
+    g.fillStyle = "#1f5c5a";
+    g.fillRect(u * 1.5, u * 8.2, u * 8.5, u * 1.1);
+    g.fillStyle = "#e1a93a";
+    g.fillRect(u * 3.2, u * 9.3, u * 1.1, u * 7.2);
+    g.fillStyle = "#22201d";
+    for (let k = 0; k < 6; k++) g.fillRect(u * (6.2 + k * 0.9), u * (15.2 - k * 0.9), u * 0.9, u * (0.9 + k * 0.9));
+    g.fillRect(u * 1.5, u * 16.5, u * 11, u * 0.18);
+    // hairline construction lines, as on a drawing
+    g.strokeStyle = "rgba(34,32,29,0.35)";
+    g.lineWidth = 2;
+    g.beginPath();
+    g.moveTo(u * 1.5, u * 2);
+    g.lineTo(u * 12.5, u * 16.4);
+    g.moveTo(u * 12.5, u * 2);
+    g.lineTo(u * 1.5, u * 16.4);
+    g.stroke();
+    g.beginPath();
+    g.arc(u * 9.2, u * 5.2, u * 4.2, 0, Math.PI * 2);
+    g.stroke();
+    // type
+    g.fillStyle = "#22201d";
+    g.font = `800 ${u * 0.95}px Inter, Arial, sans-serif`;
+    g.fillText("FORM", u * 1.5, u * 17.7);
+    g.fillText("FOLLOWS", u * 1.5, u * 18.65);
+    g.fillText("LIGHT", u * 1.5, u * 19.6);
+    g.font = `500 ${u * 0.3}px Inter, Arial, sans-serif`;
+    g.fillText("ARCHITECTURE STUDIES  ·  GRENOBLE", u * 7.4, u * 17.5);
+    g.fillText("PLAN  ·  SECTION  ·  ELEVATION", u * 7.4, u * 18.0);
+    g.fillText("MMXIII — MMXV", u * 7.4, u * 18.5);
+    g.fillStyle = "#c8553d";
+    g.fillRect(u * 7.4, u * 18.95, u * 0.5, u * 0.5);
   });
-  const frame = mesh(roundedBox(0.5, 0.66, 0.025, 0.004), M.steel);
-  frame.position.set(DESK.x + 0.1, 1.72, ROOM.z0 + 0.0125);
+  const x = DESK.x + 0.12;
+  const y = 1.72;
+  const zWall = ROOM.z0;
+  // oak frame: four mitred-looking bars
+  const oak = OAK();
+  const fw = 0.022;
+  const depth = 0.028;
+  const bars = [
+    { geometry: new THREE.BoxGeometry(W + 2 * fw, fw, depth), matrix: at(0, H / 2 + fw / 2, 0) },
+    { geometry: new THREE.BoxGeometry(W + 2 * fw, fw, depth), matrix: at(0, -H / 2 - fw / 2, 0) },
+    { geometry: new THREE.BoxGeometry(fw, H, depth), matrix: at(-W / 2 - fw / 2, 0, 0) },
+    { geometry: new THREE.BoxGeometry(fw, H, depth), matrix: at(W / 2 + fw / 2, 0, 0) },
+  ];
+  const frame = mesh(mergeParts(bars), oak);
+  frame.position.set(x, y, zWall + depth / 2 + 0.002);
   scene.add(frame);
-  const print = new THREE.Mesh(new THREE.PlaneGeometry(0.44, 0.6), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9 }));
-  print.position.set(DESK.x + 0.1, 1.72, ROOM.z0 + 0.026);
-  print.receiveShadow = true;
+  // white mat, the print inset in it, and the glass
+  const matBoard = mesh(new THREE.PlaneGeometry(W, H), new THREE.MeshStandardMaterial({ color: 0xf7f5f0, roughness: 0.95 }), { cast: false });
+  matBoard.position.set(x, y, zWall + 0.006);
+  scene.add(matBoard);
+  const print = mesh(new THREE.PlaneGeometry(W - 0.09, (W - 0.09) * 1.4), new THREE.MeshStandardMaterial({ map: art, roughness: 0.9 }), { cast: false });
+  print.position.set(x, y + 0.01, zWall + 0.0065);
   scene.add(print);
+  const glass = new THREE.Mesh(
+    new THREE.PlaneGeometry(W, H),
+    new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.04, metalness: 0, transparent: true, opacity: 0.12, envMapIntensity: 1.5, clearcoat: 1 }),
+  );
+  glass.position.set(x, y, zWall + 0.02);
+  scene.add(glass);
 }
 
 function buildPlants(scene, { sill, shelf }) {
@@ -464,8 +527,6 @@ function buildPlants(scene, { sill, shelf }) {
 /* ------------------------------------------------------------------ *
  *  Real models (Poly Haven, CC0)
  * ------------------------------------------------------------------ */
-const DESK_STYLE = new URLSearchParams(location.search).get("desk") === "metal" ? "metal" : "oak";
-
 async function furnish(scene, { desk, shelf, swaying }) {
   const put = (obj, x, y, z, ry = 0, parent = scene) => {
     obj.position.set(x, y, z);
@@ -516,16 +577,7 @@ async function furnish(scene, { desk, shelf, swaying }) {
     model("potted_plant_04", { height: 0.2 }).then((o) => put(o, 0.64, TOP, -0.2, 0.3, desk.group)),
     model("stationery_supplies", { height: 0.15 }).then((o) => put(o, -0.42, TOP, -0.25, 0.4, desk.group)),
     // The chair, pulled out and turned towards the room.
-    // The desk itself: a steel office desk with drawers, its top brought to
-    // the height every desk object is placed at.
-    DESK_STYLE === "metal" && model("metal_office_desk").then((o) => {
-      const s = TOP / o.userData.size.y;
-      o.scale.set(0.84 * s, s, 0.92 * s);
-      put(o, DESK.x + 0.03, 0, ROOM.z0 + 0.03 + (o.userData.size.z * 0.92 * s) / 2, 0);
-      desk.top.visible = false;
-      desk.legs.visible = false;
-    }),
-    // A designer chair pushed in at the desk; the leather lounge chair by the window.
+    // A leather chair pushed in at the desk; the lounge chair by the window.
     model("dining_chair_02", { height: 0.95 }).then((o) => put(o, DESK.x + 0.12, 0, DESK.z + 0.66, Math.PI - 0.25)),
     model("modern_arm_chair_01", { height: 0.9 }).then((o) => put(o, ROOM.x0 + 0.75, 0, 0.35, 2.2)),
   ];
@@ -666,6 +718,7 @@ export function createOffice({ container, osElement, onFocus = () => {}, onWide 
   scene.add(wallClock.group);
 
   /* --- the day cycle --- */
+  let currentNight = 0;
   const SUN_TARGET = lights.sun.target.position.clone();
   function applyPreset(p) {
     lights.sun.color.copy(p.sunColor);
@@ -684,6 +737,7 @@ export function createOffice({ container, osElement, onFocus = () => {}, onWide 
     lights.fill.intensity = p.fillI;
     dust.material.opacity = p.dust;
     renderer.toneMappingExposure = p.exposure;
+    currentNight = p.night;
     city.apply(p);
   }
   let phase = PHASES.includes(initialPhase) ? initialPhase : "day";
@@ -824,6 +878,7 @@ export function createOffice({ container, osElement, onFocus = () => {}, onWide 
       if (k === 1) phaseTween = null;
     }
     cat.update(t, now);
+    desk.mug.update(t, camera, 1 - currentNight * 0.5);
     city.update(t, Math.min(0.05, t - (lastT ?? t)));
     lastT = t;
     wallClock.update(new Date());
