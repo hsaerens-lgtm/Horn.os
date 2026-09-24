@@ -26,13 +26,19 @@ No build step: static files and plain ES modules.
     python serve.py 4330        # then open http://localhost:4330/
 
 `?theme=light` or `?theme=dark` forces the theme (otherwise it follows the
-visitor's clock: dark from 21:00 to 07:00). `?debug` exposes `window.__os`.
+visitor's clock: dark from 21:00 to 07:00). `?debug` exposes `window.__os` and
+`window.__streamLog` (Plan 2's screen-light log of the chat's `onStream(true/false)`
+calls).
 
 ## Tests
 
     npm test                    # content, dialogue graph, typing, inline marks (Node)
     npm run test:e2e            # Horn.os and the D&D page in Chromium (Playwright)
     npm run shots:os            # screenshots into test/out/
+
+The `dnd:*` scripts (`dnd:shots`, `dnd:bench:*`) talk to the D&D page over
+HTTP, so they need `npm run serve` running on `:4330` in another terminal
+first.
 
 Editing the dialogue: keep 1–4 questions per answer and never point `next` at
 `root` — `npm test` fails on dead ends, unreachable answers and unknown project ids.

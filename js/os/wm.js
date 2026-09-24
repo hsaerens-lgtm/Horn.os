@@ -81,6 +81,7 @@ export function createWindowManager(desktop, { onChange = () => {} } = {}) {
     if (!e || e.state !== "open") return;
     e.state = "minimised";
     e.el.hidden = true;
+    syncFront();
     onChange();
   }
 
@@ -90,6 +91,7 @@ export function createWindowManager(desktop, { onChange = () => {} } = {}) {
     e.state = "closed";
     e.el.hidden = true;
     e.api?.dispose?.();
+    syncFront();
     onChange();
   }
 
@@ -97,8 +99,17 @@ export function createWindowManager(desktop, { onChange = () => {} } = {}) {
     const e = entries.get(id);
     if (!e?.el) return;
     e.el.style.zIndex = String(++z);
-    for (const other of entries.values()) other.el?.classList.toggle("is-front", other === e);
+    syncFront();
     onChange();
+  }
+
+  // The front border (`.is-front`) belongs on whichever open window is
+  // actually on top. Minimising or closing the front window used to leave it
+  // stuck there (or on nothing) until something else called focus() —
+  // recomputed here so it always tracks top().
+  function syncFront() {
+    const frontId = top();
+    for (const [eid, e] of entries) e.el?.classList.toggle("is-front", eid === frontId);
   }
 
   function top() {

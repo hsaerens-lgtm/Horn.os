@@ -2,7 +2,6 @@
   "name": "cv-3d",
   "version": "1.0.0",
   "description": "Horn Saerens — the office and Horn.os. No build step: the page is static files. This manifest exists only for the test harness.",
-  "main": "index.js",
   "directories": {
     "doc": "docs"
   },

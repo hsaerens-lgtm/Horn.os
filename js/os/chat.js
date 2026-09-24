@@ -40,12 +40,26 @@ export function createChat(
   let busy = false; // typing out, thinking or streaming
   let alive = true;
   let streaming = false; // true while an onStream(true)…onStream(false) pair is open
+  let streamMsg = null; // the .msg-bot currently streaming, for aria-busy cleanup
 
+  const NEAR_BOTTOM = 48;
   const wait = (ms) => new Promise((r) => setTimeout(r, reducedMotion ? 0 : ms));
+  const isNearBottom = () => log.scrollHeight - log.scrollTop - log.clientHeight <= NEAR_BOTTOM;
   const scrollDown = () => {
     log.scrollTop = log.scrollHeight;
   };
   const nodeFor = (id) => dialogue.nodes[id] ?? dialogue.nodes[dialogue.start];
+
+  // onStream is the host's hook (Plan 2 drives a screen light off it); a bug in
+  // it must never break the chat. Caught and logged, never left to reject the
+  // streaming answer() promise and strand `busy`.
+  function safeStream(v) {
+    try {
+      onStream(v);
+    } catch (err) {
+      console.error(err);
+    }
+  }
 
   function setOptions(nodeId) {
     const node = nodeFor(nodeId);
@@ -124,18 +138,20 @@ export function createChat(
   function endStream() {
     if (!streaming) return;
     streaming = false;
-    onStream(false);
+    streamMsg?.removeAttribute("aria-busy");
+    streamMsg = null;
+    safeStream(false);
   }
 
   async function answer(blocks) {
-    const dots = h("div", { class: "typing", "aria-label": "Assistant is typing" }, h("span"), h("span"), h("span"));
+    const dots = h("div", { class: "typing", role: "status", "aria-label": "Assistant is typing" }, h("span"), h("span"), h("span"));
     log.append(dots);
     scrollDown();
     await wait(thinkingDelay(rand));
     if (!alive) return;
     dots.remove();
 
-    const msg = h("div", { class: "msg msg-bot" });
+    const msg = h("div", { class: "msg msg-bot", "aria-busy": "true" });
     log.append(msg);
     let skipped = false;
     const skip = () => {
@@ -143,7 +159,8 @@ export function createChat(
     };
     msg.addEventListener("click", skip);
     streaming = true;
-    onStream(true);
+    streamMsg = msg;
+    safeStream(true);
     for (const block of blocks) {
       if (!alive) break;
       if (block.p !== undefined) await stream(msg.appendChild(h("p")), block.p, () => skipped);
@@ -167,6 +184,10 @@ export function createChat(
     const nodes = new Map();
     for (const token of wordTokens(segments)) {
       if (!alive) return;
+      // Only follow the stream down if the reader was already near the
+      // bottom before this word lands — otherwise someone who scrolled up to
+      // reread an earlier line keeps getting yanked back down.
+      const stick = isNearBottom();
       let node = nodes.get(token.seg);
       if (!node) {
         node = segmentEl(segments[token.seg], "");
@@ -175,7 +196,7 @@ export function createChat(
       }
       node.textContent += token.text;
       if (!reducedMotion && !isSkipped()) {
-        scrollDown();
+        if (stick) scrollDown();
         await wait(WORD_MS);
       }
     }
@@ -196,6 +217,11 @@ export function createChat(
     hot = (hot + delta + options.length) % options.length;
     setTyped("");
     paintHot();
+    // Roving focus: when a chip itself holds keyboard focus (Tab got us here),
+    // move real DOM focus along with the highlight. Otherwise a stray Enter is
+    // the still-focused chip's own native activation, sending the wrong
+    // question — see fix round 2, finding 1.
+    if (chips.contains(document.activeElement)) chips.children[hot]?.focus();
   }
 
   // Returns true when the key was used, so the caller can preventDefault.
@@ -221,11 +247,18 @@ export function createChat(
   }
 
   busy = true;
-  answer(nodeFor(dialogue.start).answer).then(() => {
-    if (!alive) return;
-    busy = false;
-    setOptions(dialogue.start);
-  });
+  answer(nodeFor(dialogue.start).answer)
+    .then(() => {
+      if (!alive) return;
+      busy = false;
+      setOptions(dialogue.start);
+    })
+    .catch((err) => {
+      console.error(err);
+      if (!alive) return;
+      busy = false;
+      setOptions(dialogue.start);
+    });
 
   return {
     handleKey,

@@ -241,9 +241,12 @@
   .hornos-who { display: none; }
   /* A sixth dock icon (chat) no longer fits the old 16px side margins at
      narrow widths (e.g. 390px) without the dock forcing the page 2px wider
-     than the viewport — tighten the margin so six items fit. */
-  .hornos-dock { margin: 0 6px 14px; }
-  .dock-item { width: 52px; }
+     than the viewport — tighten the margin so six items fit. Below that
+     (down to 320px) a fixed per-item width still overflows, so the dock is
+     capped to the viewport and the six items share whatever width is left
+     instead of each claiming a fixed one (fix round 2, finding 2). */
+  .hornos-dock { margin: 0 6px 14px; max-width: calc(100% - 12px); }
+  .dock-item { flex: 1 1 0; min-width: 0; width: auto; }
   .dock-label { font-size: 10px; }
   .projects { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
   .proj-list { display: flex; gap: 4px; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); }
@@ -274,7 +277,7 @@
 }
 .msg-bot { position: relative; align-self: flex-start; padding-left: 38px; }
 .msg-bot::before {
-  content: "H";
+  content: "H" / "";
   position: absolute;
   left: 0;
   top: 0;

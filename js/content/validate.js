@@ -4,8 +4,26 @@
 // end a recruiter would hit. These checks make every such mistake a failing
 // test instead.
 
+import { parseInline } from "../os/inline.js";
+
 export const WINDOW_IDS = ["chat", "resume", "skills", "projects", "contact", "dnd"];
 const BLOCK_KINDS = ["p", "list", "project", "open"];
+const ALLOWED_LINK_SCHEMES = ["https:", "mailto:"];
+
+// A [label](href) inside a p or list item must go somewhere safe: no
+// javascript:, data:, or bare relative paths slipping into the chat.
+function checkLinks(text, label, errors) {
+  for (const seg of parseInline(text)) {
+    if (seg.kind !== "link") continue;
+    let scheme = null;
+    try {
+      scheme = new URL(seg.href).protocol;
+    } catch {
+      scheme = null;
+    }
+    if (!ALLOWED_LINK_SCHEMES.includes(scheme)) errors.push(`${label}: link "${seg.href}" must be https: or mailto:`);
+  }
+}
 
 export function validateProfile(profile) {
   const errors = [];
@@ -52,8 +70,19 @@ export function validateDialogue(dialogue, profile) {
         return;
       }
       const kind = kinds[0];
-      if (kind === "p" && typeof b.p !== "string") errors.push(`${id}: block ${i} p must be text`);
-      if (kind === "list" && (!Array.isArray(b.list) || b.list.length === 0)) errors.push(`${id}: block ${i} empty list`);
+      if (kind === "p") {
+        if (typeof b.p !== "string") errors.push(`${id}: block ${i} p must be text`);
+        else if (!b.p.trim()) errors.push(`${id}: block ${i} p is empty`);
+        else checkLinks(b.p, `${id}: block ${i}`, errors);
+      }
+      if (kind === "list") {
+        if (!Array.isArray(b.list) || b.list.length === 0) errors.push(`${id}: block ${i} empty list`);
+        else
+          b.list.forEach((item, li) => {
+            if (typeof item !== "string" || !item.trim()) errors.push(`${id}: block ${i} item ${li} is empty`);
+            else checkLinks(item, `${id}: block ${i} item ${li}`, errors);
+          });
+      }
       if (kind === "project" && !projectIds.has(b.project)) errors.push(`${id}: unknown project "${b.project}"`);
       if (kind === "open" && !WINDOW_IDS.includes(b.open)) errors.push(`${id}: unknown window "${b.open}"`);
       if (kind === "open" && typeof b.label !== "string") errors.push(`${id}: block ${i} open needs a label`);

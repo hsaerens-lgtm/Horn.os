@@ -2,6 +2,20 @@ import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { startServer, openPage } from "./harness.mjs";
 import { dialogue } from "../../js/content/dialogue.js";
+import { parseInline } from "../../js/os/inline.js";
+
+// The rendered text of an answer's blocks, the same way chat.js's stream()
+// turns them into DOM text: markup stripped, blocks concatenated with no
+// separator. Used as the "full length" a partial, mid-stream render must fall
+// short of.
+function renderedAnswerText(blocks) {
+  let out = "";
+  for (const block of blocks) {
+    if (block.p !== undefined) out += parseInline(block.p).map((s) => s.text).join("");
+    else if (block.list) for (const item of block.list) out += parseInline(item).map((s) => s.text).join("");
+  }
+  return out;
+}
 
 let server;
 before(async () => {
@@ -72,6 +86,24 @@ test("keystrokes type the highlighted question, never the key itself", async () 
   }
 });
 
+// Fix round 2, finding 1: arrow keys must move real DOM focus along with the
+// highlight, not just the `.is-hot` class — otherwise Enter (a native click on
+// whichever chip still holds focus) sends the wrong question.
+test("arrow keys move focus with the highlight, so Enter sends the highlighted chip", async () => {
+  const { page, close } = await openPage(server.url, { reducedMotion: "reduce" });
+  try {
+    await page.waitForSelector(CHIP, { timeout: 10000 });
+    await page.locator(".chat-chips .chip").first().focus();
+    await page.keyboard.press("ArrowRight");
+    const hot = await page.textContent(".chip.is-hot");
+    await page.keyboard.press("Enter");
+    await page.waitForSelector(".msg-user");
+    assert.equal(await page.textContent(".msg-user"), hot);
+  } finally {
+    await close();
+  }
+});
+
 test("Back to topics returns to the entry questions", async () => {
   const { page, close } = await openPage(server.url, { reducedMotion: "reduce" });
   try {
@@ -117,22 +149,41 @@ test("clicking a streaming answer finishes it", async () => {
 // Fix round 1, finding 2: closing the chat mid-stream must balance onStream
 // (Plan 2 drives the screen light off it) and must not keep streaming into a
 // detached message afterwards.
+//
+// Fix round 2, finding 9: prove the close really did land mid-stream, not
+// after the answer happened to finish — compare the streamed text's length
+// at close against the full rendered answer (a lower bound the word-by-word
+// stream needs several seconds to reach), and confirm the text is frozen
+// afterwards, not just the onStream count.
 test("closing the chat mid-stream balances onStream and stops the stream", async () => {
   const { page, close } = await openPage(`${server.url}?debug=1`);
   try {
     await page.waitForSelector(CHIP, { timeout: 10000 });
+    const nodeId = dialogue.nodes[dialogue.start].next.find((id) => dialogue.nodes[id].question === "Who is Horn?");
+    const fullText = renderedAnswerText(dialogue.nodes[nodeId].answer);
+
     await chipNamed(page, "Who is Horn?").click();
     await page.waitForFunction(() => document.querySelectorAll(".msg-bot").length === 2);
+    const atClose = await page.locator(".msg-bot").last().textContent();
     await page.click('.win[data-win="chat"] [data-act="close"]');
+
+    assert.ok(
+      atClose.length < fullText.length,
+      `expected a partial answer at close (${atClose.length} of ${fullText.length} chars): ${JSON.stringify(atClose)}`,
+    );
+
     const afterClose = await page.evaluate(() => window.__streamLog.slice());
     assert.deepEqual(
       afterClose.slice(-2),
       [true, false],
       `expected the "Who is Horn?" stream's own true/false pair at the end, got ${JSON.stringify(afterClose)}`,
     );
+    const textAfterClose = await page.locator(".msg-bot").last().textContent();
     await page.waitForTimeout(1500);
     const later = await page.evaluate(() => window.__streamLog.slice());
     assert.deepEqual(later, afterClose, "no further onStream calls after dispose");
+    const textLater = await page.locator(".msg-bot").last().textContent();
+    assert.equal(textLater, textAfterClose, "the streamed text must not keep growing after the window closes");
   } finally {
     await close();
   }

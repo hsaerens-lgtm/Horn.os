@@ -103,6 +103,30 @@ test("on a phone-width screen a window fills the width", async () => {
   }
 });
 
+// Fix round 2, finding 2: the six-item dock overflowed the viewport at 360 px
+// and clipped items at 320 px. The dock and every item must stay fully inside
+// the viewport at both widths.
+for (const width of [360, 320]) {
+  test(`the dock fits inside a ${width} px viewport`, async () => {
+    const { page, close } = await openPage(server.url, { width, height: 700 });
+    try {
+      await page.waitForSelector(".hornos-dock");
+      const dockBox = await page.locator(".hornos-dock").boundingBox();
+      assert.ok(dockBox.x >= 0, `dock left ${dockBox.x} should be >= 0`);
+      assert.ok(dockBox.x + dockBox.width <= width, `dock right ${dockBox.x + dockBox.width} should be <= ${width}`);
+      const items = await page.locator(".dock-item").all();
+      assert.equal(items.length, 6);
+      for (const item of items) {
+        const box = await item.boundingBox();
+        assert.ok(box.x >= 0, `item left ${box.x} should be >= 0`);
+        assert.ok(box.x + box.width <= width, `item right ${box.x + box.width} should be <= ${width}`);
+      }
+    } finally {
+      await close();
+    }
+  });
+}
+
 test("?theme=dark forces the dark theme", async () => {
   const { page, close } = await openPage(`${server.url}?theme=dark`);
   try {

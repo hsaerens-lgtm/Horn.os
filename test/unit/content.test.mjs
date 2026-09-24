@@ -68,6 +68,39 @@ test("catches a block with two kinds and a start without an again answer", () =>
   assert.ok(errors.some((e) => e.includes('"again"')));
 });
 
+test("catches an empty or whitespace-only paragraph", () => {
+  const d = tiny();
+  d.nodes.root.answer = [{ p: "   " }];
+  assert.ok(validateDialogue(d, tinyProfile).some((e) => e.includes("p is empty")));
+});
+
+test("catches an empty list item", () => {
+  const d = tiny();
+  d.nodes.y.answer = [{ list: ["fine", "  "] }];
+  assert.ok(validateDialogue(d, tinyProfile).some((e) => e.includes("item 1 is empty")));
+});
+
+test("catches a paragraph link whose scheme is not https: or mailto:", () => {
+  const d = tiny();
+  d.nodes.root.answer = [{ p: "See [this](javascript:alert(1))" }];
+  const errors = validateDialogue(d, tinyProfile);
+  assert.ok(errors.some((e) => e.includes('must be https: or mailto:')));
+});
+
+test("catches a list item link whose scheme is not https: or mailto:", () => {
+  const d = tiny();
+  d.nodes.y.answer = [{ list: ["See [this](ftp://example.com/file)"] }];
+  const errors = validateDialogue(d, tinyProfile);
+  assert.ok(errors.some((e) => e.includes('must be https: or mailto:')));
+});
+
+test("allows https: and mailto: links in a paragraph and a list item", () => {
+  const d = tiny();
+  d.nodes.root.answer = [{ p: "Email [me](mailto:x@y.com) or visit [site](https://example.com)" }];
+  d.nodes.y.answer = [{ list: ["A [link](https://example.com)"] }];
+  assert.deepEqual(validateDialogue(d, tinyProfile), []);
+});
+
 test("validateProfile catches a project with neither a story nor a summary", () => {
   const p = structuredClone(tinyProfile);
   p.projects.push({ id: "b", name: "B", kind: "k", status: "s" });
