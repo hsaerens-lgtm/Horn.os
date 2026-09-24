@@ -361,20 +361,59 @@ function buildDesk(scene) {
   return { group, screen, lampLight, lampTarget, bulb, lamp, top, legs, mug };
 }
 
+// A board whose grain runs along its longest side, at a real scale (one
+// texture repeat per 0.6 m), each board offset so no two share a figure.
+function woodBoard(w, h, d, seed) {
+  const geo = new THREE.BoxGeometry(w, h, d);
+  const pos = geo.attributes.position;
+  const nor = geo.attributes.normal;
+  const uv = geo.attributes.uv;
+  const dims = [w, h, d];
+  const long = dims.indexOf(Math.max(...dims));
+  const r = seeded(seed);
+  const ou = r();
+  const ov = r();
+  for (let i = 0; i < pos.count; i++) {
+    const n = [Math.abs(nor.getX(i)), Math.abs(nor.getY(i)), Math.abs(nor.getZ(i))];
+    const face = n.indexOf(Math.max(...n));
+    const p = [pos.getX(i), pos.getY(i), pos.getZ(i)];
+    const others = [0, 1, 2].filter((a) => a !== face);
+    const ua = others.includes(long) ? long : others[0];
+    const va = others.find((a) => a !== ua);
+    uv.setXY(i, p[ua] / 0.6 + ou, p[va] / 0.6 + ov);
+  }
+  return geo;
+}
+
 function buildShelf(scene) {
-  // An open walnut bookcase against the back wall, right of the desk.
+  // An open walnut bookcase against the back wall, right of the desk: solid
+  // sides, shelves with a deep front lip, a recessed plinth, a top, and a
+  // painted back panel the books stand out against.
   const g = new THREE.Group();
   g.position.set(0.95, 0, ROOM.z0 + 0.17);
-  const wood = WALNUT();
+  const wood = pbr("american_walnut_veneer", [1, 1], { color: 0xd89c6a });
+  wood.normalScale.set(1.6, 1.6); // let the grain catch the light
   const W = 1.0;
   const H = 1.9;
   const D = 0.32;
+  const T = 0.028; // side thickness
+  const inner = W - 2 * T;
+  const shelfY = [0.085, 0.525, 0.965, 1.405, H - 0.015];
   const parts = [];
-  parts.push({ geometry: new THREE.BoxGeometry(0.025, H, D), matrix: at(-W / 2, H / 2, 0) });
-  parts.push({ geometry: new THREE.BoxGeometry(0.025, H, D), matrix: at(W / 2, H / 2, 0) });
-  const shelfY = [0.06, 0.5, 0.94, 1.38, H - 0.0125];
-  for (const y of shelfY) parts.push({ geometry: new THREE.BoxGeometry(W, 0.025, D), matrix: at(0, y, 0) });
+  let seed = 3;
+  const board = (w, h, d, x, y, z) => parts.push({ geometry: woodBoard(w, h, d, seed++), matrix: at(x, y, z) });
+  board(T, H, D, -W / 2 + T / 2, H / 2, 0);
+  board(T, H, D, W / 2 - T / 2, H / 2, 0);
+  board(W, 0.03, D, 0, H - 0.015, 0);
+  for (const y of shelfY.slice(0, 4)) {
+    board(inner, 0.025, D - 0.01, 0, y, -0.005);
+    board(inner, 0.042, 0.02, 0, y - 0.0085, D / 2 - 0.01); // the lip
+  }
+  board(inner, 0.072, 0.02, 0, 0.036, D / 2 - 0.035); // recessed plinth
   g.add(mesh(mergeParts(parts), wood));
+  const back = mesh(new THREE.BoxGeometry(inner, H - 0.06, 0.008), new THREE.MeshStandardMaterial({ color: 0x3f4c47, roughness: 0.85 }), { cast: false });
+  back.position.set(0, H / 2, -D / 2 + 0.004);
+  g.add(back);
 
   // Books: every shelf filled differently, standing, leaning and stacked.
   const top = (i) => shelfY[i] + 0.0125;
