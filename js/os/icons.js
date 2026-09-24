@@ -24,5 +24,6 @@ export const ICONS = {
   skills: icon("M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"),
   projects: icon("M3 7h7l2 2h9v10H3z"),
   contact: icon("M3 6h18v12H3z", "M3 7l9 6 9-6"),
+  game: icon("M6 8h12a4 4 0 0 1 4 4v1a3 3 0 0 1-5.4 1.8L15 13H9l-1.6 1.8A3 3 0 0 1 2 13v-1a4 4 0 0 1 4-4z", "M7 10.5v3", "M5.5 12h3", "M16 11h.01", "M18 13h.01"),
   dnd: icon("M12 2l9 5v10l-9 5-9-5V7z", "M12 7l5 9H7z"),
 };

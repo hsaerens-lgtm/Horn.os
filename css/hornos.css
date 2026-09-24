@@ -368,3 +368,61 @@
   .project-card,
   .chip { transition: none; }
 }
+
+/* ---------------------------------------------------------------------- *
+ *  Arcade: Nebula Run
+ * ---------------------------------------------------------------------- */
+.win[data-win="game"] .win-body { overflow: hidden; background: #05060d; }
+.game { position: relative; width: 100%; height: 100%; overflow: hidden; background: #05060d; color: #eef3ff; font-family: var(--font); user-select: none; }
+.game-canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.game-loading { display: grid; place-items: center; height: 100%; color: #9aa6c2; font-size: 14px; }
+.game-hud { position: absolute; inset: 0; pointer-events: none; }
+.game-top { position: absolute; top: 12px; left: 16px; right: 16px; display: flex; align-items: center; gap: 16px; }
+.game-score { min-width: 90px; font: 700 20px/1 var(--font); font-variant-numeric: tabular-nums; letter-spacing: 0.02em; text-shadow: 0 0 12px rgba(124, 242, 255, 0.5); }
+.game-progress { flex: 1; height: 5px; border-radius: 99px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
+.game-progress-bar { height: 100%; width: 0; background: linear-gradient(90deg, #7cf2ff, #ff5ad8); border-radius: 99px; }
+.game-lives { display: flex; gap: 4px; }
+.game-lives svg { width: 22px; height: 22px; fill: rgba(255, 255, 255, 0.15); transition: fill 0.2s, transform 0.2s; }
+.game-lives .on svg { fill: #ff4d6d; filter: drop-shadow(0 0 6px rgba(255, 77, 109, 0.7)); }
+.game-weapon { position: absolute; left: 16px; bottom: 14px; display: flex; flex-direction: column; gap: 5px; width: 120px; }
+.game-weapon i { display: block; height: 3px; border-radius: 99px; background: currentColor; opacity: 0.7; }
+.pu { display: inline-block; width: max-content; padding: 3px 10px; border-radius: 99px; font: 700 11px/1.4 var(--font); letter-spacing: 0.08em; text-transform: uppercase; border: 1px solid currentColor; }
+.pu.single { color: #7cf2ff; }
+.pu.double { color: #7dff9a; }
+.pu.spread { color: #ffb04a; }
+.pu.laser { color: #ff5ad8; }
+.game-weapon:has(.double) { color: #7dff9a; }
+.game-weapon:has(.spread) { color: #ffb04a; }
+.game-weapon:has(.laser) { color: #ff5ad8; }
+.game-boss { position: absolute; top: 40px; left: 50%; transform: translateX(-50%); width: 46%; text-align: center; font: 700 10px/1 var(--font); letter-spacing: 0.25em; color: #ff8aa0; }
+.game-boss.hidden { display: none; }
+.game-boss-bar { margin-top: 5px; height: 7px; border-radius: 99px; background: rgba(255, 51, 85, 0.2); overflow: hidden; }
+.game-boss-bar div { height: 100%; background: linear-gradient(90deg, #ff3355, #ff9a3c); }
+.game-overlay { position: absolute; inset: 0; display: grid; place-items: center; background: radial-gradient(ellipse at center, rgba(5, 6, 13, 0.35), rgba(5, 6, 13, 0.8)); opacity: 0; pointer-events: none; transition: opacity 0.5s; }
+.game-overlay.show { opacity: 1; pointer-events: auto; }
+.game-card { width: min(440px, 86%); padding: 28px 30px; border-radius: 18px; text-align: center; background: rgba(14, 17, 30, 0.82); border: 1px solid rgba(124, 242, 255, 0.25); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(124, 242, 255, 0.08); backdrop-filter: blur(6px); animation: card-in 0.6s cubic-bezier(0.2, 0.8, 0.2, 1.2); }
+.game-card.small { width: auto; padding: 20px 34px; }
+.game-card h2 { margin: 4px 0 10px; font: 900 40px/1 var(--font); letter-spacing: 0.08em; background: linear-gradient(90deg, #7cf2ff, #ff5ad8); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.game-card.victory h2 { background: linear-gradient(90deg, #ffe07a, #7dff9a, #7cf2ff); -webkit-background-clip: text; background-clip: text; animation: win-glow 1.6s ease-in-out infinite; }
+.game-card.lose h2 { background: linear-gradient(90deg, #ff3355, #ff9a3c); -webkit-background-clip: text; background-clip: text; animation: lose-shake 0.5s ease-in-out 2; }
+.game-card p { margin: 0 0 14px; color: #b9c3dc; font-size: 14px; }
+.game-kicker { font: 700 11px/1 var(--font); letter-spacing: 0.3em; text-transform: uppercase; color: #7cf2ff; }
+.game-keys { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin: 6px 0 12px; font-size: 12px; color: #9aa6c2; }
+.game kbd { display: inline-block; min-width: 18px; margin: 0 1px; padding: 2px 5px; border-radius: 5px; border: 1px solid rgba(255, 255, 255, 0.25); background: rgba(255, 255, 255, 0.06); font: 600 11px/1.2 var(--font); color: #eef3ff; }
+.game-pus { display: flex; justify-content: center; gap: 8px; margin-bottom: 18px; }
+.game-btn { display: inline-block; width: auto; padding: 10px 22px; border: 0; border-radius: 99px; background: linear-gradient(90deg, #7cf2ff, #ff5ad8); color: #0b0d18 !important; font: 800 14px/1 var(--font); letter-spacing: 0.04em; cursor: pointer; box-shadow: 0 6px 20px rgba(124, 242, 255, 0.3); }
+.game-btn kbd { border-color: rgba(0, 0, 0, 0.3); background: rgba(255, 255, 255, 0.35); color: #0b0d18; }
+.game-best { margin-top: 12px; font-size: 12px; color: #9aa6c2; }
+.game-final { margin: 6px 0 18px; font: 800 36px/1 var(--font); font-variant-numeric: tabular-nums; color: #eef3ff; }
+.game-final small { display: block; margin-top: 6px; font: 500 12px/1 var(--font); color: #9aa6c2; letter-spacing: 0.04em; }
+@keyframes card-in { from { opacity: 0; transform: translateY(20px) scale(0.92); } }
+@keyframes win-glow { 50% { filter: drop-shadow(0 0 14px rgba(255, 224, 122, 0.7)); } }
+@keyframes lose-shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+@media (prefers-reduced-motion: reduce) { .game-card, .game-card h2 { animation: none !important; } }
+
+/* Seven dock icons do not fit a 320 px phone with their labels: icons only. */
+@media (max-width: 380px) {
+  .dock-label { display: none; }
+  .dock-item { padding: 9px 0; }
+  .hornos-dock { gap: 2px; padding: 6px; }
+}

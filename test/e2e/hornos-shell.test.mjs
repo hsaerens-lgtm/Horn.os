@@ -15,7 +15,7 @@ test("the desktop renders with its dock and no errors", async () => {
   try {
     await page.waitForSelector(".hornos-dock");
     const labels = await page.$$eval(".dock-item", (els) => els.map((e) => e.getAttribute("aria-label")));
-    assert.deepEqual(labels, ["Horn.os", "Resume", "Skills", "Projects", "Contact", "DnD"]);
+    assert.deepEqual(labels, ["Horn.os", "Resume", "Skills", "Projects", "Contact", "Arcade", "DnD"]);
     assert.deepEqual(errors, []);
     assert.deepEqual(failed, []);
   } finally {
@@ -115,7 +115,7 @@ for (const width of [360, 320]) {
       assert.ok(dockBox.x >= 0, `dock left ${dockBox.x} should be >= 0`);
       assert.ok(dockBox.x + dockBox.width <= width, `dock right ${dockBox.x + dockBox.width} should be <= ${width}`);
       const items = await page.locator(".dock-item").all();
-      assert.equal(items.length, 6);
+      assert.equal(items.length, 7); // Horn.os, Resume, Skills, Projects, Contact, Arcade, DnD
       for (const item of items) {
         const box = await item.boundingBox();
         assert.ok(box.x >= 0, `item left ${box.x} should be >= 0`);

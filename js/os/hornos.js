@@ -11,6 +11,7 @@ import { renderSkills } from "./windows/skills.js";
 import { renderProjects } from "./windows/projects.js";
 import { renderContact } from "./windows/contact.js";
 import { renderDnd } from "./windows/dnd.js";
+import { renderGame } from "./windows/game.js";
 
 const DOCK = [
   { id: "chat", label: "Horn.os" },
@@ -18,6 +19,7 @@ const DOCK = [
   { id: "skills", label: "Skills" },
   { id: "projects", label: "Projects" },
   { id: "contact", label: "Contact" },
+  { id: "game", label: "Arcade" },
   { id: "dnd", label: "DnD" },
 ];
 
@@ -49,6 +51,7 @@ export function createHornOS(root, { profile, dialogue, theme = "light", onBack 
   wm.register("projects", { title: "Projects", width: 840, height: 560, render: (b) => renderProjects(b, profile) });
   wm.register("contact", { title: "Contact", width: 460, height: 380, render: (b) => renderContact(b, profile) });
   wm.register("dnd", { title: "DnD — bonus project", width: 500, height: 400, render: (b) => renderDnd(b, dndHref) });
+  wm.register("game", { title: "Nebula Run", width: 860, height: 560, center: true, render: (b) => renderGame(b) });
 
   for (const item of DOCK) {
     dock.append(
@@ -76,14 +79,21 @@ export function createHornOS(root, { profile, dialogue, theme = "light", onBack 
   setInterval(tick, 30_000);
 
   let active = true;
-  // Keys go to the chat when it is the front window and the visitor is not
-  // using the keyboard somewhere else (a dock button, a link in another window).
-  document.addEventListener("keydown", (e) => {
-    if (!active || wm.top() !== "chat") return;
+  // Keys go to the front window when the visitor is not using the keyboard
+  // somewhere else (a dock button, a link in another window). The chat reads
+  // key presses; the game also needs releases, to know when a key is let go.
+  const route = (e, down) => {
+    const top = wm.top();
+    if (!active || !top) return;
     const focused = document.activeElement;
-    const onPage = !focused || focused === document.body || focused.closest?.('.win[data-win="chat"]');
-    if (onPage && wm.api("chat")?.handleKey(e)) e.preventDefault();
-  });
+    const onPage = !focused || focused === document.body || focused.closest?.(`.win[data-win="${top}"]`);
+    if (!onPage) return;
+    const api = wm.api(top);
+    const used = api?.onKey ? api.onKey(e, down) : down && api?.handleKey?.(e);
+    if (used) e.preventDefault();
+  };
+  document.addEventListener("keydown", (e) => route(e, true));
+  document.addEventListener("keyup", (e) => route(e, false));
 
   wm.open("chat");
 

@@ -69,6 +69,7 @@ export function createWindowManager(desktop, { onChange = () => {} } = {}) {
       entry.api = entry.spec.render(entry.body, { close: () => close(id) }) ?? null;
       place(entry);
     }
+    if (entry.state === "minimised") entry.api?.resume?.();
     entry.state = "open";
     entry.el.hidden = false;
     focus(id);
@@ -81,6 +82,7 @@ export function createWindowManager(desktop, { onChange = () => {} } = {}) {
     if (!e || e.state !== "open") return;
     e.state = "minimised";
     e.el.hidden = true;
+    e.api?.pause?.();
     syncFront();
     onChange();
   }
