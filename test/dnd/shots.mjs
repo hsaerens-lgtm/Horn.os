@@ -29,8 +29,8 @@ const OUT = join(dirname(fileURLToPath(import.meta.url)), "out");
 mkdirSync(OUT, { recursive: true });
 
 const BASE = process.argv.includes("--live")
-  ? "https://hsaerens-lgtm.github.io/Horn.os/"
-  : "http://localhost:4330/";
+  ? "https://hsaerens-lgtm.github.io/Horn.os/dnd/"
+  : "http://localhost:4330/dnd/";
 
 // The poses. Chosen to be the shots that actually get looked at, and fixed so
 // that two runs produce two comparable images.

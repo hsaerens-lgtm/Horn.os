@@ -17,7 +17,7 @@ p.on("console", (m) => m.text().startsWith("PROBE") && probes.push(m.text()));
 p.on("pageerror", (e) => console.log("  [page error]", e.message));
 
 const t0 = Date.now();
-await p.goto("http://localhost:4330/?debug=1", { waitUntil: "load" });
+await p.goto("http://localhost:4330/dnd/?debug=1", { waitUntil: "load" });
 const tLoad = Date.now() - t0;
 await p.waitForFunction(() => document.getElementById("loader")?.classList.contains("hidden"), null, { timeout: 180000 });
 const tReady = Date.now() - t0;

@@ -56,7 +56,7 @@ const ctx = await browser.newContext({ viewport: { width: 1280, height: 704 }, d
 const page = await ctx.newPage();
 page.on("pageerror", (e) => console.log("  [page error]", e.message));
 
-await page.goto("http://localhost:4330/?debug=1", { waitUntil: "load" });
+await page.goto("http://localhost:4330/dnd/?debug=1", { waitUntil: "load" });
 await page.waitForFunction(() => document.getElementById("loader")?.classList.contains("hidden"), null, { timeout: 180000 });
 await page.waitForFunction(() => !!window.__debug, null, { timeout: 60000 });
 await page.evaluate(([p, t]) => window.__debug.pin(p, t), [SHOT.pos, SHOT.target]);

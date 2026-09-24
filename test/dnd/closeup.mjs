@@ -19,7 +19,7 @@ const SHOTS = {
 };
 const b = await chromium.launch({ channel: "chromium", args: ["--enable-unsafe-swiftshader"] });
 const p = await (await b.newContext({ viewport: { width: 1280, height: 704 } })).newPage();
-await p.goto("http://localhost:4330/?debug=1", { waitUntil: "load" });
+await p.goto("http://localhost:4330/dnd/?debug=1", { waitUntil: "load" });
 await p.waitForFunction(() => document.getElementById("loader")?.classList.contains("hidden"), null, { timeout: 180000 });
 await p.waitForFunction(() => !!window.__debug, null, { timeout: 90000 });
 for (const [name, s] of Object.entries(SHOTS)) {

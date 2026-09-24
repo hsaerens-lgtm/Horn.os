@@ -1,19 +1,23 @@
 {
   "name": "cv-3d",
   "version": "1.0.0",
-  "description": "Interactive 3D CV. No build step: the page is static files. This manifest exists only for the Playwright test harness.",
+  "description": "Horn Saerens — the office and Horn.os. No build step: the page is static files. This manifest exists only for the test harness.",
   "main": "index.js",
   "directories": {
     "doc": "docs"
   },
   "scripts": {
-    "shots": "node test/shots.mjs",
-    "shots:live": "node test/shots.mjs --live",
-    "bench:lights": "node test/lights.mjs",
-    "bench:lamp": "node test/lamp.mjs",
-    "bench:flicker": "node test/flicker.mjs",
-    "bench:perf": "node test/perf.mjs",
-    "bench:load": "node test/loadtime.mjs \"?debug=1\""
+    "serve": "python serve.py 4330",
+    "test": "node --test \"test/unit/*.test.mjs\"",
+    "test:e2e": "node --test --test-concurrency=1 \"test/e2e/*.test.mjs\"",
+    "shots:os": "node test/hornos-shots.mjs",
+    "dnd:shots": "node test/dnd/shots.mjs",
+    "dnd:shots:live": "node test/dnd/shots.mjs --live",
+    "dnd:bench:lights": "node test/dnd/lights.mjs",
+    "dnd:bench:lamp": "node test/dnd/lamp.mjs",
+    "dnd:bench:flicker": "node test/dnd/flicker.mjs",
+    "dnd:bench:perf": "node test/dnd/perf.mjs",
+    "dnd:bench:load": "node test/dnd/loadtime.mjs \"?debug=1\""
   },
   "repository": {
     "type": "git",

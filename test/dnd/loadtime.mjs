@@ -7,7 +7,7 @@ for (const q of process.argv.slice(2)) {
   const probes = [];
   p.on("console", (m) => /PROBE|took|ms\b/.test(m.text()) && probes.push(m.text()));
   const t0 = Date.now();
-  await p.goto("http://localhost:4330/" + q, { waitUntil: "load" });
+  await p.goto("http://localhost:4330/dnd/" + q, { waitUntil: "load" });
   const tLoad = Date.now() - t0;
   await p.waitForFunction(() => document.getElementById("loader")?.classList.contains("hidden"), null, { timeout: 300000 });
   const verts = await p.evaluate(() => {

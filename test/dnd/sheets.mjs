@@ -3,7 +3,7 @@ import { chromium } from "playwright";
 const b = await chromium.launch({ channel: "chromium", args: ["--enable-unsafe-swiftshader"] });
 const p = await (await b.newContext({ viewport: { width: 1280, height: 704 } })).newPage();
 p.on("pageerror", (e) => console.log("  [page error]", e.message));
-await p.goto("http://localhost:4330/?debug=1", { waitUntil: "load" });
+await p.goto("http://localhost:4330/dnd/?debug=1", { waitUntil: "load" });
 await p.waitForFunction(() => document.getElementById("loader")?.classList.contains("hidden"), null, { timeout: 180000 });
 const r = await p.evaluate(() => ({
   agents: [...document.querSelectorAll?.(".pc") ?? document.querySelectorAll(".pc")].map((el) => ({

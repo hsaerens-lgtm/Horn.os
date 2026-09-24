@@ -87,7 +87,7 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
   const gltfLoader = new GLTFLoader();
   const loadPBR = (name, repeat) => {
     const load = (suffix, isColor) => {
-      const t = texLoader.load(`assets/textures/${name}_${suffix}.jpg`);
+      const t = texLoader.load(`../assets/textures/${name}_${suffix}.jpg`);
       t.wrapS = t.wrapT = THREE.RepeatWrapping;
       t.repeat.set(repeat[0], repeat[1]);
       // The floor is read at a grazing angle across ten metres, which is the
@@ -825,7 +825,7 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
   // fill in a second later.
   const pending = [];
   let robotAsset = null;
-  const loadRobot = () => (robotAsset ??= gltfLoader.loadAsync("assets/models/RobotExpressive/RobotExpressive.glb"));
+  const loadRobot = () => (robotAsset ??= gltfLoader.loadAsync("../assets/models/RobotExpressive/RobotExpressive.glb"));
 
   // How the robot is folded into a chair. The rig makes this necessary rather
   // than optional, and the numbers are in one place so they can be tuned.
@@ -1203,7 +1203,7 @@ export function createScene({ container, sheetRoot, agentRoots, agents, players 
   // ---------- Furniture ----------
   const addModel = (name, { position, rotationY = 0, scale = 1, tint = null }) =>
     gltfLoader
-      .loadAsync(`assets/models/${name}/${name}.gltf`)
+      .loadAsync(`../assets/models/${name}/${name}.gltf`)
       .then(({ scene: obj }) => {
         obj.position.fromArray(position);
         obj.rotation.y = rotationY;

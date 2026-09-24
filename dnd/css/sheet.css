@@ -483,3 +483,20 @@ li { margin-bottom: 5px; }
   text-align: center;
   color: var(--ink-soft);
 }
+
+/* The way back to the main page. Parchment card, like the rest of the table's UI. */
+.office-link {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 30;
+  padding: 8px 12px;
+  font: 600 13px/1 system-ui, sans-serif;
+  letter-spacing: 0.04em;
+  color: #2b2118;
+  background: #efe4cc;
+  border: 1px solid #2b2118;
+  box-shadow: inset 0 0 0 3px #efe4cc, inset 0 0 0 4px #8c2f22;
+  text-decoration: none;
+}
+.office-link:hover { background: #f6eedb; }

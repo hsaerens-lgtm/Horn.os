@@ -27,7 +27,7 @@ export const content = {
     linkedin: "https://www.linkedin.com/in/horn-saerens-7426b022b",
     github: "https://github.com/hsaerens-lgtm",
   },
-  resumePdf: "assets/Horn_Saerens_CV_2026.pdf",
+  resumePdf: "../assets/Horn_Saerens_CV_2026.pdf",
 
   tagline: "I run the table: I turn business problems into AI solutions that get deployed and actually used.",
 
