@@ -13,7 +13,8 @@ import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUnifo
 import { roundedBox, between } from "../lib/shapes.js";
 import { mergeParts, at } from "../lib/merge.js";
 import { plant } from "../lib/plants.js";
-import { buildCat, buildGuitar, buildClock } from "./props.js";
+import { buildCat, buildClock } from "./props.js";
+import { buildGuitar } from "./guitar.js";
 import { model, planter } from "./models.js";
 import { shelfBooks } from "./books.js";
 import { hangingPlant } from "./hanging.js";
