@@ -142,32 +142,149 @@ export function buildKeyboard() {
 }
 
 /* ------------------------------------------------------------------ *
- *  Mouse: a sculpted shell, split buttons, a rubber wheel
+ *  Mouse: an ergonomic shell modelled as a height field over its
+ *  footprint — wide at the back, narrow at the nose, a thumb flare on the
+ *  left — with split buttons, a knurled wheel in its slot, side buttons and
+ *  a sole. +z is the nose.
  * ------------------------------------------------------------------ */
 export function buildMouse() {
   const g = new THREE.Group();
-  const geo = new THREE.SphereGeometry(1, 48, 32);
-  const pos = geo.attributes.position;
-  for (let i = 0; i < pos.count; i++) {
-    let x = pos.getX(i);
-    let y = pos.getY(i);
-    let z = pos.getZ(i);
-    // front narrower than the back, the hump behind the middle, a flat sole
-    const front = (z + 1) / 2; // 0 at the back, 1 at the front (+z)
-    x *= (1 - 0.18 * front) * (1 + (x > 0 ? 0.12 : 0) * Math.sin(front * Math.PI)); // a thumb rest on one side
-    z = z > 0 ? z * (1 - 0.12 * z * z) : z; // a squarer nose
-    y = y < 0 ? y * 0.12 : y * (1 - 0.35 * Math.pow(front, 1.6)) * (1 + 0.1 * Math.cos((z + 0.3) * 2));
-    pos.setXYZ(i, x * 0.032, y * 0.022 + 0.003, z * 0.063);
+  const L = 0.062; // half length
+  const HMAX = 0.037;
+  const SEG = 96;
+  const RINGS = 28;
+
+  // footprint: a superellipse, narrower at the nose, flared under the thumb
+  const outline = (a) => {
+    const c = Math.cos(a);
+    const s = Math.sin(a);
+    let ax = s > 0 ? 0.031 - 0.006 * s : 0.032;
+    // The mouse is turned nose-to-screen, so model +x is the user's left: the thumb side.
+    if (c > 0) ax *= 1 + 0.1 * Math.exp(-((s + 0.1) * (s + 0.1)) * 5); // thumb flare
+    const n = 2.7;
+    return 1 / Math.pow(Math.pow(Math.abs(c / ax), n) + Math.pow(Math.abs(s / L), n), 1 / n);
+  };
+  // height over the footprint: the hump behind the middle, falling to the nose
+  const height = (x, z) => {
+    const zn = z / L;
+    const xn = x / 0.032;
+    let h = HMAX * (1 - 0.58 * Math.pow((zn + 0.22) / 1.22, 2)) * (1 - 0.12 * xn * xn);
+    if (zn > 0.12) h -= 0.0009 * Math.exp(-Math.pow(xn / 0.05, 2)) * Math.min(1, (zn - 0.12) * 4); // the button split
+    return h;
+  };
+
+  const pos = [];
+  const uv = [];
+  const idx = [];
+  pos.push(0, height(0, 0), 0);
+  uv.push(0.5, 0.5);
+  for (let r = 1; r <= RINGS; r++) {
+    const s = r / RINGS;
+    for (let k = 0; k < SEG; k++) {
+      const a = (k / SEG) * Math.PI * 2;
+      const R = outline(a) * s;
+      const x = Math.cos(a) * R;
+      const z = Math.sin(a) * R;
+      // flat top, then the sides roll steeply down to the sole
+      const fall = Math.pow(Math.max(0, 1 - Math.pow(s, 7)), 0.5);
+      const y = 0.002 + height(x, z) * fall;
+      pos.push(x, y, z);
+      uv.push(0.5 + x / 0.08, 0.5 + z / (2.2 * L));
+    }
   }
+  for (let k = 0; k < SEG; k++) idx.push(0, 1 + ((k + 1) % SEG), 1 + k);
+  for (let r = 1; r < RINGS; r++) {
+    for (let k = 0; k < SEG; k++) {
+      const a = 1 + (r - 1) * SEG + k;
+      const b = 1 + (r - 1) * SEG + ((k + 1) % SEG);
+      const c = a + SEG;
+      const d = b + SEG;
+      idx.push(a, b, c, b, d, c);
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+  geo.setIndex(idx);
   geo.computeVertexNormals();
-  const shell = shadowed(new THREE.Mesh(geo, new THREE.MeshPhysicalMaterial({ color: 0x3a3d42, roughness: 0.5, clearcoat: 0.25, clearcoatRoughness: 0.6 })));
+
+  // the shell's surface: soft-touch graphite, the buttons a touch glossier,
+  // hairline seams where the buttons meet the body
+  const skin = canvasTexture(512, 512, (c, w, h) => {
+    c.fillStyle = "#34373c";
+    c.fillRect(0, 0, w, h);
+    const r = seeded(61);
+    for (let i = 0; i < 20000; i++) {
+      c.fillStyle = r() < 0.5 ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.05)";
+      c.fillRect(r() * w, r() * h, 1, 1);
+    }
+    // v grows towards the nose (canvas top). Seam across the back of the buttons:
+    const seamY = h * (1 - (0.5 + (0.1 * L) / (2.2 * L)));
+    c.strokeStyle = "rgba(10,10,12,0.9)";
+    c.lineWidth = 3;
+    c.beginPath();
+    c.moveTo(0, seamY + 30);
+    c.quadraticCurveTo(w / 2, seamY - 26, w, seamY + 30);
+    c.stroke();
+    // the split between left and right buttons
+    c.beginPath();
+    c.moveTo(w / 2, 0);
+    c.lineTo(w / 2, seamY - 8);
+    c.stroke();
+    // the slot the wheel sits in
+    const slotY = h * (1 - (0.5 + (0.46 * L) / (2.2 * L)));
+    c.fillStyle = "#0c0d0f";
+    c.beginPath();
+    c.ellipse(w / 2, slotY, 12, 48, 0, 0, Math.PI * 2);
+    c.fill();
+  });
+  const shell = shadowed(new THREE.Mesh(geo, new THREE.MeshPhysicalMaterial({ map: skin, roughness: 0.55, clearcoat: 0.35, clearcoatRoughness: 0.45 })));
   g.add(shell);
-  const dark = new THREE.MeshStandardMaterial({ color: 0x141517, roughness: 0.8 });
-  // the split between the two buttons, running back from the nose, and the
-  // wheel sitting down in it
-  const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.0062, 0.0062, 0.0045, 24).rotateZ(Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xb8bcc2, roughness: 0.3, metalness: 0.9 }));
-  wheel.position.set(0, 0.0158, 0.03);
+
+  // the sole: a dark plate just inside the footprint
+  const sole = new THREE.Shape();
+  for (let k = 0; k <= SEG; k++) {
+    const a = (k / SEG) * Math.PI * 2;
+    const R = outline(a) * 0.97;
+    const x = Math.cos(a) * R;
+    const z = Math.sin(a) * R;
+    if (k === 0) sole.moveTo(x, -z);
+    else sole.lineTo(x, -z);
+  }
+  const soleMesh = new THREE.Mesh(new THREE.ShapeGeometry(sole, 1), new THREE.MeshStandardMaterial({ color: 0x151618, roughness: 0.9 }));
+  soleMesh.rotation.x = -Math.PI / 2;
+  soleMesh.position.y = 0.0015;
+  g.add(soleMesh);
+
+  // the wheel: knurled rubber on a metal hub, sunk into its slot
+  const knurl = canvasTexture(256, 32, (c, w, h) => {
+    c.fillStyle = "#1c1d20";
+    c.fillRect(0, 0, w, h);
+    c.fillStyle = "#3a3c41";
+    for (let x = 0; x < w; x += 8) c.fillRect(x, 0, 4, h);
+  });
+  knurl.wrapS = THREE.RepeatWrapping;
+  const wz = 0.46 * L;
+  const wheelR = 0.0072;
+  const wheel = new THREE.Mesh(
+    new THREE.CylinderGeometry(wheelR, wheelR, 0.0055, 40, 1, false).rotateZ(Math.PI / 2),
+    [new THREE.MeshStandardMaterial({ map: knurl, roughness: 0.85 }), new THREE.MeshStandardMaterial({ color: 0xb8bcc2, roughness: 0.25, metalness: 0.9 }), new THREE.MeshStandardMaterial({ color: 0xb8bcc2, roughness: 0.25, metalness: 0.9 })],
+  );
+  wheel.position.set(0, 0.002 + height(0, wz) - wheelR + 0.0035, wz);
   g.add(wheel);
+
+  // two thumb buttons on the thumb-side flank
+  for (const [z0, len] of [
+    [0.004, 0.016],
+    [-0.016, 0.014],
+  ]) {
+    const a = Math.atan2(z0, 1);
+    const R = outline(a) * 0.95;
+    const b = shadowed(new THREE.Mesh(roundedBox(0.004, 0.006, len, 0.0018), new THREE.MeshPhysicalMaterial({ color: 0x2a2c30, roughness: 0.35, clearcoat: 0.6 })));
+    b.position.set(Math.cos(a) * R, 0.019, z0);
+    b.rotation.z = -0.35;
+    g.add(b);
+  }
   return g;
 }
 
