@@ -21,11 +21,12 @@ const CLOSE = {
   hanging: [[-0.9, 1.9, -0.2], [-1.9, 1.75, -1.0]],
 };
 
+const extra = process.argv[2] ?? "";
 const server = await startServer(4344);
-const { page, errors, failed, close } = await openPage(`${server.url}?debug=1&phase=day`, { width: 1440, height: 900 });
+const { page, errors, failed, close } = await openPage(`${server.url}?debug=1&phase=day${extra}`, { width: 1440, height: 900 });
 const shot = async (name) => {
   await page.waitForTimeout(700);
-  await page.screenshot({ path: join(OUT, `${name}.png`), timeout: 180000 });
+  await page.screenshot({ path: join(OUT, `${name}${process.argv[3] ?? ""}.png`), timeout: 180000 });
   console.log(`${name}.png`);
 };
 try {

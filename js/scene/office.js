@@ -232,7 +232,8 @@ function buildDesk(scene) {
     legParts.push({ geometry: new THREE.BoxGeometry(0.04, 0.03, DESK.d - 0.1), matrix: at(x, DESK.y - DESK.t / 2 - 0.015, 0) });
   }
   legParts.push({ geometry: new THREE.BoxGeometry(DESK.w - 0.2, 0.05, 0.02), matrix: at(0, DESK.y - 0.08, -DESK.d / 2 + 0.07) });
-  group.add(mesh(mergeParts(legParts), M.steel));
+  const legs = mesh(mergeParts(legParts), M.steel);
+  group.add(legs);
 
   // Monitor: a slim panel with a chin, a thicker housing behind, and an
   // aluminium stand whose neck curves down to an oval foot.
@@ -338,7 +339,7 @@ function buildDesk(scene) {
   lampLight.target = lampTarget;
   group.add(lamp);
 
-  return { group, screen, lampLight, lampTarget, bulb, lamp };
+  return { group, screen, lampLight, lampTarget, bulb, lamp, top, legs };
 }
 
 function buildShelf(scene) {
@@ -463,6 +464,8 @@ function buildPlants(scene, { sill, shelf }) {
 /* ------------------------------------------------------------------ *
  *  Real models (Poly Haven, CC0)
  * ------------------------------------------------------------------ */
+const DESK_STYLE = new URLSearchParams(location.search).get("desk") === "metal" ? "metal" : "oak";
+
 async function furnish(scene, { desk, shelf, swaying }) {
   const put = (obj, x, y, z, ry = 0, parent = scene) => {
     obj.position.set(x, y, z);
@@ -487,7 +490,7 @@ async function furnish(scene, { desk, shelf, swaying }) {
   const jobs = [
     // Floor: a money tree by the window, a tall leafy plant right of the bookcase,
     // a bushy one under the sill.
-    inPlanter("pachira_aquatica_01", { variant: "a", height: 1.45 }, { r: 0.2, h: 0.36, glaze: "charcoal" }, ROOM.x0 + 0.5, 0, -1.62, 0.6).then((o) => sway(o, 0.006)),
+    inPlanter("pachira_aquatica_01", { variant: "a", height: 1.45 }, { r: 0.2, h: 0.36, glaze: "charcoal" }, ROOM.x0 + 0.34, 0, -1.72, 0.6).then((o) => sway(o, 0.006)),
     model("potted_plant_01", { height: 1.4 }).then((o) => sway(put(o, 1.78, 0, ROOM.z0 + 0.38, 0.4), 0.006)),
     model("potted_plant_02", { height: 0.8 }).then((o) => sway(put(o, ROOM.x0 + 0.5, 0, -0.2, 1.2), 0.008)),
     // On the sill, beside the cat.
@@ -513,7 +516,18 @@ async function furnish(scene, { desk, shelf, swaying }) {
     model("potted_plant_04", { height: 0.2 }).then((o) => put(o, 0.64, TOP, -0.2, 0.3, desk.group)),
     model("stationery_supplies", { height: 0.15 }).then((o) => put(o, -0.42, TOP, -0.25, 0.4, desk.group)),
     // The chair, pulled out and turned towards the room.
-    model("modern_arm_chair_01", { height: 0.9 }).then((o) => put(o, DESK.x + 0.05, 0, DESK.z + 0.95, Math.PI + 0.2)),
+    // The desk itself: a steel office desk with drawers, its top brought to
+    // the height every desk object is placed at.
+    DESK_STYLE === "metal" && model("metal_office_desk").then((o) => {
+      const s = TOP / o.userData.size.y;
+      o.scale.set(0.84 * s, s, 0.92 * s);
+      put(o, DESK.x + 0.03, 0, ROOM.z0 + 0.03 + (o.userData.size.z * 0.92 * s) / 2, 0);
+      desk.top.visible = false;
+      desk.legs.visible = false;
+    }),
+    // A designer chair pushed in at the desk; the leather lounge chair by the window.
+    model("dining_chair_02", { height: 0.95 }).then((o) => put(o, DESK.x + 0.12, 0, DESK.z + 0.66, Math.PI - 0.25)),
+    model("modern_arm_chair_01", { height: 0.9 }).then((o) => put(o, ROOM.x0 + 0.75, 0, 0.35, 2.2)),
   ];
   await Promise.all(jobs);
 }
