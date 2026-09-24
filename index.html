@@ -10,10 +10,15 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
   <link rel="stylesheet" href="css/hornos.css" />
-  <style>
-    html, body { margin: 0; height: 100%; background: #111315; }
-    #os { position: fixed; inset: 0; }
-  </style>
+  <link rel="stylesheet" href="css/office.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+      }
+    }
+  </script>
 </head>
 <body>
   <noscript>
@@ -28,7 +33,11 @@
       </div>
     </div>
   </noscript>
+  <div id="stage"></div>
   <div id="os"></div>
+  <div id="loader"><div class="loader-card"><span class="loader-dot"></span>Opening Horn's office…</div></div>
+  <button id="hint" class="office-pill" type="button" hidden>Click the screen to talk to Horn's assistant</button>
+  <button id="back" class="office-pill office-back" type="button" hidden>← Back to the room <kbd>Esc</kbd></button>
   <script type="module" src="js/main.js"></script>
 </body>
 </html>

@@ -27,7 +27,7 @@ const CHIP = ".chat-chips .chip:not(.chip-back)";
 const chipNamed = (page, label) => page.locator(".chat-chips").getByRole("button", { name: label, exact: true });
 
 test("the assistant greets and offers the four entry questions", async () => {
-  const { page, errors, close } = await openPage(server.url);
+  const { page, errors, close } = await openPage(`${server.url}?flat`);
   try {
     await page.waitForSelector(CHIP, { timeout: 10000 });
     assert.match(await page.textContent(".msg-bot"), /Horn's assistant/);
@@ -39,7 +39,7 @@ test("the assistant greets and offers the four entry questions", async () => {
 });
 
 test("clicking a question types it into the field, then sends it", async () => {
-  const { page, close } = await openPage(server.url);
+  const { page, close } = await openPage(`${server.url}?flat`);
   try {
     await page.waitForSelector(CHIP, { timeout: 10000 });
     const label = await page.textContent(CHIP);
@@ -63,7 +63,7 @@ test("clicking a question types it into the field, then sends it", async () => {
 });
 
 test("keystrokes type the highlighted question, never the key itself", async () => {
-  const { page, close } = await openPage(server.url, { reducedMotion: "reduce" });
+  const { page, close } = await openPage(`${server.url}?flat`, { reducedMotion: "reduce" });
   try {
     await page.waitForSelector(CHIP, { timeout: 10000 });
     const first = await page.textContent(".chip.is-hot");
@@ -90,7 +90,7 @@ test("keystrokes type the highlighted question, never the key itself", async () 
 // highlight, not just the `.is-hot` class — otherwise Enter (a native click on
 // whichever chip still holds focus) sends the wrong question.
 test("arrow keys move focus with the highlight, so Enter sends the highlighted chip", async () => {
-  const { page, close } = await openPage(server.url, { reducedMotion: "reduce" });
+  const { page, close } = await openPage(`${server.url}?flat`, { reducedMotion: "reduce" });
   try {
     await page.waitForSelector(CHIP, { timeout: 10000 });
     await page.locator(".chat-chips .chip").first().focus();
@@ -105,7 +105,7 @@ test("arrow keys move focus with the highlight, so Enter sends the highlighted c
 });
 
 test("Back to topics returns to the entry questions", async () => {
-  const { page, close } = await openPage(server.url, { reducedMotion: "reduce" });
+  const { page, close } = await openPage(`${server.url}?flat`, { reducedMotion: "reduce" });
   try {
     await page.waitForSelector(CHIP, { timeout: 10000 });
     await page.click(CHIP);
@@ -121,7 +121,7 @@ test("Back to topics returns to the entry questions", async () => {
 });
 
 test("with reduced motion the answer appears at once", async () => {
-  const { page, close } = await openPage(server.url, { reducedMotion: "reduce" });
+  const { page, close } = await openPage(`${server.url}?flat`, { reducedMotion: "reduce" });
   try {
     await page.waitForSelector(CHIP, { timeout: 10000 });
     const t0 = Date.now();
@@ -134,7 +134,7 @@ test("with reduced motion the answer appears at once", async () => {
 });
 
 test("clicking a streaming answer finishes it", async () => {
-  const { page, close } = await openPage(server.url);
+  const { page, close } = await openPage(`${server.url}?flat`);
   try {
     await page.waitForSelector(CHIP, { timeout: 10000 });
     await chipNamed(page, "Who is Horn?").click();
@@ -156,7 +156,7 @@ test("clicking a streaming answer finishes it", async () => {
 // stream needs several seconds to reach), and confirm the text is frozen
 // afterwards, not just the onStream count.
 test("closing the chat mid-stream balances onStream and stops the stream", async () => {
-  const { page, close } = await openPage(`${server.url}?debug=1`);
+  const { page, close } = await openPage(`${server.url}?flat&debug=1`);
   try {
     await page.waitForSelector(CHIP, { timeout: 10000 });
     const nodeId = dialogue.nodes[dialogue.start].next.find((id) => dialogue.nodes[id].question === "Who is Horn?");
@@ -190,7 +190,7 @@ test("closing the chat mid-stream balances onStream and stops the stream", async
 });
 
 test("a project card opens the Projects window on that project", async () => {
-  const { page, close } = await openPage(server.url, { reducedMotion: "reduce" });
+  const { page, close } = await openPage(`${server.url}?flat`, { reducedMotion: "reduce" });
   try {
     await page.waitForSelector(CHIP, { timeout: 10000 });
     await chipNamed(page, "What has he built?").click();
@@ -206,7 +206,7 @@ test("a project card opens the Projects window on that project", async () => {
 // must be that control's own activation, never hijacked into sending the
 // currently highlighted chip.
 test("Enter on a focused project card opens it, not the highlighted chip", async () => {
-  const { page, close } = await openPage(server.url, { reducedMotion: "reduce" });
+  const { page, close } = await openPage(`${server.url}?flat`, { reducedMotion: "reduce" });
   try {
     await page.waitForSelector(CHIP, { timeout: 10000 });
     await chipNamed(page, "What has he built?").click();
@@ -234,7 +234,7 @@ test("every node of the tree renders its answer and its questions", { timeout: 3
   }
   const pathTo = (id) => (parent[id] === null ? [] : [...pathTo(parent[id]), id]);
 
-  const { page, errors, close } = await openPage(server.url, { reducedMotion: "reduce" });
+  const { page, errors, close } = await openPage(`${server.url}?flat`, { reducedMotion: "reduce" });
   try {
     for (const id of Object.keys(dialogue.nodes).filter((n) => n !== dialogue.start)) {
       await page.reload();

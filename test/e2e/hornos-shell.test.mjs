@@ -11,7 +11,7 @@ after(() => server.stop());
 const isOpen = (page, id) => page.locator(`.dock-item[data-open="${id}"]`).evaluate((e) => e.classList.contains("is-open"));
 
 test("the desktop renders with its dock and no errors", async () => {
-  const { page, errors, failed, close } = await openPage(server.url);
+  const { page, errors, failed, close } = await openPage(`${server.url}?flat`);
   try {
     await page.waitForSelector(".hornos-dock");
     const labels = await page.$$eval(".dock-item", (els) => els.map((e) => e.getAttribute("aria-label")));
@@ -24,7 +24,7 @@ test("the desktop renders with its dock and no errors", async () => {
 });
 
 test("a dock icon opens its window, which drags, minimises in place and closes", async () => {
-  const { page, close } = await openPage(server.url);
+  const { page, close } = await openPage(`${server.url}?flat`);
   try {
     await page.click('.dock-item[data-open="resume"]');
     const win = page.locator('.win[data-win="resume"]');
@@ -56,7 +56,7 @@ test("a dock icon opens its window, which drags, minimises in place and closes",
 });
 
 test("the Projects window can be opened on a given project", async () => {
-  const { page, close } = await openPage(`${server.url}?debug=1`);
+  const { page, close } = await openPage(`${server.url}?flat&debug=1`);
   try {
     await page.waitForFunction(() => !!window.__os);
     await page.evaluate(() => window.__os.open("projects", "docflow"));
@@ -69,7 +69,7 @@ test("the Projects window can be opened on a given project", async () => {
 });
 
 test("the résumé download points at a real PDF", async () => {
-  const { page, close } = await openPage(server.url);
+  const { page, close } = await openPage(`${server.url}?flat`);
   try {
     await page.click('.dock-item[data-open="resume"]');
     const href = await page.getAttribute('.win[data-win="resume"] a[download]', "href");
@@ -82,7 +82,7 @@ test("the résumé download points at a real PDF", async () => {
 });
 
 test("the DnD window leads to the bonus page", async () => {
-  const { page, close } = await openPage(server.url);
+  const { page, close } = await openPage(`${server.url}?flat`);
   try {
     await page.click('.dock-item[data-open="dnd"]');
     await page.click('.win[data-win="dnd"] a.btn');
@@ -93,7 +93,7 @@ test("the DnD window leads to the bonus page", async () => {
 });
 
 test("on a phone-width screen a window fills the width", async () => {
-  const { page, close } = await openPage(server.url, { width: 390, height: 844 });
+  const { page, close } = await openPage(`${server.url}?flat`, { width: 390, height: 844 });
   try {
     await page.click('.dock-item[data-open="skills"]');
     const box = await page.locator('.win[data-win="skills"]').boundingBox();
@@ -108,7 +108,7 @@ test("on a phone-width screen a window fills the width", async () => {
 // the viewport at both widths.
 for (const width of [360, 320]) {
   test(`the dock fits inside a ${width} px viewport`, async () => {
-    const { page, close } = await openPage(server.url, { width, height: 700 });
+    const { page, close } = await openPage(`${server.url}?flat`, { width, height: 700 });
     try {
       await page.waitForSelector(".hornos-dock");
       const dockBox = await page.locator(".hornos-dock").boundingBox();
@@ -128,7 +128,7 @@ for (const width of [360, 320]) {
 }
 
 test("?theme=dark forces the dark theme", async () => {
-  const { page, close } = await openPage(`${server.url}?theme=dark`);
+  const { page, close } = await openPage(`${server.url}?flat&theme=dark`);
   try {
     assert.equal(await page.getAttribute(".hornos", "data-theme"), "dark");
   } finally {

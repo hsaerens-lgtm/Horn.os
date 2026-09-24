@@ -149,14 +149,17 @@ export function createWindowManager(desktop, { onChange = () => {} } = {}) {
 function makeDraggable(el, handle, bounds) {
   handle.addEventListener("pointerdown", (e) => {
     if (e.button !== 0 || e.target.closest("button") || matchMedia(NARROW).matches) return;
+    // Under a CSS3D transform the window is drawn smaller or larger than its
+    // CSS size; divide pointer deltas by that scale so it tracks the cursor.
+    const k = bounds.getBoundingClientRect().width / bounds.offsetWidth || 1;
     const startX = e.clientX;
     const startY = e.clientY;
     const left = el.offsetLeft;
     const top = el.offsetTop;
     handle.setPointerCapture(e.pointerId);
     const move = (ev) => {
-      el.style.left = `${clamp(left + ev.clientX - startX, 0, bounds.clientWidth - el.offsetWidth)}px`;
-      el.style.top = `${clamp(top + ev.clientY - startY, 0, bounds.clientHeight - 40)}px`;
+      el.style.left = `${clamp(left + (ev.clientX - startX) / k, 0, bounds.clientWidth - el.offsetWidth)}px`;
+      el.style.top = `${clamp(top + (ev.clientY - startY) / k, 0, bounds.clientHeight - 40)}px`;
     };
     const up = () => {
       handle.removeEventListener("pointermove", move);

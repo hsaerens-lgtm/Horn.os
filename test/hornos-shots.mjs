@@ -10,10 +10,10 @@ const OUT = join(dirname(fileURLToPath(import.meta.url)), "out");
 mkdirSync(OUT, { recursive: true });
 
 const SHOTS = [
-  { name: "hornos-light", query: "?theme=light", width: 1440, height: 900 },
-  { name: "hornos-dark", query: "?theme=dark", width: 1440, height: 900 },
-  { name: "hornos-projects", query: "?theme=light&debug=1", width: 1440, height: 900, projects: "freescout" },
-  { name: "hornos-phone", query: "?theme=light", width: 390, height: 844 },
+  { name: "hornos-light", query: "?flat&theme=light", width: 1440, height: 900 },
+  { name: "hornos-dark", query: "?flat&theme=dark", width: 1440, height: 900 },
+  { name: "hornos-projects", query: "?flat&theme=light&debug=1", width: 1440, height: 900, projects: "freescout" },
+  { name: "hornos-phone", query: "?flat&theme=light", width: 390, height: 844 },
 ];
 
 const server = await startServer(4343);
