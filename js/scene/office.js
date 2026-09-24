@@ -15,7 +15,8 @@ import { mergeParts, at } from "../lib/merge.js";
 import { plant } from "../lib/plants.js";
 import { buildCat, buildGuitar, buildClock } from "./props.js";
 import { model, planter } from "./models.js";
-import { PHASES, PRESETS, phaseFor, mixPreset, skyTextures } from "./daycycle.js";
+import { PHASES, PRESETS, phaseFor, mixPreset } from "./daycycle.js";
+import { buildCity } from "./city.js";
 
 /* ------------------------------------------------------------------ *
  *  Dimensions (metres)
@@ -203,22 +204,7 @@ function buildRoom(scene) {
   scene.add(sill);
 
   // Outside: a painted sky with a tree line and a few far buildings.
-  // One plane per phase, stacked; the day cycle fades between them.
-  const tex = skyTextures();
-  const skies = {};
-  PHASES.forEach((name, i) => {
-    const m = new THREE.Mesh(
-      new THREE.PlaneGeometry(24, 12),
-      new THREE.MeshBasicMaterial({ map: tex[name], toneMapped: false, transparent: true, opacity: name === "day" ? 1 : 0, depthWrite: false }),
-    );
-    m.rotation.y = Math.PI / 2;
-    m.position.set(x0 - 7 + i * 0.01, 3.2, -0.6);
-    m.renderOrder = -10 + i;
-    scene.add(m);
-    skies[name] = m;
-  });
-
-  return { sill, skies };
+  return { sill };
 }
 
 /* ------------------------------------------------------------------ *
@@ -632,7 +618,7 @@ export function createOffice({ container, osElement, onFocus = () => {}, onWide 
   scene.background = new THREE.Color(0xf1ebe0);
   const cssScene = new THREE.Scene();
 
-  const camera = new THREE.PerspectiveCamera(42, container.clientWidth / container.clientHeight, 0.05, 60);
+  const camera = new THREE.PerspectiveCamera(42, container.clientWidth / container.clientHeight, 0.08, 900);
   camera.position.copy(WIDE.pos);
   const lookAt = WIDE.target.clone();
   camera.lookAt(lookAt);
@@ -645,6 +631,7 @@ export function createOffice({ container, osElement, onFocus = () => {}, onWide 
   const swaying = buildPlants(scene, { sill: room.sill, shelf });
   const lights = buildLights(scene, renderer);
   const dust = buildDust(scene);
+  const city = buildCity(scene);
 
   // The cat asleep on the sill, in the sun.
   const cat = buildCat();
@@ -682,19 +669,11 @@ export function createOffice({ container, osElement, onFocus = () => {}, onWide 
     lights.fill.intensity = p.fillI;
     dust.material.opacity = p.dust;
     renderer.toneMappingExposure = p.exposure;
+    city.apply(p);
   }
   let phase = PHASES.includes(initialPhase) ? initialPhase : "day";
   let phaseTween = null;
-  // The incoming sky sits in front of the outgoing one and fades in over it.
-  const setSkies = (from, to, w) => {
-    for (const name of PHASES) {
-      const m = room.skies[name];
-      m.material.opacity = name === to ? w : name === from ? 1 : 0;
-      m.renderOrder = name === to ? 0 : -1;
-    }
-  };
   applyPreset(PRESETS[phase]);
-  setSkies(phase, phase, 1);
   function setPhase(next, ms = 2500) {
     if (!PHASES.includes(next) || next === phase) return;
     phaseTween = { from: phase, to: next, t0: performance.now(), ms };
@@ -791,6 +770,7 @@ export function createOffice({ container, osElement, onFocus = () => {}, onWide 
   const clock = new THREE.Clock();
   const dustPos = dust.geometry.attributes.position;
   let pinned = null;
+  let lastT = null;
   function frame() {
     const t = clock.getElapsedTime();
     if (tween) {
@@ -826,10 +806,11 @@ export function createOffice({ container, osElement, onFocus = () => {}, onWide 
       const k = Math.min(1, (now - phaseTween.t0) / phaseTween.ms);
       const w = ease(k);
       applyPreset(mixPreset(PRESETS[phaseTween.from], PRESETS[phaseTween.to], w));
-      setSkies(phaseTween.from, phaseTween.to, w);
       if (k === 1) phaseTween = null;
     }
     cat.update(t, now);
+    city.update(t, Math.min(0.05, t - (lastT ?? t)));
+    lastT = t;
     wallClock.update(new Date());
 
     renderer.render(scene, camera);

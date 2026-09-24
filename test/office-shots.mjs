@@ -16,6 +16,7 @@ const WIDE = [[0.78, 1.46, 0.95], [-1.02, 1.0, -1.5]];
 const CLOSE = {
   cat: [[-1.3, 1.25, 0.2], [-2.2, 0.85, -0.62]],
   guitar: [[0.6, 1.0, -0.6], [0.1, 0.55, -1.8]],
+  window: [[-1.2, 1.55, -0.3], [-8, 0.2, -1.2]],
 };
 
 const server = await startServer(4344);
@@ -37,8 +38,11 @@ try {
   await page.evaluate((p) => window.__debug.pin(...p), WIDE);
   for (const phase of ["sunset", "night"]) {
     await page.evaluate((ph) => window.__office.setPhase(ph, 10), phase);
+    await page.evaluate((p) => window.__debug.pin(...p), WIDE);
     await page.waitForTimeout(400);
     await shot(`office-${phase}`);
+    await page.evaluate((p) => window.__debug.pin(...p), CLOSE.window);
+    await shot(`office-window-${phase}`);
   }
   await page.evaluate(() => window.__office.setPhase("day", 10));
   await page.evaluate(() => window.__debug.pin(null));
