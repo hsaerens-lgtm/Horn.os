@@ -17,6 +17,7 @@ function themeFor(date) {
 
 const forced = params.get("theme");
 const theme = forced === "light" || forced === "dark" ? forced : themeFor(new Date());
+const wallpaper = params.get("wallpaper");
 
 // A handle for tests and the console; ?debug only.
 const debug = params.has("debug");
@@ -34,7 +35,7 @@ function supportsWebGL() {
 
 function startFlat() {
   document.body.classList.add("flat");
-  const os = createHornOS(document.getElementById("os"), { profile, dialogue, theme, onStream });
+  const os = createHornOS(document.getElementById("os"), { profile, dialogue, theme, onStream, wallpaper });
   if (debug) window.__os = os;
   document.getElementById("loader")?.remove();
 }
@@ -72,7 +73,7 @@ async function start3D() {
   // Horn.os is built once its element is in the DOM with its size (the office
   // put it there), so the windows can place themselves.
   const roomTheme = forced ? theme : office.phase === "night" ? "dark" : "light";
-  os = createHornOS(osElement, { profile, dialogue, theme: roomTheme, onStream });
+  os = createHornOS(osElement, { profile, dialogue, theme: roomTheme, onStream, wallpaper });
   os.blur();
 
   back.addEventListener("click", () => office.wide());

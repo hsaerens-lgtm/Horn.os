@@ -135,3 +135,61 @@ test("?theme=dark forces the dark theme", async () => {
     await close();
   }
 });
+
+// A thinned-out copy of the wallpaper's pixels, to tell whether it moved.
+const wallpaperPixels = (page) =>
+  page.evaluate(() => {
+    const c = document.querySelector(".hornos-wallpaper");
+    const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+    let out = "";
+    for (let i = 0; i < d.length; i += 389) out += d[i].toString(36);
+    return out;
+  });
+
+test("the wallpaper moves; the Wallpaper window changes it and the choice is remembered", async () => {
+  const { page, errors, close } = await openPage(`${server.url}?flat`);
+  try {
+    await page.waitForSelector(".hornos-wallpaper");
+    assert.equal(await page.getAttribute(".hornos", "data-wallpaper"), "aurora");
+    await page.waitForTimeout(300);
+    const before = await wallpaperPixels(page);
+    await page.waitForTimeout(800);
+    assert.notEqual(await wallpaperPixels(page), before, "the wallpaper is animated");
+
+    await page.click(".hornos-wp");
+    const win = page.locator('.win[data-win="wallpaper"]');
+    await win.waitFor({ state: "visible" });
+    assert.equal(await win.locator(".wp-item").count(), 7);
+    await win.locator('.wp-item[data-wallpaper="contours"]').click();
+    assert.equal(await page.getAttribute(".hornos", "data-wallpaper"), "contours");
+    assert.equal(await win.locator('.wp-item[data-wallpaper="contours"]').getAttribute("aria-pressed"), "true");
+    assert.equal(await win.locator('.wp-item[data-wallpaper="aurora"]').getAttribute("aria-pressed"), "false");
+
+    await page.reload();
+    await page.waitForSelector(".hornos-wallpaper");
+    assert.equal(await page.getAttribute(".hornos", "data-wallpaper"), "contours", "the choice survives a reload");
+
+    // a right-click on the empty desktop opens the window too
+    await page.click('.win[data-win="chat"] [data-act="close"]');
+    await page.click(".hornos-desktop", { button: "right", position: { x: 20, y: 20 } });
+    await page.locator('.win[data-win="wallpaper"]').waitFor({ state: "visible" });
+    assert.deepEqual(errors, []);
+  } finally {
+    await close();
+  }
+});
+
+test("with reduced motion the wallpaper is drawn once and holds still", async () => {
+  const { page, close } = await openPage(`${server.url}?flat&wallpaper=constellation`, { reducedMotion: "reduce" });
+  try {
+    await page.waitForSelector(".hornos-wallpaper");
+    assert.equal(await page.getAttribute(".hornos", "data-wallpaper"), "constellation");
+    await page.waitForTimeout(400);
+    const before = await wallpaperPixels(page);
+    assert.match(before, /[^0]/, "something was drawn");
+    await page.waitForTimeout(800);
+    assert.equal(await wallpaperPixels(page), before);
+  } finally {
+    await close();
+  }
+});

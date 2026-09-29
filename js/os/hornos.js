@@ -12,6 +12,10 @@ import { renderProjects } from "./windows/projects.js";
 import { renderContact } from "./windows/contact.js";
 import { renderDnd } from "./windows/dnd.js";
 import { renderGame } from "./windows/game.js";
+import { renderWallpaperPicker } from "./windows/wallpaper.js";
+import { WALLPAPERS, DEFAULT_WALLPAPER, createWallpaper } from "./wallpapers.js";
+
+const WALLPAPER_KEY = "hornos-wallpaper";
 
 const DOCK = [
   { id: "chat", label: "Horn.os" },
@@ -23,8 +27,9 @@ const DOCK = [
   { id: "dnd", label: "DnD" },
 ];
 
-export function createHornOS(root, { profile, dialogue, theme = "light", onBack = null, onStream = () => {}, dndHref = "dnd/" } = {}) {
+export function createHornOS(root, { profile, dialogue, theme = "light", onBack = null, onStream = () => {}, dndHref = "dnd/", wallpaper: askedWallpaper = null } = {}) {
   const desktop = h("div", { class: "hornos-desktop" });
+  const wallCanvas = h("canvas", { class: "hornos-wallpaper", "aria-hidden": "true" });
   const clock = h("span", { class: "hornos-clock" });
   const bar = h(
     "div",
@@ -32,11 +37,34 @@ export function createHornOS(root, { profile, dialogue, theme = "light", onBack 
     h("span", { class: "hornos-brand" }, "Horn.os"),
     h("span", { class: "hornos-who" }, `${profile.name} · ${profile.title}`),
     clock,
+    h("button", { type: "button", class: "hornos-wp", "aria-label": "Wallpaper", title: "Wallpaper", onclick: () => wm.toggle("wallpaper") }, ICONS.wallpaper()),
     onBack && h("button", { type: "button", class: "hornos-back", onclick: onBack }, "← Back"),
   );
   const dock = h("nav", { class: "hornos-dock", "aria-label": "Applications" });
-  const shell = h("div", { class: "hornos", "data-theme": theme }, bar, desktop, dock);
+  const shell = h("div", { class: "hornos", "data-theme": theme }, wallCanvas, bar, desktop, dock);
   root.replaceChildren(shell);
+
+  // The wallpaper: ?wallpaper= (tests, screenshots), else the visitor's last
+  // pick, else the default.
+  const known = (id) => WALLPAPERS.some((w) => w.id === id);
+  let saved = null;
+  try {
+    saved = localStorage.getItem(WALLPAPER_KEY);
+  } catch {
+    /* storage may be unavailable */
+  }
+  const firstWallpaper = [askedWallpaper, saved].find(known) ?? DEFAULT_WALLPAPER;
+  const wallpaper = createWallpaper(wallCanvas, { id: firstWallpaper, theme });
+  shell.dataset.wallpaper = firstWallpaper;
+  function setWallpaper(id) {
+    wallpaper.set(id);
+    shell.dataset.wallpaper = id;
+    try {
+      localStorage.setItem(WALLPAPER_KEY, id);
+    } catch {
+      /* ignore */
+    }
+  }
 
   const wm = createWindowManager(desktop, { onChange: syncDock });
   wm.register("chat", {
@@ -52,6 +80,19 @@ export function createHornOS(root, { profile, dialogue, theme = "light", onBack 
   wm.register("contact", { title: "Contact", width: 460, height: 380, render: (b) => renderContact(b, profile) });
   wm.register("dnd", { title: "DnD — bonus project", width: 500, height: 400, render: (b) => renderDnd(b, dndHref) });
   wm.register("game", { title: "Nebula Run", width: 860, height: 560, center: true, render: (b) => renderGame(b) });
+  wm.register("wallpaper", {
+    title: "Wallpaper",
+    width: 780,
+    height: 450,
+    center: true,
+    render: (b) => renderWallpaperPicker(b, { current: () => wallpaper.id, theme: () => shell.dataset.theme, onPick: setWallpaper }),
+  });
+  // Right-click on the empty desktop, as on any desktop.
+  desktop.addEventListener("contextmenu", (e) => {
+    if (e.target !== desktop) return;
+    e.preventDefault();
+    wm.open("wallpaper");
+  });
 
   for (const item of DOCK) {
     dock.append(
@@ -102,6 +143,12 @@ export function createHornOS(root, { profile, dialogue, theme = "light", onBack 
     open: (id, arg) => wm.open(id, arg),
     setTheme(t) {
       shell.dataset.theme = t;
+      wallpaper.setTheme(t);
+      wm.api("wallpaper")?.setTheme?.(t);
+    },
+    setWallpaper,
+    get wallpaper() {
+      return wallpaper.id;
     },
     focus() {
       active = true;
