@@ -18,6 +18,7 @@ export function renderResume(body, profile) {
         h("a", { class: "btn btn-primary", href: profile.resumePdf, download: "Horn_Saerens_CV.pdf" }, "Download PDF"),
       ),
       h("p", { class: "doc-lead" }, profile.summary),
+      h("p", { class: "doc-meta" }, h("strong", {}, "How I deliver: "), profile.method.join(" → ")),
       h("h2", {}, "Experience"),
       h("p", { class: "doc-meta" }, profile.company),
       ...profile.experience.map((x) =>

@@ -10,7 +10,7 @@ test("the real dialogue is a valid, fully reachable tree", () => {
 
 test("the start node offers the four entry topics", () => {
   const labels = dialogue.nodes[dialogue.start].next.map((id) => dialogue.nodes[id].question);
-  assert.deepEqual(labels, ["Who is Horn?", "What has he built?", "How does he work with AI agents?", "How can I contact him?"]);
+  assert.deepEqual(labels, ["Who is Horn?", "How does he work?", "What has he built?", "How can I contact him?"]);
 });
 
 test("the assistant speaks about Horn, not as Horn", () => {
