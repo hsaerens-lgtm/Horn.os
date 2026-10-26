@@ -68,7 +68,7 @@ export const dialogue = {
             "**AI Solutions Consultant** — since August 2025",
           ],
         },
-        { p: "He is self-taught in AI engineering and software delivery. Before that, he studied architecture at ENSAG in Grenoble." },
+        { p: "He is self-taught in AI solution design. He is not a traditional developer: he designs the solution and builds it with AI coding agents (Claude Code, Codex), with a method of his own that makes them prove their work. Before that, he studied architecture at ENSAG in Grenoble." },
         { open: "resume", label: "Open the résumé" },
       ],
       next: ["roles", "method"],
@@ -78,7 +78,7 @@ export const dialogue = {
       question: "What roles is he looking for?",
       answer: [
         { p: "Roles where AI has to work in a real business, not just in a demo:" },
-        { list: ["**AI Solutions Consultant / Engineer**", "**Forward Deployed Engineer**", "**Applied AI / AI transformation roles**"] },
+        { list: ["**AI Solutions Consultant**", "**AI Deployment or AI Adoption Lead**", "**AI transformation roles**"] },
         {
           p: "In practice: sitting with a team, understanding the process, building the agent or the integration, deploying it, and making sure people actually adopt it.",
         },
@@ -93,7 +93,7 @@ export const dialogue = {
         {
           list: [
             "**He speaks both languages.** Years in sales and sales operations mean he starts from the business problem, not from the model.",
-            "**He ships to production.** Architecture, code, Docker deployment, CI and tests — and the support copilot is used daily by 100+ people.",
+            "**He ships to production.** He designs the architecture, writes the specs and test strategy, and builds with AI coding agents — deployment, CI and tests included. The support copilot is used daily by 100+ people.",
             "**He picks the right model.** Frontier APIs where capability matters, self-hosted models where customer data must stay in-house — benchmarked on real samples.",
             "**He drives adoption.** 150+ people trained, 30+ agents built by the teams themselves, and a human validating every output that reaches a customer.",
           ],
@@ -122,7 +122,7 @@ export const dialogue = {
             "**Identify** — see where a team loses time or control over its data",
             "**Decide** — weigh time saved, risk and data sensitivity, and make a clear build / no-build call",
             "**Prototype** — a quick POC, validated with the people who will use it",
-            "**Build** — architecture, code, integrations and tests",
+            "**Build** — architecture, specs and tests, with AI coding agents writing the code",
             "**Deploy & gather feedback** — ship it, then listen to the users",
             "**Train & drive adoption** — training, guardrails and a human in the loop",
             "**Monitor & improve** — feedback becomes the next batch of work",
@@ -204,7 +204,7 @@ export const dialogue = {
           list: [
             "**Frontier models** — Claude, GPT and Gemini, where capability drives the value",
             "**Local models** — through LM Studio, vLLM and Ollama, where data has to stay in-house",
-            "**Coding agents** — Claude Code and Codex, every day",
+            "**Coding agents** — Claude Code and Codex, every day: they write the code, he sets the specs and checks the result",
           ],
         },
         { p: "The choice is made per use case and benchmarked on real samples, not decided once for everything — the same work he does across the company's Athena AI ecosystem." },
@@ -247,7 +247,7 @@ export const dialogue = {
           p: "The support team was juggling tickets, call transcripts and AI tools across separate systems, with no single view of the customer and customer data at risk of ending up with third parties.",
         },
         {
-          p: "Horn built a **single support workspace**: tickets and call transcripts side by side, with contextual AI search, draft replies, templates, scheduled sends and customer briefs. A human reviews every draft before it goes out.",
+          p: "Horn designed a **single support workspace** and built it with AI coding agents: tickets and call transcripts side by side, with contextual AI search, draft replies, templates, scheduled sends and customer briefs. A human reviews every draft before it goes out.",
         },
         { p: "It is **in production for 100+ users** and saves each of them **30 minutes to 2 hours a day**." },
         { project: "freescout" },
@@ -280,6 +280,7 @@ export const dialogue = {
             "**Back end:** Node and Express",
             "**Deployment:** Docker and Caddy",
             "**Quality:** 268 unit and integration tests, 26 Playwright end-to-end tests, CI on every change",
+            "**Built with:** Claude Code and Codex, following his horn-dev method",
           ],
         },
       ],
@@ -293,7 +294,7 @@ export const dialogue = {
           p: "Teams were using AI through personal accounts, with no shared practice and no control over company data. They needed a safe, private, ChatGPT-style place connected to the company's tools.",
         },
         {
-          p: "Horn **rebuilt LibreChat from source** into that platform: a full container stack with RAG, a local model endpoint, Google Workspace, Atlassian and Gmail connected over MCP, and an agent catalogue with search and access rules.",
+          p: "Horn **rebuilt LibreChat from source** into that platform, working with AI coding agents: a full container stack with RAG, a local model endpoint, Google Workspace, Atlassian and Gmail connected over MCP, and an agent catalogue with search and access rules.",
         },
         { p: "The teams have built **30+ agents** on it themselves — the hands-on follow-up to his AI training." },
         { project: "platform" },
@@ -344,7 +345,7 @@ export const dialogue = {
           p: "Across thousands of Drive files, nobody knew which document was current, who owned it or whether it was approved — and AI tools had no governed corpus to read from.",
         },
         {
-          p: "Horn built **Docflow**, with Google Drive as the single source of truth: documents are admitted, versioned and owned, every change is logged, and search answers with cited passages.",
+          p: "Horn designed **Docflow** and built it with AI coding agents, with Google Drive as the single source of truth: documents are admitted, versioned and owned, every change is logged, and search answers with cited passages.",
         },
         { p: "It is used by **all team leaders and the executive team** — 30 people — with a dedicated owner controlling what is current and approved." },
         { project: "docflow" },
@@ -442,9 +443,9 @@ export const dialogue = {
       answer: [
         {
           list: [
-            "**AI & agents:** agent design, MCP servers, RAG, prompt engineering and evaluation, guardrails, n8n, LibreChat, Claude Code, Codex",
+            "**AI & agents:** agent design, MCP servers, RAG, prompt engineering and evaluation, guardrails, n8n, LibreChat",
             "**Models:** Claude, GPT, Gemini; LM Studio, vLLM, Ollama; benchmarking and selection per use case",
-            "**Engineering & deployment:** TypeScript, React, Node / Express, Python, SQLite, MongoDB, Docker, GitHub Actions, Playwright",
+            "**AI-assisted delivery:** specs, architecture and test strategy for coding agents (Claude Code, Codex); solutions shipped on TypeScript, React, Node, Python, SQLite, Docker, GitHub Actions, Playwright",
             "**Business:** Salesforce, Google Workspace APIs, Power BI, Tableau, discovery workshops, training and change management",
           ],
         },

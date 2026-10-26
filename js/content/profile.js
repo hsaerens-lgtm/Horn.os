@@ -21,8 +21,8 @@ export const profile = {
 
   summary:
     "AI Solutions Consultant with 4+ years at Spotzer Digital, progressing from sales leadership to end-to-end AI " +
-    "delivery. Identifies high-friction processes, then designs, builds and deploys AI agents, integrations and " +
-    "internal platforms (LLMs, RAG, MCP, self-hosted models) and drives their adoption. Shipped an AI support " +
+    "delivery. Identifies high-friction processes, then designs and deploys AI agents, integrations and " +
+    "internal platforms (LLMs, RAG, MCP, self-hosted models), built with AI coding agents, and drives their adoption. Shipped an AI support " +
     "workspace used by 100+ people, saving each 30 min–2 h a day, and trained 150+ employees in AI.",
 
   // The delivery cycle, shown under the summary and walked through in the chat.
@@ -35,7 +35,7 @@ export const profile = {
       dates: "Aug 2025 – Present",
       bullets: [
         "**Identify & decide:** map how sales, support and operations really work, find where the business loses time or data control, and turn it into prioritised AI use cases with a clear build / no-build call.",
-        "**Prototype to production:** build POCs, validate them with users, then own architecture, development, integration and deployment of the solutions that prove their value.",
+        "**Prototype to production:** build POCs, validate them with users, then own the architecture, specs, integration and deployment of the solutions that prove their value, built through AI-assisted development (Claude Code, Codex).",
         "**Model strategy:** select and implement models per use case across the company's Athena AI ecosystem — frontier APIs where capability drives value, self-hosted models where customer data must stay in-house.",
         "**Adoption:** run company-wide AI training (150+ participants) and a private AI platform on which teams have built 30+ agents.",
         "**Monitor & improve:** turn user feedback into delivery batches, and run a recurring AI watch that keeps teams on current tools and grounds tool choices in tests.",
@@ -65,15 +65,15 @@ export const profile = {
   skills: [
     {
       group: "AI & agents",
-      items: ["Agent design", "MCP servers", "RAG", "Prompt engineering & evaluation", "Guardrails & hallucination control", "n8n", "LibreChat", "Claude Code", "Codex"],
+      items: ["Agent design", "MCP servers", "RAG", "Prompt engineering & evaluation", "Guardrails & hallucination control", "n8n", "LibreChat"],
     },
     {
       group: "Models",
       items: ["Claude, GPT, Gemini", "LM Studio, vLLM, Ollama", "Benchmarking & selection per use case"],
     },
     {
-      group: "Engineering & deployment",
-      items: ["TypeScript", "React / Vite", "Node.js / Express", "Python", "SQLite", "MongoDB", "Docker & Compose", "GitHub Actions", "Playwright"],
+      group: "AI-assisted delivery",
+      items: ["Specs & architecture for coding agents", "Claude Code, Codex", "Test strategy", "Shipped on TypeScript / React, Node.js, Python", "SQLite", "Docker", "GitHub Actions", "Playwright checks", "Basic coding literacy"],
     },
     {
       group: "Business",
@@ -91,7 +91,7 @@ export const profile = {
       problem:
         "Support agents juggled tickets, call transcripts and AI tools across separate systems, with no single customer view and customer data at risk of third-party exposure.",
       built:
-        "One workspace unifying FreeScout tickets and call transcripts with contextual AI search, draft replies, per-mailbox templates and business instructions, scheduled sends with a team calendar and Cortex customer briefs. Google sign-in, per-operator identity, strict customer-context isolation before any model call, and a human review before every send.",
+        "One workspace, designed by Horn and built with AI coding agents, unifying FreeScout tickets and call transcripts with contextual AI search, draft replies, per-mailbox templates and business instructions, scheduled sends with a team calendar and Cortex customer briefs. Google sign-in, per-operator identity, strict customer-context isolation before any model call, and a human review before every send.",
       result:
         "In production for 100+ users, saving each of them 30 minutes to 2 hours a day, with a clearer view and tighter control of customer data. The roadmap now comes from user feedback: e-mail translation, internal notes, shareable ticket links, assignee and waiting-time columns, attachments.",
     },
@@ -130,7 +130,7 @@ export const profile = {
       problem:
         "Across thousands of Drive files nobody knew which document was current, owned or approved, and AI tools had no governed corpus to read from.",
       built:
-        "A portal with Google Drive as the single source of truth: document admission, versioning and ownership, a SQLite registry with an audit log, access-aware search by cited passages, native text extraction with OCR on demand, and update sessions with Calendar and Meet. Optional model-written answers never alter the retrieved passages.",
+        "A portal, built with AI coding agents, with Google Drive as the single source of truth: document admission, versioning and ownership, a SQLite registry with an audit log, access-aware search by cited passages, native text extraction with OCR on demand, and update sessions with Calendar and Meet. Optional model-written answers never alter the retrieved passages.",
       result:
         "Used by all team leaders and the executive team (30 people), with a dedicated owner controlling what is current and approved. The registry was benchmarked at 1,000 and 3,000 documents.",
     },
@@ -204,7 +204,7 @@ export const profile = {
   ],
 
   education: [
-    "Self-taught in AI engineering and software delivery — the projects are the proof of work.",
+    "Self-taught in AI solution design and AI-assisted delivery — the projects are the proof of work.",
     "Architecture studies, ENSAG, Grenoble — 2013–2015.",
   ],
   languages: "French (native) · English (fluent)",
