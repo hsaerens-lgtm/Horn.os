@@ -21,6 +21,7 @@ export function renderResume(body, profile) {
       h("p", { class: "doc-meta" }, h("strong", {}, "How I deliver: "), profile.method.join(" → ")),
       h("h2", {}, "Experience"),
       h("p", { class: "doc-meta" }, profile.company),
+      profile.companyNote ? h("p", { class: "doc-meta" }, profile.companyNote) : null,
       ...profile.experience.map((x) =>
         h(
           "section",

@@ -1,5 +1,5 @@
-// Horn, as data. Every line traces to CV v3 (Desktop/Resume/Horn_Saerens_CV_2026_v3.docx),
-// to figures Horn confirmed himself on 2026-10-13, or to a note in the Obsidian vault.
+// Horn, as data. Every line traces to his CV (Desktop/Resume/Horn_Saerens_CV_AI_Adoption_Lead.pdf,
+// November 2026), to figures Horn confirmed himself on 2026-10-13, or to a note in the Obsidian vault.
 // Claims dropped as unsupported stay dropped: FreeScout "sole designer & developer",
 // "Perseus AI Platform", "promoted four times". Nothing here is rounded up.
 //
@@ -9,7 +9,7 @@
 export const profile = {
   name: "Horn Saerens",
   title: "AI Solutions Consultant",
-  focus: "AI agents, integrations & adoption",
+  focus: "AI adoption, enablement & change management",
   location: "Amsterdam",
   availability: "Based in Amsterdam · EU citizen · one-month notice",
   email: "saerenshorn@gmail.com",
@@ -17,67 +17,82 @@ export const profile = {
     linkedin: "https://www.linkedin.com/in/horn-saerens-7426b022b",
     github: "https://github.com/hsaerens-lgtm",
   },
-  resumePdf: "assets/Horn_Saerens_CV_2026.pdf",
+  resumePdf: "assets/Horn_Saerens_CV_AI_Adoption_Lead.pdf",
 
   summary:
-    "AI Solutions Consultant with 4+ years at Spotzer Digital, progressing from sales leadership to end-to-end AI " +
-    "delivery. Identifies high-friction processes, then designs and deploys AI agents, integrations and " +
-    "internal platforms (LLMs, RAG, MCP, self-hosted models), built with AI coding agents, and drives their adoption. Shipped an AI support " +
-    "workspace used by 100+ people, saving each 30 min–2 h a day, and trained 150+ employees in AI.",
+    "Drives AI adoption across Spotzer Digital (around 150 employees), building the internal tools and platforms " +
+    "its teams now use. Spots where AI can improve internal workflows, implements the tools with business and " +
+    "technical teams, trains people to use AI responsibly, then uses feedback to adjust the approach. Comes from " +
+    "sales leadership: led an international team of 11 before moving into a dedicated AI role in 2025. Results: " +
+    "an AI support workspace used by 100+ people, saving each 30 min to 2 h a day; 150+ employees trained in " +
+    "generative AI; 30+ agents built by the teams themselves.",
 
   // The delivery cycle, shown under the summary and walked through in the chat.
   method: ["Identify", "Decide", "Prototype", "Build", "Deploy & feedback", "Train & adopt", "Improve"],
 
   company: "Spotzer Digital, Amsterdam — four roles in four years",
+  companyNote:
+    "Spotzer Digital sells its own digital services and those of partners such as IONOS and Orange to the " +
+    "partners' customer bases. Around 150 employees, based in Amsterdam with offices in Manila and Melbourne.",
   experience: [
     {
       role: "AI Solutions Consultant",
       dates: "Aug 2025 – Present",
       bullets: [
-        "**Identify & decide:** map how sales, support and operations really work, find where the business loses time or data control, and turn it into prioritised AI use cases with a clear build / no-build call.",
-        "**Prototype to production:** build POCs, validate them with users, then own the architecture, specs, integration and deployment of the solutions that prove their value, built through AI-assisted development (Claude Code, Codex).",
-        "**Model strategy:** select and implement models per use case across the company's Athena AI ecosystem — frontier APIs where capability drives value, self-hosted models where customer data must stay in-house.",
-        "**Adoption:** run company-wide AI training (150+ participants) and a private AI platform on which teams have built 30+ agents.",
-        "**Monitor & improve:** turn user feedback into delivery batches, and run a recurring AI watch that keeps teams on current tools and grounds tool choices in tests.",
+        "**Discovery and prioritisation:** map how sales, support and operations work with their stakeholders, and turn friction points into prioritised AI and automation use cases with a clear build / no-build decision.",
+        "**Delivery:** own solutions from prototype to production (requirements, specs, architecture choices, user validation, rollout), directing AI coding agents (Claude Code, Codex) for the build.",
+        "**Adoption and change management:** designed and ran company-wide generative AI training (150+ participants), wrote the training materials and user documentation, and launched a private AI platform on which teams built 30+ agents.",
+        "**Model and data governance:** select models per use case — frontier APIs where capability drives value, self-hosted models where customer data must stay in-house.",
+        "**Continuous improvement:** turn user feedback into release batches to adjust each rollout, and run an AI watch and newsletter that keeps teams up to date on new AI tools and grounds tool choices in tests.",
       ],
     },
     {
       role: "Sales Operations Manager",
       dates: "Jul 2024 – Aug 2025",
       bullets: [
-        "Owned forecasting, market performance and strategy analysis; introduced the company's first AI-assisted processes into sales operations — the bridge to the AI role.",
+        "Partner-facing role with channel partners IONOS and Orange: reported results in regular business reviews (QBR-style) and delivered product demos and solution presentations to their teams.",
+        "Owned forecasting, market performance and strategy analysis for the French, English-speaking, Spanish and US markets.",
+        "Introduced the company's first AI-assisted processes into sales operations, which led to the move into the AI role.",
       ],
     },
     {
       role: "Team Leader Sales",
       dates: "Sep 2023 – Jul 2024",
       bullets: [
-        "Led and coached a sales team and streamlined sales-to-delivery handovers; **CEO Award** for taking over the team and bringing it to target quickly.",
+        "Led and coached an international sales team of 11 across Europe and the USA.",
+        "Team set sales records: over one year, beat forecast by 20% and grew sales by more than 30% year on year.",
+        "**CEO Award** for taking over the team and bringing it to target quickly.",
+        "Streamlined sales-to-delivery handovers.",
       ],
     },
     {
-      role: "Sales Market Leader — FR Market",
+      role: "Sales Market Leader — French market",
       dates: "Apr 2022 – Sep 2023",
-      bullets: ["Owned French-market sales through direct client engagement and tailored offers."],
+      bullets: ["Customer-facing role: owned French-market sales through direct client engagement and tailored offers."],
+    },
+    {
+      role: "Earlier experience",
+      dates: "2015 – 2022",
+      bullets: ["Customer-facing retail sales roles in store, including Napapijri, Chamonix-Mont-Blanc."],
     },
   ],
 
   skills: [
     {
-      group: "AI & agents",
-      items: ["Agent design", "MCP servers", "RAG", "Prompt engineering & evaluation", "Guardrails & hallucination control", "n8n", "LibreChat"],
+      group: "AI adoption & change",
+      items: ["AI literacy & enablement programmes", "Training design & delivery", "Training materials & user documentation", "Change management", "Stakeholder management", "Discovery workshops", "Process mapping", "Use-case prioritisation", "Responsible AI, governance & data security"],
     },
     {
-      group: "Models",
-      items: ["Claude, GPT, Gemini", "LM Studio, vLLM, Ollama", "Benchmarking & selection per use case"],
+      group: "AI solutions",
+      items: ["Generative AI, LLMs", "AI agents", "RAG", "MCP", "Prompt engineering & evaluation", "Guardrails", "Automation (n8n)", "LibreChat", "Claude, GPT, Gemini", "Self-hosted models (Ollama, vLLM, LM Studio)"],
     },
     {
-      group: "AI-assisted delivery",
-      items: ["Specs & architecture for coding agents", "Claude Code, Codex", "Test strategy", "Shipped on TypeScript / React, Node.js, Python", "SQLite", "Docker", "GitHub Actions", "Playwright checks", "Basic coding literacy"],
+      group: "Delivery",
+      items: ["Requirements & specs", "Architecture choices", "Test strategy", "Directing AI coding agents (Claude Code, Codex)"],
     },
     {
       group: "Business",
-      items: ["Salesforce", "Google Workspace APIs", "Power BI", "Tableau", "Discovery workshops", "Training & change management"],
+      items: ["Sales leadership", "Channel partner management", "Product demos", "Business reviews (QBR)", "Forecasting", "Salesforce", "Power BI", "Tableau", "Google Workspace"],
     },
   ],
 
@@ -113,26 +128,39 @@ export const profile = {
       name: "AI Day & AI Explorer",
       kind: "Company-wide AI training",
       status: "Delivered · 150+ participants",
-      stack: ["Workshop", "Training site"],
+      stack: ["Workshop", "Training materials", "Training site"],
       problem:
         "Before teams could use AI well, they needed the same footing: what it does, where it fails, and what must never be pasted into it.",
       built:
-        "A company-wide workshop — prompting, data security, hallucinations, RAG, MCP, hands-on agent creation — extended into a self-serve site: foundations, mindset, a prompting lab and a five-step agent-architect builder (purpose, knowledge, boundaries, persona, review).",
+        "A company-wide workshop — prompting, data security, hallucinations, RAG, MCP, hands-on agent building — with its training materials and user documentation, extended into a self-serve site: foundations, mindset, a prompting lab and a five-step agent-architect builder (purpose, knowledge, boundaries, persona, review).",
       result:
         "150+ participants in total, and the practice continues on the private AI platform, where the teams build their own agents.",
     },
     {
+      id: "academy",
+      name: "Athena Prompt Academy",
+      kind: "Interactive prompt-training site",
+      status: "Built · three parts complete",
+      stack: ["React / Vite", "TypeScript", "Three.js", "Vitest", "Playwright", "GitHub Pages"],
+      problem:
+        "A workshop happens once. Sales, support and technical staff needed a way to learn prompting at their own pace, practise it, and prove what they had learned.",
+      built:
+        "A training site in three parts, built with AI coding agents: a 3D office where a robot guide explains generative AI in 13 topics, from “What is AI?” to “Using AI safely at work”; a workshop with six missions where prompts are built in blocks, then in free text, then repaired; and a dungeon that checks each topic and ends with a PDF certificate generated in the browser. Missions are scored offline; an optional corrector sends a prompt to a real model through a small proxy that keeps the key.",
+      result:
+        "All three parts are finished and the site deploys as static files. It is covered by 4,101 unit and content tests plus end-to-end runs, with a check that no key reaches the build.",
+    },
+    {
       id: "docflow",
       name: "Docflow",
-      kind: "Document governance platform",
+      kind: "Document governance & knowledge platform",
       status: "Deployed · team leaders & executive team",
       stack: ["Node.js", "React", "SQLite", "Google Drive API", "Ollama"],
       problem:
         "Across thousands of Drive files nobody knew which document was current, owned or approved, and AI tools had no governed corpus to read from.",
       built:
-        "A portal, built with AI coding agents, with Google Drive as the single source of truth: document admission, versioning and ownership, a SQLite registry with an audit log, access-aware search by cited passages, native text extraction with OCR on demand, and update sessions with Calendar and Meet. Optional model-written answers never alter the retrieved passages.",
+        "A platform, specified by Horn and built with AI coding agents, with Google Drive as the single source of truth: it segments documents into passages, gives precise, access-aware search with cited sources, and tracks versions, ownership and approval in a registry with an audit log. Native text extraction with OCR on demand, and update sessions with Calendar and Meet. Optional model-written answers never alter the retrieved passages.",
       result:
-        "Used by all team leaders and the executive team (30 people), with a dedicated owner controlling what is current and approved. The registry was benchmarked at 1,000 and 3,000 documents.",
+        "A living knowledge base used by all team leaders and the executive team (30 people), kept current and approved by a dedicated owner, that other AI tools can draw on. The registry was benchmarked at 1,000 and 3,000 documents.",
     },
     {
       id: "athena",
@@ -164,11 +192,11 @@ export const profile = {
     {
       id: "crm",
       name: "Internal CRM",
-      kind: "Replacing Salesforce",
-      status: "In progress since September 2026",
-      stack: ["Twenty", "WSL2", "Docker"],
+      kind: "Replacing Salesforce, built from scratch",
+      status: "In development · not yet in production",
+      stack: ["TypeScript", "Node.js / Fastify", "PostgreSQL", "React / Vite", "MCP", "Vitest", "Playwright", "Docker"],
       summary:
-        "Scoped and started an internal CRM on the open-source Twenty base, under five rules: extend rather than rewrite, no Enterprise spend, self-hosted, 100+ users, one isolated workspace per partner. WSL2 and Docker development stack, first core patches each documented with its proof, business logic planned as an SDK app with telephony webhooks.",
+        "An internal CRM that brings the company's AI tools together under one roof. It began in September 2026 on an open-source base; in October Horn restarted it as a platform of the company's own, built with AI coding agents. It is designed for 100+ users working for several partners whose data never mixes, and every business action is available through the API and as an MCP tool, so AI agents can drive it within an explicit scope. Sales, client-management, prospecting, insights and admin apps are built and tested; telephony and the AI-suite connections are still tested against stand-in services, and there is no production environment yet.",
     },
     {
       id: "toolbox",

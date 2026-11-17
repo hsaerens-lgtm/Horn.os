@@ -4,7 +4,7 @@
 // can never say anything that is not written here.
 //
 // Rules for editing: the assistant talks about Horn in the third person; every
-// claim traces to CV v3, to Horn's own confirmations, or to the vault, like
+// claim traces to his CV, to Horn's own confirmations, or to the vault, like
 // js/content/profile.js; 1–4 `next` questions per node (2–4 at the start); never
 // point `next` at "root" — the chat adds "Back to topics" itself.
 // `node --test test/unit/dialogue.test.mjs` catches dead ends, unreachable nodes
@@ -32,10 +32,10 @@ export const dialogue = {
       question: "Who is Horn?",
       answer: [
         {
-          p: "**Horn Saerens** is an AI Solutions Consultant at Spotzer Digital in Amsterdam. He owns AI initiatives end to end: he finds where the business loses time or control, decides what is worth building, prototypes it, builds and deploys it, trains the teams, then keeps improving it.",
+          p: "**Horn Saerens** is an AI Solutions Consultant at Spotzer Digital in Amsterdam, where he drives AI adoption across a company of around 150 people. He spots where AI can improve the way teams work, puts the tools in place with business and technical teams, trains people to use AI responsibly, then uses their feedback to adjust.",
         },
         {
-          p: "He came up through sales and operations, so he starts from the business problem, not from the model. His AI support workspace is used by **100+ people**, and his AI training has reached **150+ participants**.",
+          p: "He came up through sales leadership — he led an international team of 11 before moving into a dedicated AI role in 2025 — so he starts from the business problem, not from the model. His AI support workspace is used by **100+ people**, and his AI training has reached **150+ participants**.",
         },
       ],
       next: ["impact", "background", "roles", "where"],
@@ -63,12 +63,12 @@ export const dialogue = {
         {
           list: [
             "**Sales Market Leader**, French market — from 2022",
-            "**Team Leader Sales** — from 2023. He took over the team and brought it to target quickly, which earned him a **CEO Award**.",
-            "**Sales Operations Manager** — from 2024, where he brought the first AI-assisted processes into sales operations",
+            "**Team Leader Sales** — from 2023. He led an international team of 11 across Europe and the USA; over one year the team beat its forecast by 20% and grew sales by more than 30%. Taking over the team and bringing it to target quickly earned him a **CEO Award**.",
+            "**Sales Operations Manager** — from 2024. A partner-facing role with the channel partners IONOS and Orange (business reviews, product demos), plus forecasting for the French, English-speaking, Spanish and US markets. He brought the first AI-assisted processes into sales operations.",
             "**AI Solutions Consultant** — since August 2025",
           ],
         },
-        { p: "He is self-taught in AI solution design. He is not a traditional developer: he designs the solution and builds it with AI coding agents (Claude Code, Codex), with a method of his own that makes them prove their work. Before that, he studied architecture at ENSAG in Grenoble." },
+        { p: "He is self-taught in AI solution design. He is not a traditional developer: he designs the solution and builds it with AI coding agents (Claude Code, Codex), with a method of his own that makes them prove their work. Before Spotzer he worked in customer-facing retail sales, and he studied architecture at ENSAG in Grenoble." },
         { open: "resume", label: "Open the résumé" },
       ],
       next: ["roles", "method"],
@@ -78,24 +78,24 @@ export const dialogue = {
       question: "What roles is he looking for?",
       answer: [
         { p: "Roles where AI has to work in a real business, not just in a demo:" },
-        { list: ["**AI Solutions Consultant**", "**AI Deployment or AI Adoption Lead**", "**AI transformation roles**"] },
+        { list: ["**AI Adoption or AI Enablement Lead**", "**AI Solutions Consultant**", "**AI transformation and change roles**"] },
         {
-          p: "In practice: sitting with a team, understanding the process, building the agent or the integration, deploying it, and making sure people actually adopt it.",
+          p: "In practice: sitting with a team, understanding the process, putting the right tool in place, training the people who will use it, and making sure they actually adopt it.",
         },
       ],
       next: ["fit", "where"],
     },
 
     fit: {
-      question: "Why would he fit an AI Solutions or FDE role?",
+      question: "Why would he fit an AI adoption role?",
       answer: [
         { p: "Because it's the job he already does:" },
         {
           list: [
-            "**He speaks both languages.** Years in sales and sales operations mean he starts from the business problem, not from the model.",
-            "**He ships to production.** He designs the architecture, writes the specs and test strategy, and builds with AI coding agents — deployment, CI and tests included. The support copilot is used daily by 100+ people.",
+            "**He speaks both languages.** Years in sales leadership and sales operations, facing customers and channel partners, mean he starts from the business problem, not from the model.",
+            "**He ships to production.** He writes the requirements and specs, makes the architecture choices and directs AI coding agents for the build. The support copilot is used daily by 100+ people.",
             "**He picks the right model.** Frontier APIs where capability matters, self-hosted models where customer data must stay in-house — benchmarked on real samples.",
-            "**He drives adoption.** 150+ people trained, 30+ agents built by the teams themselves, and a human validating every output that reaches a customer.",
+            "**He drives adoption.** 150+ people trained with materials and documentation he wrote, 30+ agents built by the teams themselves, and a human validating every output that reaches a customer.",
           ],
         },
       ],
@@ -333,7 +333,11 @@ export const dialogue = {
         {
           p: "It grew into **AI Explorer**, a self-serve training site with a prompting lab and a five-step agent-architect builder, and into the private AI platform where the teams now build their own agents. The result: faster adoption of new tools and simpler collaboration between teams.",
         },
+        {
+          p: "The latest step is the **Athena Prompt Academy**: a training site where a robot guide explains generative AI in a 3D office, a workshop makes people build and repair prompts, and a dungeon checks what they learned before handing out a certificate.",
+        },
         { project: "enablement" },
+        { project: "academy" },
       ],
       next: ["platform", "method-adopt"],
     },
@@ -443,10 +447,10 @@ export const dialogue = {
       answer: [
         {
           list: [
-            "**AI & agents:** agent design, MCP servers, RAG, prompt engineering and evaluation, guardrails, n8n, LibreChat",
-            "**Models:** Claude, GPT, Gemini; LM Studio, vLLM, Ollama; benchmarking and selection per use case",
-            "**AI-assisted delivery:** specs, architecture and test strategy for coding agents (Claude Code, Codex); solutions shipped on TypeScript, React, Node, Python, SQLite, Docker, GitHub Actions, Playwright",
-            "**Business:** Salesforce, Google Workspace APIs, Power BI, Tableau, discovery workshops, training and change management",
+            "**AI adoption and change:** AI literacy and enablement programmes, training design and delivery, training materials and user documentation, change management, stakeholder management, discovery workshops, use-case prioritisation, responsible AI and data security",
+            "**AI solutions:** generative AI, AI agents, RAG, MCP, prompt engineering and evaluation, guardrails, automation with n8n, LibreChat; Claude, GPT, Gemini; self-hosted models (Ollama, vLLM, LM Studio)",
+            "**Delivery:** requirements and specs, architecture choices, test strategy, directing AI coding agents (Claude Code, Codex)",
+            "**Business:** sales leadership, channel partner management, product demos, business reviews, forecasting, Salesforce, Power BI, Tableau, Google Workspace",
           ],
         },
         { open: "skills", label: "Open Skills" },
